@@ -12,10 +12,7 @@ Route::post("register", [ApiController::class, "register"]);
 Route::post("login", [ApiController::class, "login"]);
  
 // Protected Routes
-Route::group([
-    "middleware" => ["auth:sanctum"]
-], function () {
- 
+Route::group(["middleware" => ["auth:sanctum"]], function () {
     Route::get("profile", [ApiController::class, "profile"]);
     Route::get("logout", [ApiController::class, "logout"]);
     Route::get("refresh-token", [ApiController::class, "refreshToken"]);

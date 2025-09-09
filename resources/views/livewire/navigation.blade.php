@@ -58,13 +58,19 @@
                 class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white">Settings</a>
               <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button type="submit"
-                  class="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white">
+                <a href="{{ route('logout') }}"
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                  on.this.closet('form').submit();>
                   Sign out
-                </button>
+                </a>
               </form>
             </div>
           </div>
+        </div>
+        @else
+        <div>
+            <a href="{{route('login')}}" class="rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white">Login</a>
+            
         </div>
         
         @endauth

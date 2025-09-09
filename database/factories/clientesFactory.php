@@ -3,11 +3,11 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
+
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Model>
  */
-class clientesFactory extends Factory
+class ClientesFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -16,11 +16,16 @@ class clientesFactory extends Factory
      */
     public function definition(): array
     {
-        $name = $this->faker->unique()->name(20);
         
         return [
-            'nombre' => $name,
-            'slug' => Str::slug($name),
+            'nombre' => $this->faker->unique()->name,
+            'telefono' => $this->faker->numerify('########'), // 8 dígitos
+            'referencia' => $this->faker->address,
+            'latitud' => $this->faker->latitude(-22.1, -21.9), // Yacuiba aprox
+            'longitud' => $this->faker->longitude(-63.8, -63.6),
+            'estado_cuenta' => $this->faker->randomElement(['activo', 'inactivo', 'deudor']),
+            'fecha_registro' => $this->faker->dateTimeBetween('-2 years', 'now')
+
         ];
     }
 }

@@ -6,12 +6,13 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use Monolog\Formatter\LineFormatter;
 use App\Models\cliente;
+use App\Models\User;
 
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Model>
  */
-class recibosFactory extends Factory
+class RecibosFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -22,14 +23,12 @@ class recibosFactory extends Factory
     {
     
         return [
-            'emitido'=>$this->faker->date(),
-            'cliente_id'=> cliente::all()->random()->id,
-            'user_id'=> cliente::all()->random()->id,
-            'periodo_facturado'=>$this->faker->date(),
-            'monto_total'=>$this->faker->randomFloat(2, 50, 500),
-            'monto_multa'=>$this->faker->randomFloat(2, 0, 100),
-            'created_at'=>$this->faker->date(),
-            'updated_at'=>$this->faker->date()
+            'emitido' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'cliente_id' => Cliente::inRandomOrder()->first()->id,
+            'user_id' => User::inRandomOrder()->first()->id, // el que emitió el recibo
+            'periodo_facturado' => $this->faker->dateTimeBetween('-2 months', 'now'),
+            'monto_total' => $this->faker->randomFloat(2, 50, 500),
+            'monto_multa' => $this->faker->optional()->randomFloat(2, 10, 100),
         ];
     }
 }

@@ -8,7 +8,7 @@ use App\Models\Cliente;
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Model>
  */
-class DeudasFactory extends Factory
+class deudaFactory extends Factory
 {
     /**
      * Define the model's default state.

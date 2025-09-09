@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('recibos', function (Blueprint $table) {
             $table->id();
-            $table->boolean('emitido')->default(false);
+            $table->datetime('emitido');
 
             // Relaciones
             $table->foreignId('cliente_id')

@@ -12,7 +12,7 @@ use App\Models\User;
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Model>
  */
-class RecibosFactory extends Factory
+class reciboFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -28,7 +28,7 @@ class RecibosFactory extends Factory
             'user_id' => User::inRandomOrder()->first()->id, // el que emitió el recibo
             'periodo_facturado' => $this->faker->dateTimeBetween('-2 months', 'now'),
             'monto_total' => $this->faker->randomFloat(2, 50, 500),
-            'monto_multa' => $this->faker->optional()->randomFloat(2, 10, 100),
+            'monto_multa' => $this->faker->optional()->randomFloat(2, 0, 100) ?? 0,
         ];
     }
 }

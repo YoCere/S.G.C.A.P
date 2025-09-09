@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class cliente extends Model
 {
+    use HasFactory;
     protected $fillable = ['nombre', 'direccion', 'telefono', 'estado_cuenta', 'fecha_registro'];
 
     // Un cliente tiene muchos recibos

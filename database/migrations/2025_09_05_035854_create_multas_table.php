@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('multas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('deuda_id')->constrained('deudas')->onDelete('cascade');
-            $table->decimal('monto', 10, 2);
+            $table->decimal('monto', 10, 2)->default(0);
             $table->string('descripcion')->nullable();
             $table->date('fecha')->nullable();
             $table->timestamps();

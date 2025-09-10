@@ -1,9 +1,10 @@
 <?php
 
-use App\Http\Controllers\Controller;
+
 use App\Http\Controllers\welcomeController;
 use Illuminate\Support\Facades\Route;
 
+require __DIR__.'/admin.php';
 
 
 Route::get("/", [welcomeController::class, "welcome"]);

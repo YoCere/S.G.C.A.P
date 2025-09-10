@@ -54,12 +54,14 @@
               class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-gray-800 py-1 shadow-lg ring-1 ring-black ring-opacity-5">
               <a href="{{route('profile.show')}}"
                 class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white">Tu perfil</a>
-              
+              <a href="{{route('admin.home')}}"
+                class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white">Dashboard</a>
+
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit"
                         class="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white">
-                        Sign out
+                        Cerrar sesión
                     </button>
                 </form>
             </div>

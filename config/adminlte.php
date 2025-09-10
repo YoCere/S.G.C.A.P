@@ -332,9 +332,9 @@ return [
             'icon' => 'fas fa-fw fa-user',
         ],
         [
-            'text' => 'change_password',
+            'text' => 'Clientes',
             'url' => 'admin/settings',
-            'icon' => 'fas fa-fw fa-lock',
+            'icon' => 'fa-solid fa-users',
         ],
         [
             'text' => 'multilevel',

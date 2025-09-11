@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('clientes', function (Blueprint $table) {
             $table->id();
             $table->string('nombre');
+            $table->string('ci')->unique();
             $table->string('telefono')->nullable();
 
             // Dirección referencial (ejemplo: "casa azul al lado de la cancha")

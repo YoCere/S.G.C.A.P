@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // Empleados random
+       
         User::factory(4)->create();
 
         // Clientes con recibos
@@ -31,17 +32,20 @@ class DatabaseSeeder extends Seeder
             ->create()
             ->each(function ($cliente) {
                 // para algunos recibos, crear deudas
-                $cliente->recibos->random(1)->each(function ($recibo) {
-                    $deuda = Debt::factory()->create([
-                        'cliente_id' => $recibo->cliente_id,
-                        // puedes añadir recibo_id si lo tienes
-                    ]);
+                if ($cliente->recibos && $cliente->recibos->isNotEmpty()) {
+                    $cliente->recibos->random(1)->each(function ($recibo) {
+                        $deuda = Debt::factory()->create([
+                            'cliente_id' => $recibo->cliente_id,
+                        ]);
 
                     // a esa deuda le ponemos multas
                     Fine::factory(rand(0, 2))->create([
                         'deuda_id' => $deuda->id,
                     ]);
                 });
+                }
             });
+            Client::factory(10)->create(); // Crea 20 clientes
+            Debt::factory(10)->create();
     }
 }

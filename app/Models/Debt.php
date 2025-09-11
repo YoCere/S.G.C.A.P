@@ -19,7 +19,7 @@ class Debt extends Model
     }
 
     // Una deuda tiene muchas multas
-    public function multas()
+    public function Fine()
     {
         return $this->hasMany(Fine::class);
     }

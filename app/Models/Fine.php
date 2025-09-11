@@ -13,7 +13,7 @@ class Fine extends Model
     protected $fillable = ['deuda_id', 'monto', 'descripcion', 'fecha'];
 
     // Una multa pertenece a una deuda
-    public function deuda()
+    public function Debt()
     {
         return $this->belongsTo(Debt::class);
     }

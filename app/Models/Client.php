@@ -9,12 +9,12 @@ class Client extends Model
 {
     protected $table = 'clientes';
     use HasFactory;
-    protected $fillable = ['nombre', 'direccion', 'telefono', 'estado_cuenta', 'fecha_registro'];
+    protected $fillable = ['nombre', 'ci', 'direccion', 'telefono', 'estado_cuenta', 'fecha_registro'];
 
     // Un cliente tiene muchos recibos
-    public function recibos()
+    public function Receipt()
     {
-        return $this->hasMany(Receipt::class);
+        return $this->hasMany(Receipt::class, 'cliente_id');
     }
 
     // Un cliente tiene muchas deudas
@@ -27,4 +27,6 @@ class Client extends Model
     {
         return $this->hasMany(Fine::class);
     }
+
+   
 }

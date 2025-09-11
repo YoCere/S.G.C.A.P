@@ -24,11 +24,11 @@ class ReceiptFactory extends Factory
     
         return [
             'emitido' => $this->faker->dateTimeBetween('-1 month', 'now'),
-            'cliente_id' => Client::inRandomOrder()->first()->id,
-            'user_id' => User::inRandomOrder()->first()->id, // el que emitió el recibo
+            
             'periodo_facturado' => $this->faker->dateTimeBetween('-2 months', 'now'),
             'monto_total' => $this->faker->randomFloat(2, 50, 500),
             'monto_multa' => $this->faker->optional()->randomFloat(2, 0, 100) ?? 0,
+            'user_id' => \App\Models\User::factory(), // Genera un usuario relacionado
         ];
     }
 }

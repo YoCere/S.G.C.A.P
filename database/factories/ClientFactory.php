@@ -19,7 +19,8 @@ class ClientFactory extends Factory
         
         return [
             'nombre' => $this->faker->unique()->name,
-            'telefono' => $this->faker->numerify('########'), // 8 dígitos
+            'ci' => $this->faker->numerify('1#######' ),// 8 dígitos
+            'telefono' => $this->faker->numerify('7#6####'), // 8 dígitos
             'referencia' => $this->faker->address,
             'latitud' => $this->faker->latitude(-22.1, -21.9), // Yacuiba aprox
             'longitud' => $this->faker->longitude(-63.8, -63.6),

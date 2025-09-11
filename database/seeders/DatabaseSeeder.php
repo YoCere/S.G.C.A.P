@@ -3,10 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Models\Cliente;
-use App\Models\Recibo;
-use App\Models\Deuda;
-use App\Models\Multa;
+use App\Models\Client;
+use App\Models\Receipt;
+use App\Models\Debt;
+use App\Models\Fine;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -26,19 +26,19 @@ class DatabaseSeeder extends Seeder
         User::factory(4)->create();
 
         // Clientes con recibos
-        cliente::factory(20)
-            ->has(recibo::factory(3)) // cada cliente con 3 recibos
+        Client::factory(20)
+            ->has(Receipt::factory(3)) // cada cliente con 3 recibos
             ->create()
             ->each(function ($cliente) {
                 // para algunos recibos, crear deudas
                 $cliente->recibos->random(1)->each(function ($recibo) {
-                    $deuda = deuda::factory()->create([
+                    $deuda = Debt::factory()->create([
                         'cliente_id' => $recibo->cliente_id,
                         // puedes añadir recibo_id si lo tienes
                     ]);
 
                     // a esa deuda le ponemos multas
-                    multa::factory(rand(0, 2))->create([
+                    Fine::factory(rand(0, 2))->create([
                         'deuda_id' => $deuda->id,
                     ]);
                 });

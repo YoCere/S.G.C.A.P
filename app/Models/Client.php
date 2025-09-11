@@ -5,25 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class cliente extends Model
+class Client extends Model
 {
+    protected $table = 'clientes';
     use HasFactory;
     protected $fillable = ['nombre', 'direccion', 'telefono', 'estado_cuenta', 'fecha_registro'];
 
     // Un cliente tiene muchos recibos
     public function recibos()
     {
-        return $this->hasMany(Recibo::class);
+        return $this->hasMany(Receipt::class);
     }
 
     // Un cliente tiene muchas deudas
-    public function deudas()
+    public function Debt()
     {
-        return $this->hasMany(Deuda::class);
+        return $this->hasMany(Debt::class);
     }
 
     public function multa()
     {
-        return $this->hasMany(Multa::class);
+        return $this->hasMany(Fine::class);
     }
 }

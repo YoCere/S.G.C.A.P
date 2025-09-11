@@ -5,22 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class deuda extends Model
+class Debt extends Model
 {
-    
+    protected $table = 'deudas';
     use HasFactory;
 
     protected $fillable = ['cliente_id', 'monto_pendiente', 'fecha_emision', 'fecha_vencimiento'];
 
     // Una deuda pertenece a un cliente
-    public function cliente()
+    public function Client()
     {
-        return $this->belongsTo(Cliente::class);
+        return $this->belongsTo(Client::class);
     }
 
     // Una deuda tiene muchas multas
     public function multas()
     {
-        return $this->hasMany(Multa::class);
+        return $this->hasMany(Fine::class);
     }
 }

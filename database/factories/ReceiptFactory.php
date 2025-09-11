@@ -5,14 +5,14 @@ namespace Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use Monolog\Formatter\LineFormatter;
-use App\Models\cliente;
+use App\Models\client;
 use App\Models\User;
 
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Model>
  */
-class reciboFactory extends Factory
+class ReceiptFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -24,7 +24,7 @@ class reciboFactory extends Factory
     
         return [
             'emitido' => $this->faker->dateTimeBetween('-1 month', 'now'),
-            'cliente_id' => Cliente::inRandomOrder()->first()->id,
+            'cliente_id' => Client::inRandomOrder()->first()->id,
             'user_id' => User::inRandomOrder()->first()->id, // el que emitió el recibo
             'periodo_facturado' => $this->faker->dateTimeBetween('-2 months', 'now'),
             'monto_total' => $this->faker->randomFloat(2, 50, 500),

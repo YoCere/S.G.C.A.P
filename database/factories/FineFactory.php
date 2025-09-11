@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Multa>
  */
-class multaFactory extends Factory
+class FineFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -17,7 +17,7 @@ class multaFactory extends Factory
     public function definition(): array
     {
         return [
-            'deuda_id' => \App\Models\Deuda::inRandomOrder()->first()->id ?? \App\Models\Deuda::factory(),
+            'deuda_id' => \App\Models\Debt::inRandomOrder()->first()->id ?? \App\Models\Debt::factory(),
             'monto' => $this->faker->randomFloat(2, 5, 100),
             'descripcion' => $this->faker->sentence,
             'fecha' => $this->faker->dateTimeBetween('-1 month', 'now'),

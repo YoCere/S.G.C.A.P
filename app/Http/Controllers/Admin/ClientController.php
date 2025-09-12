@@ -64,7 +64,15 @@ class ClientController extends Controller
      */
     public function update(Request $request, Client $client)
     {
-        //
+        $request->validate([
+            'nombre' => 'required|string|max:255',
+            'ci'=> 'required|string|max:20|unique:clientes,ci,'.$client->id,
+            'telefono'=> 'nullable|string|max:20',
+            'referencia'=> 'nullable|string|max:255'
+
+        ]);
+        $client->update($request->all());
+        return redirect()->route('admin.clients.edit', $client)->with('info', 'Cliente actualizado con éxito');
     }
 
     /**
@@ -72,6 +80,7 @@ class ClientController extends Controller
      */
     public function destroy(Client $client)
     {
-        //
+        $client->delete();
+        return redirect()->route('admin.clients.index')->with('info', 'Cliente eliminado con éxito');
     }
 }

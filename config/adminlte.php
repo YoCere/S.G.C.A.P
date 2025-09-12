@@ -325,14 +325,14 @@ return [
             'url' => 'admin',
             'icon' => 'fas fa-tachometer-alt fa-fw'
         ],
-        ['header' => 'account_settings'],
-        [
-            'text' => 'profile',
-            'url' => 'admin/settings',
-            'icon' => 'fas fa-fw fa-user',
-        ],
+        ['header' => 'ADMINISTRADOR'],
         [
             'text' => 'Clientes',
+            'route' => 'admin.clients.index',
+            'icon' => 'fas fa-fw fa-users',
+        ],
+        [
+            'text' => 'Usuarios',
             'url' => 'admin/settings',
             'icon' => 'fa-solid fa-users',
         ],

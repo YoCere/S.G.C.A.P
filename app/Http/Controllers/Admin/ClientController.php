@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
+use App\Models\Client;
+
+
 class ClientController extends Controller
 {
     /**
@@ -12,7 +15,8 @@ class ClientController extends Controller
      */
     public function index()
     {
-        //
+        $clients = Client::all();
+        return view('admin.clients.index', compact('clients'));
     }
 
     /**
@@ -20,7 +24,7 @@ class ClientController extends Controller
      */
     public function create()
     {
-        //
+        return view('admin.clients.create');
     }
 
     /**
@@ -28,29 +32,29 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $client)
+    public function show(Client $client)
     {
-        //
+        return view('admin.clients.show' , compact('client'));
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $client)
+    public function edit(Client $client)
     {
-        //
+        return view('admin.clients.edit' , compact('client'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $client)
+    public function update(Request $request, Client $client)
     {
         //
     }
@@ -58,7 +62,7 @@ class ClientController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $client)
+    public function destroy(Client $client)
     {
         //
     }

@@ -8,6 +8,6 @@ Route::middleware(['auth'])
     ->prefix('admin')
     
     ->group(function () {
-        Route::get('/', [HomeController::class, 'index'])->name('home');
+        Route::get('/', [HomeController::class, 'index'])->name('admin.home');
         Route::resource('clients', ClientController::class)->names('admin.clients');
     });

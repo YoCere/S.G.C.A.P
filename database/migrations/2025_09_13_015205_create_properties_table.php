@@ -13,12 +13,16 @@ return new class extends Migration
     {
         Schema::create('propiedades', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('cliente_id')->constrained('clientes')->onDelete('cascade');
-            $table->string('referencia')->nullable();
-            $table->decimal('latitud', 10, 7)->nullable();
-            $table->decimal('longitud', 10, 7)->nullable();
-            $table->enum('estado', ['activa', 'inactiva', 'en_construccion'])->default('activa');
-            $table->timestamps();
+           // FKs (tablas en inglés, columnas en español)
+           $table->foreignId('cliente_id')->constrained('clientes')->cascadeOnDelete();
+           $table->foreignId('tarifa_id')->constrained('tarifas');
+
+           $table->string('referencia');
+           $table->decimal('latitud', 10, 8)->nullable();
+           $table->decimal('longitud', 11, 8)->nullable();
+
+           $table->enum('estado', ['activo','inactivo'])->default('activo')->index();
+            $table->timestamps();        
         });
     }
 

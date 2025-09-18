@@ -23,8 +23,7 @@ return new class extends Migration
             $table->date('fecha_emision')->useCurrent();
             $table->date('fecha_vencimiento')->nullable();
             $table->enum('estado', ['pendiente', 'pagada', 'vencida'])->default('pendiente');
-
-            $table->timestamps();
+            $table->boolean('pagada_adelantada')->default(false);            $table->timestamps();
         });
     }
 

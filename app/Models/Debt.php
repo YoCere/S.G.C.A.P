@@ -2,25 +2,52 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Debt extends Model
 {
-    protected $table = 'deudas';
     use HasFactory;
 
-    protected $fillable = ['cliente_id', 'monto_pendiente', 'fecha_emision', 'fecha_vencimiento'];
+    protected $table = 'deudas';
 
-    // Una deuda pertenece a un cliente
-    public function Client()
+    protected $fillable = [
+        'propiedad_id',
+        'tarifa_id',
+        'monto_pendiente',
+        'fecha_emision',
+        'fecha_vencimiento',
+        'estado',
+        'pagada_adelantada',
+    ];
+
+    protected $casts = [
+        'fecha_emision' => 'date',
+        'fecha_vencimiento' => 'date',
+        'pagada_adelantada' => 'boolean',
+    ];
+
+    public function propiedad()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Property::class, 'propiedad_id');
     }
 
-    // Una deuda tiene muchas multas
-    public function Fine()
+    public function tarifa()
     {
-        return $this->hasMany(Fine::class);
+        return $this->belongsTo(Tariff::class, 'tarifa_id');
+    }
+
+    // NUEVO: recibos que han aplicado pagos a esta deuda
+    public function recibos()
+    {
+        return $this->belongsToMany(Receipt::class, 'deuda_recibo', 'deuda_id', 'recibo_id')
+            ->withPivot('monto_aplicado')
+            ->withTimestamps();
+    }
+
+    // Scopes útiles
+    public function scopePendientes($q)
+    {
+        return $q->where('estado', 'pendiente');
     }
 }

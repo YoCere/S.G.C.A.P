@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('recibos', function (Blueprint $table) {
             $table->id();
-            $table->datetime('emitido');
+            $table->boolean('emitido')->default(true);
 
             // Relaciones
             $table->foreignId('cliente_id')
@@ -25,9 +25,10 @@ return new class extends Migration
                   ->cascadeOnDelete();
 
             // Campos propios del recibo
-            $table->string('periodo_facturado', 20);
-            $table->decimal('monto_total', 10, 2);
-            $table->decimal('monto_multa', 10, 2)->default(0);
+            $table->date('periodo_facturado'); 
+            $table->decimal('monto_total', 12, 2);
+            $table->decimal('monto_multa', 12, 2)->default(0);
+            $table->string('referencia', 255)->nullable(); 
             $table->timestamps();
         });
     }

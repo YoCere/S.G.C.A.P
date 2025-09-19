@@ -332,7 +332,7 @@ return [
             'icon' => 'fas fa-fw fa-users',
         ],
         [
-            'text' => 'Usuarios',
+            'text' => 'Recibos',
             'url' => 'admin/settings',
             'icon' => 'fa-solid fa-users',
         ],
@@ -373,6 +373,16 @@ return [
                     'url' => '#',
                 ],
             ],
+        ],
+        [
+            'text' => 'Tarifas',
+            'route' => 'admin.tariffs.index',
+            'icon' => 'fa fa-tags',
+        ],
+        [
+            'text' => 'Propiedades',
+            'route' => 'admin.properties.index',
+            'icon' => 'fa fa-home',
         ],
         ['header' => 'labels'],
         [

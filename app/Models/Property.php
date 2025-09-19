@@ -9,7 +9,7 @@ class Property extends Model
 {
     use HasFactory;
 
-    protected $table = 'properties';
+    protected $table = 'propiedades';
 
     protected $fillable = [
         'cliente_id',

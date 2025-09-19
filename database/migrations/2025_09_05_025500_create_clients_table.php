@@ -17,12 +17,6 @@ return new class extends Migration
             $table->string('ci')->unique();
             $table->string('telefono')->nullable();
 
-            // Dirección referencial (ejemplo: "casa azul al lado de la cancha")
-            $table->string('referencia')->nullable();
-
-            // Coordenadas para ubicar en mapa
-            $table->decimal('latitud', 10, 7)->nullable();
-            $table->decimal('longitud', 10, 7)->nullable();
 
             $table->string('estado_cuenta')->default('activo'); // activo, inactivo, deudor
             $table->timestamp('fecha_registro')->useCurrent();

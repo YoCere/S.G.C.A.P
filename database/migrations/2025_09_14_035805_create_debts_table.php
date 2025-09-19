@@ -19,11 +19,16 @@ return new class extends Migration
                   ->cascadeOnDelete();
 
             // Campos propios de la deuda
+            $table->foreignId('propiedad_id')->constrained('propiedades')->cascadeOnDelete();
+            $table->foreignId('tarifa_id')->constrained('tarifas');   // <-- AÑADIDO
             $table->decimal('monto_pendiente', 10, 2);
             $table->date('fecha_emision')->useCurrent();
             $table->date('fecha_vencimiento')->nullable();
             $table->enum('estado', ['pendiente', 'pagada', 'vencida'])->default('pendiente');
-            $table->boolean('pagada_adelantada')->default(false);            $table->timestamps();
+            $table->boolean('pagada_adelantada')->default(false);   
+            // 1 deuda por propiedad y mes:
+            $table->unique(['propiedad_id','fecha_emision']); 
+            $table->timestamps();
         });
     }
 
@@ -32,6 +37,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('deuda');
+        Schema::dropIfExists('deudas');
     }
 };

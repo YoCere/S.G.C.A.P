@@ -18,15 +18,11 @@ class ClientFactory extends Factory
     {
         
         return [
-            'nombre' => $this->faker->unique()->name,
-            'ci' => $this->faker->numerify('1#######' ),// 8 dígitos
-            'telefono' => $this->faker->numerify('7#6####'), // 8 dígitos
-            'referencia' => $this->faker->address,
-            'latitud' => $this->faker->latitude(-22.1, -21.9), // Yacuiba aprox
-            'longitud' => $this->faker->longitude(-63.8, -63.6),
-            'estado_cuenta' => $this->faker->randomElement(['activo', 'inactivo', 'deudor']),
-            'fecha_registro' => $this->faker->dateTimeBetween('-2 years', 'now')
-
+            'nombre'         => $this->faker->name(),
+            'ci'             => $this->faker->unique()->numerify('1#######'),
+            'telefono'       => $this->faker->optional()->numerify('7#######'),
+            'estado_cuenta'  => $this->faker->randomElement(['activo','inactivo','deudor']),
+            'fecha_registro' => now()->toDateString(),
         ];
     }
 }

@@ -53,6 +53,19 @@ class PropertyController extends Controller
             ->with('info', 'Propiedad actualizada con éxito');
     }
 
-    public function destroy(Property $property) { dd('destroy', $property->id); }
-
+    public function destroy(Property $propiedad)
+    {
+        try {
+            $propiedad->delete();
+            return redirect()
+                ->route('admin.properties.index')
+                ->with('info', 'Propiedad eliminada con éxito');
+        } catch (QueryException $e) {
+            // 1451 = Cannot delete or update a parent row: a foreign key constraint fails
+            if ((int) $e->errorInfo[1] === 1451) {
+                return back()->with('info', 'No se puede eliminar: tiene registros asociados (deudas/recibos).');
+            }
+            throw $e;
+        }
+    }
 }

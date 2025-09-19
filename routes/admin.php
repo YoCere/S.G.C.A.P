@@ -13,5 +13,5 @@ Route::middleware(['auth'])
         Route::get('/', [HomeController::class, 'index'])->name('admin.home');
         Route::resource('clients', ClientController::class)->names('admin.clients');
         Route::resource('tariffs', TariffController::class)->names('admin.tariffs');
-        Route::resource('properties', PropertyController::class)->names('admin.properties');
+        Route::resource('properties', PropertyController::class)->parameters(['properties' => 'property']) ->names('admin.properties');
     });

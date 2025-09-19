@@ -7,6 +7,7 @@ use App\Http\Requests\PropertyRequest;
 use App\Models\Property;
 use App\Models\Client;
 use App\Models\Tariff;
+use Illuminate\Database\QueryException;
 
 class PropertyController extends Controller
 {
@@ -53,17 +54,14 @@ class PropertyController extends Controller
             ->with('info', 'Propiedad actualizada con éxito');
     }
 
-    public function destroy(Property $propiedad)
+    public function destroy(\App\Models\Property $property)
     {
         try {
-            $propiedad->delete();
-            return redirect()
-                ->route('admin.properties.index')
-                ->with('info', 'Propiedad eliminada con éxito');
+            $property->delete();
+            return redirect()->route('admin.properties.index')->with('info', 'Propiedad eliminada con éxito');
         } catch (QueryException $e) {
-            // 1451 = Cannot delete or update a parent row: a foreign key constraint fails
-            if ((int) $e->errorInfo[1] === 1451) {
-                return back()->with('info', 'No se puede eliminar: tiene registros asociados (deudas/recibos).');
+            if ((int)$e->errorInfo[1] === 1451) {
+                return back()->with('info','No se puede eliminar: tiene registros asociados.');
             }
             throw $e;
         }

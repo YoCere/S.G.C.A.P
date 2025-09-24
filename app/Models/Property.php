@@ -20,16 +20,20 @@ class Property extends Model
         'estado',
     ];
 
+    
+
     // Relaciones
     public function client()
     {
         return $this->belongsTo(Client::class, 'cliente_id');
     }
 
+    
     public function tariff()
     {
-        return $this->belongsTo(Tariff::class, 'tarifa_id');
+        return $this->belongsTo(\App\Models\Tariff::class, 'tarifa_id')->withTrashed();
     }
+
 
     public function debts()
     {
@@ -41,4 +45,5 @@ class Property extends Model
     {
         return $q->where('estado', 'activo');
     }
+    
 }

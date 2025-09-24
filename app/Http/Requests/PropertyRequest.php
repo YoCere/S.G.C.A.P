@@ -12,7 +12,10 @@ class PropertyRequest extends FormRequest
     {
         return [
             'cliente_id' => 'required|exists:clientes,id',
-            'tarifa_id'  => 'required|exists:tarifas,id', // tablas en español
+            'tarifa_id'  => [
+                'required',
+                Rule::exists('tarifas','id')->whereNull('deleted_at'), // 👈 solo activas
+            ],
             'referencia' => 'required|string|max:255',
             'latitud'    => 'nullable|numeric|between:-90,90',
             'longitud'   => 'nullable|numeric|between:-180,180',

@@ -21,7 +21,7 @@ class PropertyController extends Controller
     public function create()
     {
         $clients = Client::orderBy('nombre')->get(['id','nombre','ci']);
-        $tariffs = Tariff::orderBy('nombre')->get(['id','nombre','precio_mensual']);
+        $tariffs = \App\Models\Tariff::whereNull('deleted_at')->orderBy('nombre')->get();
         return view('admin.properties.create', compact('clients','tariffs'));
     }
 
@@ -34,7 +34,7 @@ class PropertyController extends Controller
     public function edit(Property $property)
     {
         $clients = Client::orderBy('nombre')->get(['id','nombre','ci']);
-        $tariffs = Tariff::orderBy('nombre')->get(['id','nombre','precio_mensual']);
+        $tariffs = \App\Models\Tariff::whereNull('deleted_at')->orderBy('nombre')->get();
         return view('admin.properties.edit', compact('property','clients','tariffs'));
     }
 

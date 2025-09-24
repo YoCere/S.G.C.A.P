@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('nombre'); // Ej: Normal, Adulto mayor
             $table->decimal('precio_mensual', 8, 2);
             $table->text('descripcion')->nullable();
+            $table->softDeletes(); 
             $table->timestamps();
         });
     }

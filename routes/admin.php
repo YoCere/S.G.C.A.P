@@ -4,7 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\HomeController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\TariffController;
-use App\Http\Controllers\Admin\PropertyController;
+use App\Http\Controllers\Admin\PropertyController;4
+use App\Http\Controllers\Admin\DebtController;
 
 Route::middleware(['auth'])
     ->prefix('admin')
@@ -14,4 +15,7 @@ Route::middleware(['auth'])
         Route::resource('clients', ClientController::class)->names('admin.clients');
         Route::resource('tariffs', TariffController::class)->names('admin.tariffs');
         Route::resource('properties', PropertyController::class)->parameters(['properties' => 'property']) ->names('admin.properties');
+        Route::resource('debts', DebtController::class)
+        ->parameters(['debts' => 'debt'])
+        ->names('admin.debts');
     });

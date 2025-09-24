@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TariffController extends Controller
 {
     public function index()
     {
+        // Por defecto, Eloquent excluye las soft-deleted
         $tariffs = Tariff::orderBy('nombre')->paginate(15);
         return view('admin.tariffs.index', compact('tariffs'));
     }
@@ -22,7 +24,10 @@ class TariffController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'nombre'         => 'required|string|max:255|unique:tarifas,nombre',
+            'nombre' => [
+                'required','string','max:255',
+                Rule::unique('tarifas','nombre')->whereNull('deleted_at'), // ignora soft-deleted
+            ],
             'precio_mensual' => 'required|numeric|min:0|max:999999.99',
             'descripcion'    => 'nullable|string|max:1000',
         ]);
@@ -47,7 +52,12 @@ class TariffController extends Controller
     public function update(Request $request, Tariff $tariff)
     {
         $data = $request->validate([
-            'nombre'         => 'required|string|max:255|unique:tarifas,nombre,' . $tariff->id,
+            'nombre' => [
+                'required','string','max:255',
+                Rule::unique('tarifas','nombre')
+                    ->ignore($tariff->id)          // permite su mismo nombre
+                    ->whereNull('deleted_at'),     // ignora soft-deleted
+            ],
             'precio_mensual' => 'required|numeric|min:0|max:999999.99',
             'descripcion'    => 'nullable|string|max:1000',
         ]);
@@ -61,10 +71,11 @@ class TariffController extends Controller
 
     public function destroy(Tariff $tariff)
     {
+        // Soft delete (no rompe FKs a deudas/propiedades)
         $tariff->delete();
 
         return redirect()
             ->route('admin.tariffs.index')
-            ->with('info', 'Tarifa eliminada con éxito');
+            ->with('info', 'Tarifa archivada con éxito');
     }
 }

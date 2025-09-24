@@ -35,7 +35,16 @@
           <td>{{ $p->id }}</td>
           <td>{{ $p->client->nombre ?? '—' }}</td>
           <td>{{ $p->tariff->nombre ?? '—' }}</td>
-          <td>{{ $p->referencia }}</td>
+          <td>
+            @if ($p->tariff)
+                {{ $p->tariff->nombre }}
+                @if ($p->tariff->trashed())
+                <span class="badge badge-warning ml-1">Archivada</span>
+                @endif
+            @else
+                —
+            @endif
+            </td>
           <td>
             <span class="badge badge-{{ $p->estado === 'activo' ? 'success' : 'secondary' }}">
               {{ ucfirst($p->estado) }}
@@ -51,7 +60,7 @@
                     data-lng="{{ $p->longitud }}"
                     data-ref="{{ $p->referencia }}"
                     data-id="{{ $p->id }}">
-              Detalles
+              Ubicacion
             </button>
           </td>
 

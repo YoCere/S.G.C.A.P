@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
            // FKs (tablas en inglés, columnas en español)
            $table->foreignId('cliente_id')->constrained('clientes')->cascadeOnDelete();
-           $table->foreignId('tarifa_id')->constrained('tarifas')->constrained('tarifas');
+           $table->foreignId('tarifa_id')->constrained('tarifas');
 
            $table->string('referencia');
            $table->decimal('latitud', 10, 8)->nullable();

@@ -384,6 +384,11 @@ return [
             'route' => 'admin.properties.index',
             'icon' => 'fa fa-home',
         ],
+        [
+            'text' => 'Deudas',
+            'route' => 'admin.debts.index',
+            'icon' => 'fa fa-file-invoice-dollar',
+        ],
         ['header' => 'labels'],
         [
             'text' => 'important',

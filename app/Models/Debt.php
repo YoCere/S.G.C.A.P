@@ -50,4 +50,8 @@ class Debt extends Model
     {
         return $q->where('estado', 'pendiente');
     }
+    public function cliente()
+    {
+        return $this->belongsTo(Client::class, 'cliente_id');
+    }
 }

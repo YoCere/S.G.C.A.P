@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\HomeController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\TariffController;
-use App\Http\Controllers\Admin\PropertyController;4
+use App\Http\Controllers\Admin\PropertyController;
 use App\Http\Controllers\Admin\DebtController;
 
 Route::middleware(['auth'])

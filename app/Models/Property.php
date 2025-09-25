@@ -23,7 +23,7 @@ class Property extends Model
     
 
     // Relaciones
-    public function cliente()
+    public function client()
     {
         return $this->belongsTo(Client::class, 'cliente_id');
     }

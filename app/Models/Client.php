@@ -28,6 +28,12 @@ class Client extends Model
         return $this->hasMany(Receipt::class, 'cliente_id');
     }
 
+    public function Property()
+    {
+        return $this->hasMany(Property::class, 'propiedad_id');
+    }
+
+
     // Un cliente tiene muchas deudas
    
     public function multa()

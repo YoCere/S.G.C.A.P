@@ -45,5 +45,9 @@ class Property extends Model
     {
         return $q->where('estado', 'activo');
     }
-    
+    public function getClienteNombreAttribute()
+    {
+        return $this->cliente ? $this->cliente->nombre : 'Cliente No Asignado';
+    }
 }
+    

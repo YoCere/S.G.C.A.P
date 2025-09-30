@@ -34,7 +34,7 @@
                     @foreach ($debts as $debt)
                         <tr>
                             <td>{{ $debt->id }}</td>
-                            <td>{{ $debt->propiedad->cliente->nombre }}</td>
+                            <td>{{ $debt->propiedad->client->nombre }}</td>
                             <td>{{ $debt->propiedad->referencia }}</td>
                             <td>{{ number_format($debt->monto_pendiente, 2) }}</td>
                             <td>{{ $debt->fecha_emision }}</td>

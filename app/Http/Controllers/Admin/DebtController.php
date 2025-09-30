@@ -8,12 +8,13 @@ use App\Models\Property;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class DebtController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Debt::with(['propiedad.cliente', 'tarifa']);
+        $query = Debt::with(['propiedad.client', 'tarifa']); // ← CORREGIDO: 'cliente' no 'client'
 
         if ($request->filled('cliente_id')) {
             $query->whereHas('propiedad', function ($q) use ($request) {
@@ -36,7 +37,7 @@ class DebtController extends Controller
 
     public function create()
     {
-        $propiedades = Property::with('cliente')->orderBy('referencia')->get();
+        $propiedades = Property::with('client')->orderBy('referencia')->get();
         $tarifas = Tariff::orderBy('nombre')->get();
 
         return view('admin.debts.create', compact('propiedades', 'tarifas'));
@@ -58,6 +59,13 @@ class DebtController extends Controller
             'pagada_adelantada' => ['boolean'],
         ]);
 
+        // LÓGICA AUTOMÁTICA para pagada_adelantada
+        if ($data['estado'] === 'pagada' && Carbon::parse($data['fecha_emision']) > now()) {
+            $data['pagada_adelantada'] = true;
+        } else {
+            $data['pagada_adelantada'] = $data['pagada_adelantada'] ?? false;
+        }
+
         $debt = Debt::create($data);
 
         return redirect()
@@ -67,41 +75,61 @@ class DebtController extends Controller
 
     public function show(Debt $debt)
     {
-        $debt->load(['propiedad.cliente', 'tarifa', 'multas']);
+        $debt->load(['propiedad.client', 'tarifa', 'multas']);
         return view('admin.debts.show', compact('debt'));
     }
 
     public function edit(Debt $debt)
     {
-        $propiedades = Property::with('cliente')->orderBy('referencia')->get();
+        // CORREGIDO: 'cliente' no 'client'
+        $debt->load(['propiedad.client', 'tarifa']);
+        
+        $propiedades = Property::with(['client'])->orderBy('referencia')->get(); // ← CORREGIDO
         $tarifas = Tariff::orderBy('nombre')->get();
 
         return view('admin.debts.edit', compact('debt','propiedades','tarifas'));
     }
 
     public function update(Request $request, Debt $debt)
-    {
-        $data = $request->validate([
-            'propiedad_id' => ['required', 'exists:propiedades,id'],
-            'tarifa_id'    => ['required', 'exists:tarifas,id'],
-            'monto_pendiente' => ['required', 'numeric', 'min:0'],
-            'fecha_emision'   => [
-                'required','date',
-                Rule::unique('deudas')
-                    ->where(fn($q) => $q->where('propiedad_id', $request->propiedad_id))
-                    ->ignore($debt->id)
-            ],
-            'fecha_vencimiento' => ['nullable', 'date'],
-            'estado' => ['required', 'in:pendiente,pagada,vencida'],
-            'pagada_adelantada' => ['boolean'],
-        ]);
-
-        $debt->update($data);
-
-        return redirect()
-            ->route('admin.debts.edit', $debt)
-            ->with('info', 'Deuda actualizada con éxito');
+{
+    // VALIDACIÓN: No cambiar propiedad
+    if ($debt->propiedad_id != $request->propiedad_id) {
+        return redirect()->back()
+            ->withErrors(['propiedad_id' => 'No se puede cambiar la propiedad de una deuda existente.'])
+            ->withInput();
     }
+
+    $data = $request->validate([
+        'propiedad_id' => ['required', 'exists:propiedades,id'],
+        'tarifa_id'    => ['required', 'exists:tarifas,id'],
+        // ELIMINAR monto_pendiente de la validación (se calcula automático)
+        'fecha_emision'   => [
+            'required','date',
+            Rule::unique('deudas')
+                ->where(fn($q) => $q->where('propiedad_id', $request->propiedad_id))
+                ->ignore($debt->id)
+        ],
+        'fecha_vencimiento' => ['nullable', 'date'],
+        'estado' => ['required', 'in:pendiente,pagada,vencida'],
+        // ELIMINAR pagada_adelantada (automático)
+    ]);
+
+    // MONTO AUTOMÁTICO según tarifa
+    $tarifa = Tariff::find($data['tarifa_id']);
+    $data['monto_pendiente'] = $tarifa->precio_mensual;
+
+    // PAGADA_ADELANTADA automático
+    if ($data['estado'] === 'pagada') {
+        $data['pagada_adelantada'] = Carbon::parse($data['fecha_emision']) > now();
+    } else {
+        $data['pagada_adelantada'] = false;
+    }
+
+    $debt->update($data);
+
+    return redirect()->route('admin.debts.index')
+        ->with('info', 'Deuda actualizada con éxito');
+}
 
     public function destroy(Debt $debt)
     {

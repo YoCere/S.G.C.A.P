@@ -15,6 +15,7 @@ class Property extends Model
         'cliente_id',
         'tarifa_id',
         'referencia',
+        'barrio',
         'latitud',
         'longitud',
         'estado',

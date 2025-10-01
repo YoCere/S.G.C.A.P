@@ -20,10 +20,11 @@ class DebtGeneratorService
             'errors' => []
         ];
 
-        // Obtener todas las propiedades activas
-        $properties = Property::activas()->with(['cliente', 'tariff'])->get();
-        
-        // ELIMINÉ: $this->info() - eso va en el Command, no aquí
+        // ✅ CORREGIDO: Solo propiedades ACTIVAS (no cortadas/inactivas)
+        $properties = Property::where('estado', 'activo') // ← FILTRO CRÍTICO
+            ->activas()
+            ->with(['cliente', 'tariff'])
+            ->get();
 
         foreach ($properties as $property) {
             DB::beginTransaction();
@@ -51,7 +52,7 @@ class DebtGeneratorService
                 $fechaEmision = $month->copy()->startOfMonth();
                 $fechaVencimiento = $fechaEmision->copy()->addDays(15);
 
-                // Obtener tarifa - CORREGIDO para usar tu modelo
+                // Obtener tarifa
                 $tarifa = $property->tariff ?? Tariff::first();
                 
                 if (!$tarifa) {

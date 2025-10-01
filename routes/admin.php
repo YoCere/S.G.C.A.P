@@ -9,13 +9,20 @@ use App\Http\Controllers\Admin\DebtController;
 
 Route::middleware(['auth'])
     ->prefix('admin')
-    
     ->group(function () {
         Route::get('/', [HomeController::class, 'index'])->name('admin.home');
         Route::resource('clients', ClientController::class)->names('admin.clients');
         Route::resource('tariffs', TariffController::class)->names('admin.tariffs');
-        Route::resource('properties', PropertyController::class)->parameters(['properties' => 'property']) ->names('admin.properties');
+        
+        // Properties con rutas adicionales para corte/restauración
+        Route::resource('properties', PropertyController::class)
+            ->parameters(['properties' => 'property'])
+            ->names('admin.properties');
+        Route::put('/properties/{property}/cut', [PropertyController::class, 'cutService'])->name('admin.properties.cut');
+        Route::put('/properties/{property}/restore', [PropertyController::class, 'restoreService'])->name('admin.properties.restore');
+        
+        // Debts
         Route::resource('debts', DebtController::class)
-        ->parameters(['debts' => 'debt'])
-        ->names('admin.debts');
+            ->parameters(['debts' => 'debt'])
+            ->names('admin.debts');
     });

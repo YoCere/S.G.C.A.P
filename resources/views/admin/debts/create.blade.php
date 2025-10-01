@@ -18,7 +18,7 @@
                         <option value="">Seleccione propiedad</option>
                         @foreach ($propiedades as $propiedad)
                             <option value="{{ $propiedad->id }}" {{ old('propiedad_id') == $propiedad->id ? 'selected' : '' }}>
-                                {{ $propiedad->referencia }} - {{ $propiedad->cliente->nombre }}
+                                {{ $propiedad->referencia }} - {{ $propiedad->client->nombre }}
                             </option>
                         @endforeach
                     </select>

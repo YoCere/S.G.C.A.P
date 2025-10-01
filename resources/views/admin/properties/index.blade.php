@@ -14,80 +14,121 @@
 
   <div class="card">
     <div class="card-header">
-      <a class="btn btn-primary" href="{{ route('admin.properties.create') }}">Nueva propiedad</a>
+      <div class="row">
+        <div class="col-md-6">
+          <a class="btn btn-primary" href="{{ route('admin.properties.create') }}">Nueva propiedad</a>
+        </div>
+        <div class="col-md-6">
+          <form action="{{ route('admin.properties.index') }}" method="GET" class="form-inline float-right">
+            <div class="input-group">
+              <input type="text" name="search" class="form-control" placeholder="Buscar por referencia, cliente o barrio..." 
+                     value="{{ request('search') }}">
+              <div class="input-group-append">
+                <button class="btn btn-outline-secondary" type="submit">
+                  <i class="fas fa-search"></i>
+                </button>
+                @if(request('search'))
+                  <a href="{{ route('admin.properties.index') }}" class="btn btn-outline-danger">
+                    <i class="fas fa-times"></i>
+                  </a>
+                @endif
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <div class="card-body">
-  <table class="table table-striped mb-0">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Cliente</th>
-        <th>Tarifa</th>
-        <th>Referencia</th>
-        <th>Estado</th>
-        <th colspan="3" class="text-right">Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      @forelse($properties as $p)
-        <tr>
-          <td>{{ $p->id }}</td>
-          <td>{{ $p->client->nombre ?? '—' }}</td>
-          <td>{{ $p->tariff->nombre ?? '—' }}</td>
-          <td>
-            @if ($p->tariff)
-                {{ $p->tariff->nombre }}
-                @if ($p->tariff->trashed())
-                <span class="badge badge-warning ml-1">Archivada</span>
+      @if(request('search'))
+        <div class="alert alert-info mb-3">
+          Mostrando resultados para: <strong>"{{ request('search') }}"</strong>
+          <a href="{{ route('admin.properties.index') }}" class="float-right">Ver todos</a>
+        </div>
+      @endif
+
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Cliente</th>
+            <th>Tarifa</th>
+            <th>Referencia</th>
+            <th>Barrio</th>
+            <th>Estado</th>
+            <th colspan="3" class="text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse($properties as $p)
+            <tr>
+              <td>{{ $p->id }}</td>
+              <td>{{ $p->client->nombre ?? '—' }}</td>
+              <td>{{ $p->tariff->nombre ?? '—' }}</td>
+              <td>
+                {{ $p->referencia }}
+                @if($p->estado === 'cortado')
+                  <span class="badge badge-danger ml-1">CORTADO</span>
                 @endif
-            @else
-                —
-            @endif
-            </td>
-          <td>
-            <span class="badge badge-{{ $p->estado === 'activo' ? 'success' : 'secondary' }}">
-              {{ ucfirst($p->estado) }}
-            </span>
-          </td>
+              </td>
+              <td>
+                @if($p->barrio)
+                  <span class="badge badge-info">{{ $p->barrio }}</span>
+                @else
+                  <span class="text-muted">—</span>
+                @endif
+              </td>
+              <td>
+                <span class="badge badge-{{ $p->estado === 'activo' ? 'success' : ($p->estado === 'cortado' ? 'danger' : 'secondary') }}">
+                  {{ ucfirst($p->estado) }}
+                </span>
+              </td>
 
-          {{-- Detalles (abre modal con mapa) --}}
-          <td width="10px">
-            <button class="btn btn-info btn-sm"
-                    data-toggle="modal"
-                    data-target="#mapModal"
-                    data-lat="{{ $p->latitud }}"
-                    data-lng="{{ $p->longitud }}"
-                    data-ref="{{ $p->referencia }}"
-                    data-id="{{ $p->id }}">
-              Ubicacion
-            </button>
-          </td>
-
-          {{-- Editar --}}
-          <td width="10px">
-            <a class="btn btn-primary btn-sm" href="{{ route('admin.properties.edit', $p) }}">
-              Editar
-            </a>
-          </td>
-
-          {{-- Eliminar + SweetAlert2 --}}
-          <td width="10px">
-            <form action="{{ route('admin.properties.destroy', $p) }}" method="POST" id="delete-form-{{ $p->id }}">
-                @csrf
-                @method('DELETE')
-                <button class="btn btn-danger btn-sm" type="button" onclick="confirmDelete({{ $p->id }})">
-                Eliminar
+              {{-- Detalles (abre modal con mapa) --}}
+              <td width="10px">
+                <button class="btn btn-info btn-sm"
+                        data-toggle="modal"
+                        data-target="#mapModal"
+                        data-lat="{{ $p->latitud }}"
+                        data-lng="{{ $p->longitud }}"
+                        data-ref="{{ $p->referencia }}"
+                        data-id="{{ $p->id }}">
+                  Ubicacion
                 </button>
-            </form>
-            </td>
-        </tr>
-      @empty
-        <tr><td colspan="8" class="text-center py-4">No hay propiedades</td></tr>
-      @endforelse
-    </tbody>
-  </table>
-</div>
+              </td>
+
+              {{-- Editar --}}
+              <td width="10px">
+                <a class="btn btn-primary btn-sm" href="{{ route('admin.properties.edit', $p) }}">
+                  Editar
+                </a>
+              </td>
+
+              {{-- Eliminar + SweetAlert2 --}}
+              <td width="10px">
+                <form action="{{ route('admin.properties.destroy', $p) }}" method="POST" id="delete-form-{{ $p->id }}">
+                    @csrf
+                    @method('DELETE')
+                    <button class="btn btn-danger btn-sm" type="button" onclick="confirmDelete({{ $p->id }})">
+                    Eliminar
+                    </button>
+                </form>
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="9" class="text-center py-4">
+                @if(request('search'))
+                  No se encontraron propiedades para "{{ request('search') }}"
+                @else
+                  No hay propiedades registradas
+                @endif
+              </td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
 
     <div class="card-footer">
       {{ $properties->links() }}
@@ -118,13 +159,11 @@
 @stop
 
 @section('css')
-  {{-- Leaflet CSS --}}
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 @stop
 
 @section('js')
-  {{-- Leaflet JS --}}
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
           crossorigin=""></script>
@@ -159,10 +198,10 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(leafletMap);
 
-      leafletMap.setView([lat, lng], 18);
+      // ✅ CENTRADO EN TU COMUNIDAD (ajusta estos valores)
+      leafletMap.setView([lat, lng], 16); // Zoom más amplio para ver barrios
       leafletMarker = L.marker([lat, lng]).addTo(leafletMap).bindPopup(ref || 'Ubicación').openPopup();
 
-      // Por si el modal cambia de tamaño
       setTimeout(() => leafletMap.invalidateSize(), 200);
     });
 

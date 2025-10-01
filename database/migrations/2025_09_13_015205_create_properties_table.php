@@ -18,10 +18,20 @@ return new class extends Migration
            $table->foreignId('tarifa_id')->constrained('tarifas');
 
            $table->string('referencia');
+           // ✅ NUEVO: Campo barrio agregado
+           $table->enum('barrio', [
+               'Centro', 
+               'Aroma', 
+               'Los Valles', 
+               'Caipitandy', 
+               'Primavera',
+               'Arboleda'
+            ])->nullable();
+           
            $table->decimal('latitud', 10, 8)->nullable();
            $table->decimal('longitud', 11, 8)->nullable();
 
-           $table->enum('estado', ['activo','inactivo'])->default('activo')->index();
+           $table->enum('estado', ['activo', 'inactivo', 'cortado'])->default('activo')->index();
             $table->timestamps();        
         });
     }
@@ -31,6 +41,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('properties');
+        Schema::dropIfExists('propiedades'); // ← CORREGIDO: 'propiedades' no 'properties'
     }
 };

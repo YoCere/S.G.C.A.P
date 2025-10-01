@@ -14,8 +14,21 @@ class DebtController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Debt::with(['propiedad.client', 'tarifa']); // ← CORREGIDO: 'cliente' no 'client'
+        $query = Debt::with(['propiedad.client', 'tarifa']);
 
+        // ✅ NUEVO: BÚSQUEDA por cliente o propiedad
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('propiedad.client', function($q) use ($search) {
+                    $q->where('nombre', 'like', "%{$search}%");
+                })->orWhereHas('propiedad', function($q) use ($search) {
+                    $q->where('referencia', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        // Filtros existentes
         if ($request->filled('cliente_id')) {
             $query->whereHas('propiedad', function ($q) use ($request) {
                 $q->where('cliente_id', $request->cliente_id);
@@ -35,6 +48,7 @@ class DebtController extends Controller
         return view('admin.debts.index', compact('debts'));
     }
 
+    // ... (el resto de tus métodos se mantienen igual) ...
     public function create()
     {
         $propiedades = Property::with('client')->orderBy('referencia')->get();
@@ -81,55 +95,52 @@ class DebtController extends Controller
 
     public function edit(Debt $debt)
     {
-        // CORREGIDO: 'cliente' no 'client'
         $debt->load(['propiedad.client', 'tarifa']);
         
-        $propiedades = Property::with(['client'])->orderBy('referencia')->get(); // ← CORREGIDO
+        $propiedades = Property::with(['client'])->orderBy('referencia')->get();
         $tarifas = Tariff::orderBy('nombre')->get();
 
         return view('admin.debts.edit', compact('debt','propiedades','tarifas'));
     }
 
     public function update(Request $request, Debt $debt)
-{
-    // VALIDACIÓN: No cambiar propiedad
-    if ($debt->propiedad_id != $request->propiedad_id) {
-        return redirect()->back()
-            ->withErrors(['propiedad_id' => 'No se puede cambiar la propiedad de una deuda existente.'])
-            ->withInput();
+    {
+        // VALIDACIÓN: No cambiar propiedad
+        if ($debt->propiedad_id != $request->propiedad_id) {
+            return redirect()->back()
+                ->withErrors(['propiedad_id' => 'No se puede cambiar la propiedad de una deuda existente.'])
+                ->withInput();
+        }
+
+        $data = $request->validate([
+            'propiedad_id' => ['required', 'exists:propiedades,id'],
+            'tarifa_id'    => ['required', 'exists:tarifas,id'],
+            'fecha_emision'   => [
+                'required','date',
+                Rule::unique('deudas')
+                    ->where(fn($q) => $q->where('propiedad_id', $request->propiedad_id))
+                    ->ignore($debt->id)
+            ],
+            'fecha_vencimiento' => ['nullable', 'date'],
+            'estado' => ['required', 'in:pendiente,pagada,vencida'],
+        ]);
+
+        // MONTO AUTOMÁTICO según tarifa
+        $tarifa = Tariff::find($data['tarifa_id']);
+        $data['monto_pendiente'] = $tarifa->precio_mensual;
+
+        // PAGADA_ADELANTADA automático
+        if ($data['estado'] === 'pagada') {
+            $data['pagada_adelantada'] = Carbon::parse($data['fecha_emision']) > now();
+        } else {
+            $data['pagada_adelantada'] = false;
+        }
+
+        $debt->update($data);
+
+        return redirect()->route('admin.debts.index')
+            ->with('info', 'Deuda actualizada con éxito');
     }
-
-    $data = $request->validate([
-        'propiedad_id' => ['required', 'exists:propiedades,id'],
-        'tarifa_id'    => ['required', 'exists:tarifas,id'],
-        // ELIMINAR monto_pendiente de la validación (se calcula automático)
-        'fecha_emision'   => [
-            'required','date',
-            Rule::unique('deudas')
-                ->where(fn($q) => $q->where('propiedad_id', $request->propiedad_id))
-                ->ignore($debt->id)
-        ],
-        'fecha_vencimiento' => ['nullable', 'date'],
-        'estado' => ['required', 'in:pendiente,pagada,vencida'],
-        // ELIMINAR pagada_adelantada (automático)
-    ]);
-
-    // MONTO AUTOMÁTICO según tarifa
-    $tarifa = Tariff::find($data['tarifa_id']);
-    $data['monto_pendiente'] = $tarifa->precio_mensual;
-
-    // PAGADA_ADELANTADA automático
-    if ($data['estado'] === 'pagada') {
-        $data['pagada_adelantada'] = Carbon::parse($data['fecha_emision']) > now();
-    } else {
-        $data['pagada_adelantada'] = false;
-    }
-
-    $debt->update($data);
-
-    return redirect()->route('admin.debts.index')
-        ->with('info', 'Deuda actualizada con éxito');
-}
 
     public function destroy(Debt $debt)
     {

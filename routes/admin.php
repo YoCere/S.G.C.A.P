@@ -12,13 +12,17 @@ Route::middleware(['auth'])
     ->group(function () {
         Route::get('/', [HomeController::class, 'index'])->name('admin.home');
         Route::resource('clients', ClientController::class)->names('admin.clients');
+
+        //Tarifas routes
         Route::resource('tariffs', TariffController::class)->names('admin.tariffs');
+        Route::put('/tariffs/{tariff}/deactivate', [TariffController::class, 'deactivate'])->name('admin.tariffs.deactivate');
+        Route::put('/tariffs/{tariff}/activate', [TariffController::class, 'activate'])->name('admin.tariffs.activate');
         
         // Properties con rutas adicionales para corte/restauración
         Route::resource('properties', PropertyController::class)
             ->parameters(['properties' => 'property'])
             ->names('admin.properties');
-        Route::put('/properties/{property}/cut', [PropertyController::class, 'cutService'])->name('admin.properties.cut');
+          Route::put('/properties/{property}/cut', [PropertyController::class, 'cutService'])->name('admin.properties.cut');
         Route::put('/properties/{property}/restore', [PropertyController::class, 'restoreService'])->name('admin.properties.restore');
         
         // Debts

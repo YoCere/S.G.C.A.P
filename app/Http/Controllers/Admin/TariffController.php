@@ -78,4 +78,19 @@ class TariffController extends Controller
             ->route('admin.tariffs.index')
             ->with('info', 'Tarifa archivada con éxito');
     }
+    public function deactivate(Tariff $tariff)
+    {
+        $tariff->update(['activo' => false]);
+        
+        return redirect()->route('admin.tariffs.index')
+            ->with('info', "Tarifa '{$tariff->nombre}' desactivada correctamente");
+    }
+
+    public function activate(Tariff $tariff)
+    {
+        $tariff->update(['activo' => true]);
+        
+        return redirect()->route('admin.tariffs.index')
+            ->with('info', "Tarifa '{$tariff->nombre}' activada correctamente");
+    }
 }

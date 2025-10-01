@@ -14,6 +14,7 @@ class TariffFactory extends Factory
             'nombre' => $this->faker->randomElement(['Normal', 'Adulto mayor', 'Comercial', 'Industrial']),
             'precio_mensual' => $this->faker->randomFloat(2, 10, 100),
             'descripcion' => $this->faker->sentence(),
+            'activo' => $this->faker->boolean(80), 
         ];
     }
 }

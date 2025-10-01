@@ -17,11 +17,21 @@ class Tariff extends Model
         'nombre',
         'precio_mensual',
         'descripcion',
+        'activo'
     ];
 
     // Relaciones
     public function properties()
     {
         return $this->hasMany(Property::class, 'tarifa_id');
+    }
+    public function scopeActivas($query)
+    {
+        return $query->where('activo', true);
+    }
+
+    public function scopeInactivas($query)
+    {
+        return $query->where('activo', false);
     }
 }

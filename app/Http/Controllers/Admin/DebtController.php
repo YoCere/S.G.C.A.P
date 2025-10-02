@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Debt;
 use App\Models\Property;
-use App\Models\Tariff;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
@@ -16,6 +15,7 @@ class DebtController extends Controller
     {
         $query = Debt::with(['propiedad.client', 'tarifa']);
 
+        // Búsqueda por cliente o propiedad
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -27,18 +27,15 @@ class DebtController extends Controller
             });
         }
 
-        if ($request->filled('cliente_id')) {
-            $query->whereHas('propiedad', function ($q) use ($request) {
-                $q->where('cliente_id', $request->cliente_id);
-            });
-        }
-
-        if ($request->filled('propiedad_id')) {
-            $query->where('propiedad_id', $request->propiedad_id);
-        }
-
+        // Filtro por estado
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
+        }
+
+        // Filtro por mes
+        if ($request->filled('mes')) {
+            $query->whereYear('fecha_emision', Carbon::parse($request->mes)->year)
+                  ->whereMonth('fecha_emision', Carbon::parse($request->mes)->month);
         }
 
         $debts = $query->orderBy('fecha_emision', 'desc')->paginate(15);
@@ -48,9 +45,9 @@ class DebtController extends Controller
 
     public function create()
     {
-        $propiedades = Property::with(['client', 'tariff'])->orderBy('referencia')->get();
-        // ❌ ELIMINAR: No necesitas cargar todas las tarifas
-        // ✅ La tarifa viene de la propiedad seleccionada
+        $propiedades = Property::with(['client', 'tariff'])
+                            ->where('estado', 'activo')
+                            ->get();
 
         return view('admin.debts.create', compact('propiedades'));
     }
@@ -58,121 +55,73 @@ class DebtController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'propiedad_id' => ['required', 'exists:propiedades,id'],
-            // ❌ ELIMINAR: 'tarifa_id' del validation
-            'monto_pendiente' => ['required', 'numeric', 'min:0'],
-            'fecha_emision'   => [
-                'required','date',
-                Rule::unique('deudas')
-                    ->where(fn($q) => $q->where('propiedad_id', $request->propiedad_id))
+            'propiedad_id' => 'required|exists:propiedades,id',
+            'monto_pendiente' => 'required|numeric|min:0',
+            'fecha_emision' => [
+                'required', 
+                'date',
+                // ✅ EVITAR DUPLICADOS: misma propiedad + mismo mes/año
+                Rule::unique('deudas')->where(function ($query) use ($request) {
+                    return $query->where('propiedad_id', $request->propiedad_id)
+                                ->whereYear('fecha_emision', date('Y', strtotime($request->fecha_emision)))
+                                ->whereMonth('fecha_emision', date('m', strtotime($request->fecha_emision)));
+                })
             ],
-            'fecha_vencimiento' => ['nullable', 'date', 'after:fecha_emision'],
-            'estado' => ['required', 'in:pendiente,pagada,vencida'],
-            'pagada_adelantada' => ['boolean'],
+            'fecha_vencimiento' => 'nullable|date|after:fecha_emision',
+            'estado' => 'required|in:pendiente,pagada',
         ]);
 
-        // ✅ OBTENER TARIFA AUTOMÁTICAMENTE de la propiedad
-        $propiedad = Property::findOrFail($data['propiedad_id']);
+        // Tarifa automática desde propiedad
+        $propiedad = Property::find($data['propiedad_id']);
         $data['tarifa_id'] = $propiedad->tarifa_id;
 
-        // ✅ VERIFICAR que la tarifa esté activa
-        if (!$propiedad->tariff->activo) {
-            return redirect()->back()
-                ->withErrors(['propiedad_id' => 'La propiedad tiene una tarifa inactiva. No se puede generar deuda.'])
-                ->withInput();
-        }
+        Debt::create($data);
 
-        // Lógica automática para pagada_adelantada
-        if ($data['estado'] === 'pagada' && Carbon::parse($data['fecha_emision']) > now()) {
-            $data['pagada_adelantada'] = true;
-        } else {
-            $data['pagada_adelantada'] = $data['pagada_adelantada'] ?? false;
-        }
-
-        $debt = Debt::create($data);
-
-        return redirect()
-            ->route('admin.debts.edit', $debt)
-            ->with('info', 'Deuda registrada con éxito');
+        return redirect()->route('admin.debts.index')
+            ->with('info', 'Deuda registrada exitosamente');
     }
 
     public function show(Debt $debt)
     {
-        $debt->load(['propiedad.client', 'tarifa', 'multas']);
-        return view('admin.debts.show', compact('debt'));
-    }
-
-    public function edit(Debt $debt)
-    {
         $debt->load(['propiedad.client', 'tarifa']);
-        
-        // ❌ ELIMINAR: No necesitas cargar propiedades ni tarifas para edición
-        // ✅ Solo mostrar información, no permitir cambios que rompan integridad
-
-        return view('admin.debts.edit', compact('debt'));
-    }
-
-    public function update(Request $request, Debt $debt)
-    {
-        // ✅ BLOQUEAR edición si está pagada
-        if ($debt->estado === 'pagada') {
-            return redirect()->back()
-                ->with('error', 'No se puede editar una deuda pagada.');
-        }
-
-        $data = $request->validate([
-            // ❌ ELIMINAR: propiedad_id y tarifa_id (no editables)
-            'fecha_emision'   => [
-                'required','date',
-                Rule::unique('deudas')
-                    ->where(fn($q) => $q->where('propiedad_id', $debt->propiedad_id))
-                    ->ignore($debt->id)
-            ],
-            'fecha_vencimiento' => ['nullable', 'date', 'after:fecha_emision'],
-            'estado' => ['required', 'in:pendiente,pagada,vencida'],
-        ]);
-
-        // ✅ MANTENER la tarifa original (integridad histórica)
-        $data['tarifa_id'] = $debt->tarifa_id;
-        $data['propiedad_id'] = $debt->propiedad_id;
-        $data['monto_pendiente'] = $debt->tarifa->precio_mensual; // Mantener monto original
-
-        // Pagada_adelantada automático
-        if ($data['estado'] === 'pagada') {
-            $data['pagada_adelantada'] = Carbon::parse($data['fecha_emision']) > now();
-        } else {
-            $data['pagada_adelantada'] = false;
-        }
-
-        $debt->update($data);
-
-        return redirect()->route('admin.debts.index')
-            ->with('info', 'Deuda actualizada con éxito');
+        return view('admin.debts.show', compact('debt'));
     }
 
     public function destroy(Debt $debt)
     {
-        // ✅ BLOQUEAR eliminación si está pagada
-        if ($debt->estado === 'pagada') {
-            return redirect()->back()
-                ->with('error', 'No se puede eliminar una deuda pagada.');
+        if ($debt->estado !== 'pendiente') {
+            return back()->with('error', 'Solo se pueden eliminar deudas pendientes');
         }
 
         $debt->delete();
 
-        return redirect()
-            ->route('admin.debts.index')
-            ->with('info', 'Deuda eliminada con éxito');
+        return redirect()->route('admin.debts.index')
+            ->with('info', 'Deuda eliminada');
     }
 
-    // ✅ NUEVO: Endpoint para obtener tarifa de una propiedad (AJAX)
-    public function getPropertyTariff(Property $property)
+    public function annul(Debt $debt)
     {
-        return response()->json([
-            'tarifa_id' => $property->tarifa_id,
-            'tarifa_nombre' => $property->tariff->nombre,
-            'precio_mensual' => $property->tariff->precio_mensual,
-            'tarifa_activa' => $property->tariff->activo
+        if ($debt->estado !== 'pendiente') {
+            return back()->with('error', 'Solo se pueden anular deudas pendientes');
+        }
+
+        $debt->update(['estado' => 'anulada']);
+
+        return back()->with('info', 'Deuda anulada correctamente');
+    }
+
+    // ✅ NUEVO: Marcar como pagada
+    public function markAsPaid(Debt $debt)
+    {
+        if ($debt->estado !== 'pendiente') {
+            return back()->with('error', 'Solo se pueden marcar como pagadas deudas pendientes');
+        }
+
+        $debt->update([
+            'estado' => 'pagada',
+            'pagada_adelantada' => now()->lt($debt->fecha_emision) // true si paga antes de emisión
         ]);
+
+        return back()->with('info', 'Deuda marcada como pagada');
     }
 }

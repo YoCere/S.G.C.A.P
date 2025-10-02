@@ -3,209 +3,179 @@
 @section('title', 'Deudas')
 
 @section('content_header')
-    <h1>Lista de deudas</h1>
+    <h1>Deudas</h1>
 @stop
 
 @section('content')
     @if (session('info'))
-        <div class="alert alert-success">
-            <strong>{{ session('info') }}</strong>
-        </div>
+        <div class="alert alert-success">{{ session('info') }}</div>
+    @endif
+
+    @if (session('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
     <div class="card">
-        {{-- ✅ NUEVO: CARD HEADER CON BUSCADOR --}}
+        {{-- ✅ HEADER CON FILTROS --}}
         <div class="card-header">
             <div class="row">
                 <div class="col-md-6">
-                    <a class="btn btn-primary" href="{{ route('admin.debts.create') }}">Registrar deuda</a>
+                    <a href="{{ route('admin.debts.create') }}" class="btn btn-primary">
+                        Nueva Deuda
+                    </a>
                 </div>
                 <div class="col-md-6">
-                    <form action="{{ route('admin.debts.index') }}" method="GET" class="form-inline float-right">
-                        <div class="input-group">
-                            <input type="text" name="search" class="form-control" placeholder="Buscar por cliente o propiedad..." 
-                                   value="{{ request('search') }}">
-                            <div class="input-group-append">
-                                <button class="btn btn-outline-secondary" type="submit">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                                @if(request('search'))
-                                    <a href="{{ route('admin.debts.index') }}" class="btn btn-outline-danger">
-                                        <i class="fas fa-times"></i>
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                    </form>
+                    <div class="form-inline float-right">
+                        {{-- Filtro por estado --}}
+                        <select class="form-control form-control-sm mr-2" onchange="window.location.href = this.value">
+                            <option value="{{ route('admin.debts.index') }}">Todos los estados</option>
+                            <option value="{{ route('admin.debts.index') }}?estado=pendiente" 
+                                    {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
+                                Pendientes
+                            </option>
+                            <option value="{{ route('admin.debts.index') }}?estado=pagada" 
+                                    {{ request('estado') == 'pagada' ? 'selected' : '' }}>
+                                Pagadas
+                            </option>
+                            <option value="{{ route('admin.debts.index') }}?estado=anulada" 
+                                    {{ request('estado') == 'anulada' ? 'selected' : '' }}>
+                                Anuladas
+                            </option>
+                        </select>
+                        
+                        {{-- Filtro por mes --}}
+                        <input type="month" class="form-control form-control-sm" 
+                               value="{{ request('mes') }}"
+                               onchange="window.location.href = '{{ route('admin.debts.index') }}?mes=' + this.value"
+                               title="Filtrar por mes">
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="card-body">
-            {{-- ✅ MOSTRAR TÉRMINO DE BÚSQUEDA --}}
-            @if(request('search'))
+            @if(request('estado') || request('mes'))
                 <div class="alert alert-info mb-3">
-                    Mostrando resultados para: <strong>"{{ request('search') }}"</strong>
-                    <a href="{{ route('admin.debts.index') }}" class="float-right">Ver todos</a>
+                    <i class="fas fa-filter mr-1"></i>
+                    Filtros aplicados:
+                    @if(request('estado'))
+                        <span class="badge badge-light mr-2">Estado: {{ request('estado') }}</span>
+                    @endif
+                    @if(request('mes'))
+                        <span class="badge badge-light">Mes: {{ \Carbon\Carbon::parse(request('mes'))->format('m/Y') }}</span>
+                    @endif
+                    <a href="{{ route('admin.debts.index') }}" class="float-right text-dark">
+                        <i class="fas fa-times"></i> Limpiar
+                    </a>
                 </div>
             @endif
 
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Cliente</th>
+                        <th>#</th>
                         <th>Propiedad</th>
-                        <th>Monto (Bs)</th>
-                        <th>Fecha emisión</th>
-                        <th>Estado Deuda</th>
-                        <th>Estado Servicio</th>
-                        <th colspan="3">Acciones</th>
+                        <th>Monto</th>
+                        <th>Emisión</th>
+                        <th>Vencimiento</th>
+                        <th>Estado</th>
+                        <th width="200">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($debts as $debt)
-                        <tr>
-                            <td>{{ $debt->id }}</td>
-                            <td>{{ $debt->propiedad->client->nombre }}</td>
-                            <td>
-                                {{ $debt->propiedad->referencia }}
-                                @if($debt->propiedad->estado !== 'activo')
-                                    <span class="badge badge-danger ml-1">CORTADO</span>
-                                @endif
-                            </td>
-                            <td>{{ number_format($debt->monto_pendiente, 2) }}</td>
-                            <td>{{ $debt->fecha_emision->format('d/m/Y') }}</td>
-                            <td>
-                                <span class="badge badge-{{ $debt->estado === 'pendiente' ? 'warning' : ($debt->estado === 'pagada' ? 'success' : 'danger') }}">
-                                    {{ ucfirst($debt->estado) }}
+                    @foreach ($debts as $debt)
+                    <tr>
+                        <td>{{ $debt->id }}</td>
+                        <td>
+                            <strong>{{ $debt->propiedad->referencia }}</strong>
+                            <br>
+                            <small class="text-muted">{{ $debt->propiedad->client->nombre }}</small>
+                        </td>
+                        <td>Bs {{ number_format($debt->monto_pendiente, 2) }}</td>
+                        <td>{{ $debt->fecha_emision->format('d/m/Y') }}</td>
+                        <td>
+                            @if($debt->fecha_vencimiento)
+                                {{-- ✅ INDICADOR VISUAL DE VENCIMIENTO --}}
+                                <span class="{{ $debt->fecha_vencimiento->isPast() && $debt->estado == 'pendiente' ? 'text-danger font-weight-bold' : '' }}">
+                                    {{ $debt->fecha_vencimiento->format('d/m/Y') }}
                                 </span>
-                            </td>
-                            <td>
-                                @if($debt->propiedad->estado === 'activo')
-                                    <span class="badge badge-success">Activo</span>
-                                @elseif($debt->propiedad->estado === 'cortado')
-                                    <span class="badge badge-danger">Cortado</span>
-                                @else
-                                    <span class="badge badge-secondary">Inactivo</span>
+                                @if($debt->fecha_vencimiento->isPast() && $debt->estado == 'pendiente')
+                                    <br><small class="badge badge-danger">VENCIDA</small>
                                 @endif
-                            </td>
-                            <td width="10px">
-                                <a class="btn btn-primary btn-sm" href="{{ route('admin.debts.edit', $debt) }}">
-                                    Editar
-                                </a>
-                            </td>
-                            <td width="10px">
-                                @if($debt->propiedad->estado === 'activo')
-                                    <form action="{{ route('admin.properties.cut', $debt->propiedad) }}" method="POST" class="d-inline">
-                                        @csrf @method('PUT')
-                                        <button class="btn btn-warning btn-sm" type="button" 
-                                                onclick="confirmCut({{ $debt->propiedad->id }}, '{{ $debt->propiedad->referencia }}')">
-                                            🚫 Cortar
-                                        </button>
-                                    </form>
-                                @else
-                                    <form action="{{ route('admin.properties.restore', $debt->propiedad) }}" method="POST" class="d-inline">
-                                        @csrf @method('PUT')
-                                        <button class="btn btn-success btn-sm" type="button"
-                                                onclick="confirmRestore({{ $debt->propiedad->id }}, '{{ $debt->propiedad->referencia }}')">
-                                            ✅ Restaurar
-                                        </button>
-                                    </form>
+                            @else
+                                <span class="text-muted">-</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($debt->estado == 'anulada')
+                                <span class="badge badge-secondary">Anulada</span>
+                            @elseif($debt->estado == 'pagada')
+                                <span class="badge badge-success">Pagada</span>
+                                @if($debt->pagada_adelantada)
+                                    <br><small class="badge badge-info">Adelantada</small>
                                 @endif
-                            </td>
-                            <td width="10px">
-                                <form action="{{ route('admin.debts.destroy', $debt) }}" method="POST" id="delete-form-{{ $debt->id }}">
-                                    @csrf @method('delete')
-                                    <button class="btn btn-danger btn-sm" type="button" onclick="confirmDelete({{ $debt->id }})">
+                            @else
+                                <span class="badge badge-warning">Pendiente</span>
+                            @endif
+                        </td>
+                        <td>
+                            {{-- VER --}}
+                            <a href="{{ route('admin.debts.show', $debt) }}" class="btn btn-info btn-sm">
+                                Ver
+                            </a>
+
+                            {{-- MARCAR COMO PAGADA --}}
+                            @if($debt->estado == 'pendiente')
+                                <form action="{{ route('admin.debts.mark-as-paid', $debt) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button class="btn btn-success btn-sm" 
+                                            onclick="return confirm('¿Marcar esta deuda como pagada?')">
+                                        Pagar
+                                    </button>
+                                </form>
+                            @endif
+
+                            {{-- ANULAR --}}
+                            @if($debt->estado == 'pendiente')
+                                <form action="{{ route('admin.debts.annul', $debt) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button class="btn btn-warning btn-sm" 
+                                            onclick="return confirm('¿Anular esta deuda?')">
+                                        Anular
+                                    </button>
+                                </form>
+                            @endif
+
+                            {{-- ELIMINAR --}}
+                            @if($debt->estado == 'pendiente')
+                                <form action="{{ route('admin.debts.destroy', $debt) }}" method="POST" class="d-inline">
+                                    @csrf @method('DELETE')
+                                    <button class="btn btn-danger btn-sm" 
+                                            onclick="return confirm('¿Eliminar esta deuda?')">
                                         Eliminar
                                     </button>
                                 </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="10" class="text-center">
-                                @if(request('search'))
-                                    No se encontraron deudas para "{{ request('search') }}"
-                                @else
-                                    No hay deudas registradas
-                                @endif
-                            </td>
-                        </tr>
-                    @endforelse
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
                 </tbody>
             </table>
-
             {{ $debts->links() }}
         </div>
     </div>
 @stop
 
 @section('js')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-function confirmDelete(id) {
-    Swal.fire({
-        title: '¿Está seguro?',
-        text: "¡No podrá revertir esta acción!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            document.getElementById(`delete-form-${id}`).submit();
-        }
-    });
-}
-
-function confirmCut(propertyId, referencia) {
-    Swal.fire({
-        title: '¿Cortar servicio?',
-        html: `¿Está seguro de cortar el servicio a la propiedad:<br><strong>${referencia}</strong>?<br><br>
-               <small class="text-warning">⚠️ Esta propiedad dejará de generar deudas mensuales</small>`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ffc107',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, cortar servicio',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const forms = document.querySelectorAll('form[action*="/properties/"]');
-            forms.forEach(form => {
-                if (form.action.includes(propertyId)) {
-                    form.submit();
-                }
-            });
-        }
-    });
-}
-
-function confirmRestore(propertyId, referencia) {
-    Swal.fire({
-        title: '¿Restaurar servicio?',
-        html: `¿Está seguro de restaurar el servicio a la propiedad:<br><strong>${referencia}</strong>?<br><br>
-               <small class="text-success">✅ Esta propiedad volverá a generar deudas mensuales</small>`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#28a745',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, restaurar servicio',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const forms = document.querySelectorAll('form[action*="/properties/"]');
-            forms.forEach(form => {
-                if (form.action.includes(propertyId)) {
-                    form.submit();
-                }
-            });
-        }
-    });
-}
+    // Auto-ocultar alertas después de 5 segundos
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            alert.style.transition = 'opacity 0.5s';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        });
+    }, 5000);
 </script>
 @stop

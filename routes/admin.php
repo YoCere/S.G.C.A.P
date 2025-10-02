@@ -27,6 +27,12 @@ Route::middleware(['auth'])
         
         // Debts
         Route::resource('debts', DebtController::class)
-            ->parameters(['debts' => 'debt'])
-            ->names('admin.debts');
+        ->parameters(['debts' => 'debt'])
+        ->names('admin.debts')
+        ->except(['edit', 'update']); // ❌ ELIMINAR edición
+
+        // ✅ NUEVAS RUTAS PARA ANULACIÓN
+        Route::resource('debts', DebtController::class)->names('admin.debts');
+Route::post('/debts/{debt}/annul', [DebtController::class, 'annul'])->name('admin.debts.annul');
+Route::post('/debts/{debt}/mark-as-paid', [DebtController::class, 'markAsPaid'])->name('admin.debts.mark-as-paid');
     });

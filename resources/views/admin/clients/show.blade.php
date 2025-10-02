@@ -162,6 +162,12 @@
                                            class="btn btn-warning btn-sm" title="Ver deudas">
                                             <i class="fas fa-file-invoice-dollar"></i>
                                         </a>
+                                        
+                                        {{-- ✅ NUEVO BOTÓN DE PAGO RÁPIDO --}}
+                                        <a href="{{ route('admin.pagos.create') }}?propiedad_id={{ $propiedad->id }}" 
+                                           class="btn btn-success btn-sm" title="Pagar deuda">
+                                            <i class="fas fa-money-bill-wave"></i> Pagar
+                                        </a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -180,8 +186,6 @@
             @endif
         </div>
     </div>
-
-  
 @stop
 
 @section('css')

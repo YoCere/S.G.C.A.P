@@ -332,9 +332,9 @@ return [
             'icon' => 'fas fa-fw fa-users',
         ],
         [
-            'text' => 'Recibos',
-            'url' => 'admin/settings',
-            'icon' => 'fa-solid fa-users',
+            'text' => 'Pagos',
+            'route' => 'admin.pagos.index',
+            'icon' => 'fas fa-fw fa-money-bill-wave',
         ],
         [
             'text' => 'Tarifas',

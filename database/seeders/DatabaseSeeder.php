@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Client;
-use App\Models\Receipt;
+use App\Models\Pago;
 use App\Models\Debt;
 use App\Models\Fine;
 use App\Models\Tariff;
@@ -60,16 +60,13 @@ class DatabaseSeeder extends Seeder
             now()->startOfMonth(),
         ];
 
-        
-
         Property::query()
-        ->whereNotNull('tarifa_id')                     // <- evita propiedades sin tarifa
-        ->with('tariff:id,precio_mensual')              // <- eager carga la tarifa
+        ->whereNotNull('tarifa_id')
+        ->with('tariff:id,precio_mensual')
         ->chunkById(200, function ($props) use ($meses) {
             foreach ($props as $p) {
-                // fallback extra (por si acaso)
                 $tarifaId = $p->tarifa_id ?: Tariff::inRandomOrder()->value('id');
-                if (!$tarifaId) { continue; } // si aun así no hay, salta
+                if (!$tarifaId) { continue; }
 
                 $precio = optional($p->tariff)->precio_mensual
                         ?? optional(Tariff::find($tarifaId))->precio_mensual
@@ -102,42 +99,88 @@ class DatabaseSeeder extends Seeder
                 Fine::factory(rand(1, 2))->create(['deuda_id' => $d->id]);
             });
 
-        // === 7) Recibos de ejemplo: cancelar 1–2 deudas por algunos clientes ===
-        $cobradorId = $empleados->random()->id ?? $admin->id;
+        // === 7) ✅ CORREGIDO: PAGOS DE EJEMPLO (CON GENERACIÓN DE NUMERO_RECIBO) ===
         $cobradorId = $empleados->random()->id ?? $admin->id;
 
-        Client::with(['properties.debts' => fn($q) => $q->whereIn('estado', ['pendiente','vencida'])])
+        // Función para generar número de recibo único
+        $generarNumeroRecibo = function() {
+            static $contador = 1;
+            return 'REC-' . str_pad($contador++, 6, '0', STR_PAD_LEFT);
+        };
+
+        // Seleccionar algunas propiedades aleatorias para generar pagos
+        Property::with(['client', 'tariff'])
             ->inRandomOrder()
-            ->take(10)
+            ->take(15)
             ->get()
-            ->each(function ($cliente) use ($cobradorId) {
-                $deudas = $cliente->properties->flatMap->debts->take(2);
-                if ($deudas->isEmpty()) return;
-        
-                DB::transaction(function () use ($cliente, $deudas, $cobradorId) {
-                    $total = 0.0;
-                    $pivot = [];
-        
-                    foreach ($deudas as $d) {
-                        $monto = (float) $d->monto_pendiente;
-                        $total += $monto;
-                        $pivot[$d->id] = ['monto_aplicado' => $monto];
-        
-                        $d->update(['estado' => 'pagada', 'monto_pendiente' => 0]);
-                    }
-        
-                    $recibo = \App\Models\Receipt::create([
-                        'cliente_id'        => $cliente->id,
-                        'user_id'           => $cobradorId,
-                        'periodo_facturado' => now()->startOfMonth(),
-                        'monto_total'       => $total,
-                        'monto_multa'       => 0,
-                        'referencia'        => 'Pago automático de seeder',
+            ->each(function ($propiedad) use ($cobradorId, $generarNumeroRecibo) {
+                
+                // Generar 1-3 pagos por propiedad
+                $cantidadPagos = rand(1, 3);
+                
+                for ($i = 0; $i < $cantidadPagos; $i++) {
+                    // Mes aleatorio de los últimos 6 meses
+                    $mesesAtras = rand(0, 5);
+                    $mesPagado = now()->subMonths($mesesAtras)->format('Y-m');
+                    
+                    // Fecha de pago aleatoria en ese mes
+                    $fechaPago = now()->subMonths($mesesAtras)
+                        ->startOfMonth()
+                        ->addDays(rand(1, 28));
+                    
+                    Pago::create([
+                        'numero_recibo' => $generarNumeroRecibo(), // ✅ GENERAR NÚMERO DE RECIBO
+                        'cliente_id' => $propiedad->cliente_id,
+                        'propiedad_id' => $propiedad->id,
+                        'monto' => $propiedad->tariff->precio_mensual,
+                        'mes_pagado' => $mesPagado,
+                        'fecha_pago' => $fechaPago,
+                        'metodo' => Arr::random(['efectivo', 'transferencia']),
+                        'comprobante' => fake()->boolean(50) ? 'COMP-' . fake()->randomNumber(6) : null,
+                        'observaciones' => fake()->boolean(30) ? fake()->sentence() : null,
+                        'registrado_por' => $cobradorId,
                     ]);
-        
-                    $recibo->deudas()->attach($pivot);
-                });
+                    
+                    // ✅ OPCIONAL: Marcar la deuda correspondiente como pagada
+                    $deudaCorrespondiente = Debt::where('propiedad_id', $propiedad->id)
+                        ->whereYear('fecha_emision', Carbon::parse($mesPagado)->year)
+                        ->whereMonth('fecha_emision', Carbon::parse($mesPagado)->month)
+                        ->first();
+                        
+                    if ($deudaCorrespondiente) {
+                        $deudaCorrespondiente->update([
+                            'estado' => 'pagada',
+                            'monto_pendiente' => 0
+                        ]);
+                    }
+                }
             });
-        
+
+        // === 8) ✅ PAGOS MÚLTIPLES DE EJEMPLO (cliente que paga varios meses) ===
+        $propiedadEjemplo = Property::inRandomOrder()->first();
+        if ($propiedadEjemplo) {
+            $meses = [
+                now()->format('Y-m'),
+                now()->addMonth()->format('Y-m'),
+                now()->addMonths(2)->format('Y-m'),
+            ];
+            
+            foreach ($meses as $mes) {
+                Pago::create([
+                    'numero_recibo' => $generarNumeroRecibo(), // ✅ GENERAR NÚMERO DE RECIBO
+                    'cliente_id' => $propiedadEjemplo->cliente_id,
+                    'propiedad_id' => $propiedadEjemplo->id,
+                    'monto' => $propiedadEjemplo->tariff->precio_mensual,
+                    'mes_pagado' => $mes,
+                    'fecha_pago' => now(),
+                    'metodo' => 'efectivo',
+                    'comprobante' => 'PAGO-ADELANTADO',
+                    'observaciones' => 'Pago adelantado de varios meses',
+                    'registrado_por' => $cobradorId,
+                ]);
+            }
+        }
+
+        $this->command->info('✅ Seeder ejecutado correctamente con pagos de ejemplo.');
     }
 }

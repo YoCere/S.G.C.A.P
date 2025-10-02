@@ -28,7 +28,7 @@
                 @csrf
 
                 {{-- BUSCADOR DE CLIENTES/PROPIEDADES --}}
-                <div class="form-group">
+                <div class="form-group" id="buscadorGroup">
                     <label for="buscador">Buscar Cliente o Propiedad *</label>
                     <div class="input-group">
                         <input type="text" id="buscador" class="form-control" 
@@ -90,21 +90,19 @@
                                         <option value="">Seleccione mes inicial</option>
                                         @php
                                             $meses = [];
-                                            $startDate = now()->subMonths(12); // Últimos 12 meses
-                                            $endDate = now()->addMonths(6);    // Próximos 6 meses
+                                            $startDate = now()->subMonths(12);
+                                            $endDate = now()->addMonths(6);
                                             
                                             $current = $startDate->copy();
                                             while ($current <= $endDate) {
                                                 $valor = $current->format('Y-m');
-                                                $texto = $current->format('F Y');
+                                                $texto = $current->locale('es')->translatedFormat('F Y');
                                                 $meses[$valor] = $texto;
                                                 $current->addMonth();
                                             }
                                         @endphp
                                         @foreach($meses as $valor => $texto)
-                                            <option value="{{ $valor }}" {{ old('mes_desde') == $valor ? 'selected' : '' }}>
-                                                {{ ucfirst($texto) }}
-                                            </option>
+                                            <option value="{{ $valor }}">{{ $texto }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -113,9 +111,7 @@
                                     <select name="mes_hasta" id="mes_hasta" class="form-control" required>
                                         <option value="">Seleccione mes final</option>
                                         @foreach($meses as $valor => $texto)
-                                            <option value="{{ $valor }}" {{ old('mes_hasta') == $valor ? 'selected' : '' }}>
-                                                {{ ucfirst($texto) }}
-                                            </option>
+                                            <option value="{{ $valor }}">{{ $texto }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -219,12 +215,57 @@
             border-radius: 3px;
             font-size: 0.85em;
         }
+        /* Asegurar que los selects sean interactivos */
+        select.form-control {
+            pointer-events: all !important;
+        }
     </style>
 @stop
 
 @section('js')
 <script>
+// Hacer funciones globales para poder llamarlas desde cualquier lugar
+window.limpiarBusqueda = function() {
+    const buscador = document.getElementById('buscador');
+    const resultadosBusqueda = document.getElementById('resultadosBusqueda');
+    const infoPropiedad = document.getElementById('infoPropiedad');
+    const detallesPago = document.getElementById('detallesPago');
+    const submitBtn = document.getElementById('submitBtn');
+    const propiedadId = document.getElementById('propiedadId');
+    const mesDesde = document.getElementById('mes_desde');
+    const mesHasta = document.getElementById('mes_hasta');
+    const resumenMeses = document.getElementById('resumenMeses');
+    
+    if (buscador) buscador.value = '';
+    if (resultadosBusqueda) resultadosBusqueda.style.display = 'none';
+    if (infoPropiedad) infoPropiedad.style.display = 'none';
+    if (detallesPago) detallesPago.style.display = 'none';
+    if (submitBtn) submitBtn.disabled = true;
+    if (propiedadId) propiedadId.value = '';
+    if (mesDesde) mesDesde.value = '';
+    if (mesHasta) mesHasta.value = '';
+    if (resumenMeses) resumenMeses.style.display = 'none';
+    
+    // Mostrar el buscador si estaba oculto
+    const buscadorGroup = document.getElementById('buscadorGroup');
+    if (buscadorGroup) {
+        buscadorGroup.style.display = 'block';
+    }
+    
+    // Remover mensaje de pago rápido si existe
+    const alertInfo = document.querySelector('.alert-info');
+    if (alertInfo) {
+        alertInfo.remove();
+    }
+};
+
+window.mostrarBuscador = function() {
+    window.limpiarBusqueda();
+};
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM completamente cargado - Inicializando script de pagos');
+    
     const buscador = document.getElementById('buscador');
     const resultadosBusqueda = document.getElementById('resultadosBusqueda');
     const listaResultados = document.getElementById('listaResultados');
@@ -240,6 +281,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let tarifaMensual = 0;
     let timeoutBusqueda = null;
+
+    // ✅ VERIFICAR QUE TODOS LOS ELEMENTOS EXISTAN
+    if (!buscador || !mesDesde || !mesHasta) {
+        console.error('Error: Elementos críticos no encontrados en el DOM');
+        return;
+    }
+
+    console.log('Todos los elementos del DOM están disponibles');
 
     // Función para seleccionar propiedad
     function seleccionarPropiedad(propiedad) {
@@ -265,42 +314,20 @@ document.addEventListener('DOMContentLoaded', function() {
         infoPropiedad.style.display = 'block';
         detallesPago.style.display = 'block';
         resultadosBusqueda.style.display = 'none';
-        if (buscador) {
-            buscador.value = `${propiedad.referencia} - ${propiedad.cliente_nombre}`;
-        }
+        buscador.value = `${propiedad.referencia} - ${propiedad.cliente_nombre}`;
         
         // Habilitar submit
         submitBtn.disabled = false;
         
-        // ✅ FORZAR LA ACTUALIZACIÓN DE LOS SELECTS
-        if (mesDesde && mesHasta) {
-            // Limpiar selecciones previas
-            mesDesde.value = '';
-            mesHasta.value = '';
-            
-            // Forzar la actualización del DOM
-            setTimeout(() => {
-                // Verificar que los options estén cargados
-                console.log('Options en mes_desde:', mesDesde.options.length);
-                console.log('Options en mes_hasta:', mesHasta.options.length);
-                
-                // Agregar event listeners si no existen
-                if (!mesDesde.hasListener) {
-                    mesDesde.addEventListener('change', actualizarResumenMeses);
-                    mesDesde.hasListener = true;
-                }
-                if (!mesHasta.hasListener) {
-                    mesHasta.addEventListener('change', actualizarResumenMeses);
-                    mesHasta.hasListener = true;
-                }
-                
-                // Habilitar los selects
-                mesDesde.disabled = false;
-                mesHasta.disabled = false;
-                
-                console.log('Selects de meses habilitados y listos');
-            }, 100);
-        }
+        // ✅ FORZAR HABILITACIÓN DE SELECTS
+        mesDesde.disabled = false;
+        mesHasta.disabled = false;
+        
+        // ✅ AGREGAR EVENT LISTENERS DIRECTAMENTE
+        mesDesde.onchange = actualizarResumenMeses;
+        mesHasta.onchange = actualizarResumenMeses;
+        
+        console.log('Propiedad seleccionada - Selects habilitados y listeners agregados');
         
         // Actualizar total inicial
         actualizarResumenMeses();
@@ -308,24 +335,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ✅ AUTO-SELECCIÓN SI VIENE PROPIEDAD POR URL
     @if(isset($propiedadSeleccionada) && $propiedadSeleccionada)
-        console.log('Propiedad seleccionada desde URL:', {{ $propiedadSeleccionada->id }});
+        console.log('Iniciando auto-selección para propiedad ID:', {{ $propiedadSeleccionada->id }});
         
         const propiedadData = {
             id: {{ $propiedadSeleccionada->id }},
-            referencia: '{{ $propiedadSeleccionada->referencia }}',
-            cliente_nombre: '{{ $propiedadSeleccionada->client->nombre }}',
+            referencia: '{{ addslashes($propiedadSeleccionada->referencia) }}',
+            cliente_nombre: '{{ addslashes($propiedadSeleccionada->client->nombre) }}',
             cliente_ci: '{{ $propiedadSeleccionada->client->ci ?? '' }}',
             barrio: '{{ $propiedadSeleccionada->barrio ?? '' }}',
             tarifa_precio: {{ $propiedadSeleccionada->tariff->precio_mensual ?? 0 }},
             tarifa_nombre: '{{ $propiedadSeleccionada->tariff->nombre ?? 'N/A' }}'
         };
         
-        // Esperar a que los selects estén completamente cargados
+        // Esperar un poco más para asegurar que todo esté listo
         setTimeout(() => {
+            console.log('Ejecutando auto-selección...');
             seleccionarPropiedad(propiedadData);
             
             // Ocultar el buscador para mejor UX
-            const buscadorGroup = document.querySelector('.form-group:first-child');
+            const buscadorGroup = document.getElementById('buscadorGroup');
             if (buscadorGroup) {
                 buscadorGroup.style.display = 'none';
             }
@@ -346,25 +374,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 cardBody.insertBefore(infoHeader, cardBody.firstChild);
             }
             
-        }, 800); // Más tiempo para asegurar que los selects estén cargados
+            console.log('Auto-selección completada exitosamente');
+        }, 300);
     @endif
 
     // Búsqueda en tiempo real
-    if (buscador) {
-        buscador.addEventListener('input', function() {
-            clearTimeout(timeoutBusqueda);
-            const query = this.value.trim();
-            
-            if (query.length < 2) {
-                resultadosBusqueda.style.display = 'none';
-                return;
-            }
-            
-            timeoutBusqueda = setTimeout(() => {
-                buscarPropiedades(query);
-            }, 300);
-        });
-    }
+    buscador.addEventListener('input', function() {
+        clearTimeout(timeoutBusqueda);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            resultadosBusqueda.style.display = 'none';
+            return;
+        }
+        
+        timeoutBusqueda = setTimeout(() => {
+            buscarPropiedades(query);
+        }, 300);
+    });
 
     function buscarPropiedades(query) {
         const url = '{{ route("admin.propiedades.search") }}?q=' + encodeURIComponent(query);
@@ -423,7 +450,6 @@ document.addEventListener('DOMContentLoaded', function() {
         resultadosBusqueda.style.display = 'block';
     }
 
-    // Actualizar resumen cuando cambian los meses
     function actualizarResumenMeses() {
         console.log('Actualizando resumen de meses...');
         
@@ -484,45 +510,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ✅ AGREGAR EVENT LISTENERS A LOS SELECTS DE MESES
-    if (mesDesde) {
-        mesDesde.addEventListener('change', actualizarResumenMeses);
-        console.log('Event listener agregado a mes_desde');
-    }
-    if (mesHasta) {
-        mesHasta.addEventListener('change', actualizarResumenMeses);
-        console.log('Event listener agregado a mes_hasta');
-    }
-
-    function limpiarBusqueda() {
-        if (buscador) buscador.value = '';
-        resultadosBusqueda.style.display = 'none';
-        infoPropiedad.style.display = 'none';
-        detallesPago.style.display = 'none';
-        submitBtn.disabled = true;
-        propiedadId.value = '';
-        if (mesDesde) mesDesde.value = '';
-        if (mesHasta) mesHasta.value = '';
-        resumenMeses.style.display = 'none';
-    }
-
-    // Función para mostrar el buscador (cuando viene de pago rápido)
-    window.mostrarBuscador = function() {
-        const buscadorGroup = document.querySelector('.form-group:first-child');
-        if (buscadorGroup) {
-            buscadorGroup.style.display = 'block';
-        }
-        const alertInfo = document.querySelector('.alert-info');
-        if (alertInfo) {
-            alertInfo.remove();
-        }
-        limpiarBusqueda();
-    };
+    // ✅ AGREGAR EVENT LISTENERS A LOS SELECTS DE MESES (SIEMPRE)
+    mesDesde.addEventListener('change', actualizarResumenMeses);
+    mesHasta.addEventListener('change', actualizarResumenMeses);
+    
+    console.log('Event listeners de meses agregados correctamente');
 
     // Cerrar resultados al hacer click fuera
     document.addEventListener('click', function(e) {
-        if (buscador && resultadosBusqueda && 
-            !buscador.contains(e.target) && !resultadosBusqueda.contains(e.target)) {
+        if (!buscador.contains(e.target) && !resultadosBusqueda.contains(e.target)) {
             resultadosBusqueda.style.display = 'none';
         }
     });
@@ -570,10 +566,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Inicializar fecha mínima (hoy)
-    const fechaPagoInput = document.getElementById('fecha_pago');
-    if (fechaPagoInput) {
-        fechaPagoInput.max = new Date().toISOString().split('T')[0];
-    }
+    document.getElementById('fecha_pago').max = new Date().toISOString().split('T')[0];
+    
+    console.log('Script de pagos inicializado completamente');
 });
 </script>
 @stop

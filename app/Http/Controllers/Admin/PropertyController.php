@@ -10,6 +10,7 @@ use App\Models\Tariff;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PropertyController extends Controller
 {
@@ -133,4 +134,34 @@ class PropertyController extends Controller
                 ->with('error', 'Error al restaurar servicio: ' . $e->getMessage());
         }
     }
+    public function search(Request $request)
+{
+    $query = $request->get('q');
+    
+    $propiedades = Property::with(['client', 'tariff'])
+        ->where('estado', 'activo')
+        ->where(function($q) use ($query) {
+            $q->where('referencia', 'like', "%{$query}%")
+              ->orWhere('barrio', 'like', "%{$query}%")
+              ->orWhereHas('client', function($q) use ($query) {
+                  $q->where('nombre', 'like', "%{$query}%")
+                    ->orWhere('ci', 'like', "%{$query}%");
+              });
+        })
+        ->limit(10)
+        ->get()
+        ->map(function($propiedad) {
+            return [
+                'id' => $propiedad->id,
+                'referencia' => $propiedad->referencia,
+                'barrio' => $propiedad->barrio,
+                'cliente_nombre' => $propiedad->client->nombre,
+                'cliente_ci' => $propiedad->client->ci,
+                'tarifa_precio' => $propiedad->tariff->precio_mensual,
+                'tarifa_nombre' => $propiedad->tariff->nombre
+            ];
+        });
+    
+    return response()->json($propiedades);
+}
 }

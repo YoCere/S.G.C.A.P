@@ -25,6 +25,11 @@ class Client extends Model
     { 
         return $this->hasMany(Property::class, 'cliente_id'); 
     }
+
+    public function debt()
+    { 
+        return $this->hasMany(Debt::class, 'deuda_id'); 
+    }
     
     public function receipts()
     { 

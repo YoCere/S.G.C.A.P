@@ -53,12 +53,11 @@ class DatabaseSeeder extends Seeder
             }
         });
 
-        // === 5) Deudas para cada propiedad (últimos 3 meses incluyendo el actual) ===
-        $meses = [
-            now()->startOfMonth()->subMonths(2),
-            now()->startOfMonth()->subMonth(),
-            now()->startOfMonth(),
-        ];
+        // === 5) Deudas para cada propiedad (últimos 6 meses) ===
+        $meses = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $meses[] = now()->startOfMonth()->subMonths($i);
+        }
 
         Property::query()
         ->whereNotNull('tarifa_id')
@@ -73,14 +72,25 @@ class DatabaseSeeder extends Seeder
                         ?? 0;
 
                 foreach ($meses as $mes) {
+                    // Determinar estado basado en antigüedad (más realista)
+                    $diasTranscurridos = now()->diffInDays($mes);
+                    $estado = 'pendiente';
+                    
+                    if ($diasTranscurridos > 90) {
+                        $estado = 'corte_pendiente';
+                    } elseif ($diasTranscurridos > 30) {
+                        $estado = fake()->boolean(70) ? 'vencida' : 'pendiente';
+                    }
+
                     Debt::firstOrCreate(
                         ['propiedad_id' => $p->id, 'fecha_emision' => $mes],
                         [
-                            'tarifa_id'          => $tarifaId,
-                            'monto_pendiente'    => $precio,
-                            'fecha_vencimiento'  => $mes->copy()->addDays(30),
-                            'estado'             => fake()->boolean(30) ? 'vencida' : 'pendiente',
-                            'pagada_adelantada'  => false,
+                            // ✅ REMOVIDO TEMPORALMENTE: 'cliente_id' => $p->cliente_id,
+                            'tarifa_id' => $tarifaId,
+                            'monto_pendiente' => $precio,
+                            'fecha_vencimiento' => $mes->copy()->addDays(30),
+                            'estado' => $estado,
+                            'pagada_adelantada' => false,
                         ]
                     );
                 }
@@ -90,16 +100,75 @@ class DatabaseSeeder extends Seeder
         $tarifaFallback = Tariff::inRandomOrder()->value('id') ?? Tariff::first()->id;
         Property::whereNull('tarifa_id')->update(['tarifa_id' => $tarifaFallback]);
 
-        // === 6) Multas aleatorias sobre algunas deudas vencidas ===
-        Debt::where('estado', 'vencida')
+        // === 6) ✅ ACTUALIZADO: MULTAS CON NUEVA ESTRUCTURA ===
+        // Multas automáticas por reconexión
+        Debt::where('estado', 'corte_pendiente')
             ->inRandomOrder()
-            ->take(30)
+            ->take(10)
             ->get()
-            ->each(function ($d) {
-                Fine::factory(rand(1, 2))->create(['deuda_id' => $d->id]);
+            ->each(function ($deuda) use ($admin) {
+                $mesesMora = now()->diffInMonths($deuda->fecha_vencimiento);
+                $tipoMulta = $mesesMora >= 12 ? 
+                    Fine::TIPO_RECONEXION_12MESES : 
+                    Fine::TIPO_RECONEXION_3MESES;
+
+                Fine::create([
+                    'deuda_id' => $deuda->id,
+                    'propiedad_id' => $deuda->propiedad_id,
+                    'tipo' => $tipoMulta,
+                    'nombre' => Fine::obtenerTiposMulta()[$tipoMulta],
+                    'monto' => Fine::obtenerMontosBase()[$tipoMulta],
+                    'descripcion' => 'Multa aplicada automáticamente por ' . ($mesesMora >= 12 ? '12' : '3') . ' meses de mora',
+                    'fecha_aplicacion' => now(),
+                    'estado' => Fine::ESTADO_PENDIENTE,
+                    'aplicada_automaticamente' => true,
+                    'activa' => true,
+                    'creado_por' => $admin->id,
+                ]);
+
+                // Actualizar estado de la propiedad
+                $deuda->propiedad->update(['estado' => 'corte_pendiente']);
             });
 
-        // === 7) ✅ CORREGIDO: PAGOS DE EJEMPLO (CON GENERACIÓN DE NUMERO_RECIBO) ===
+        // Multas manuales por infracciones
+        $tiposManuales = [
+            Fine::TIPO_CONEXION_CLANDESTINA,
+            Fine::TIPO_MANIPULACION_LLAVES,
+            Fine::TIPO_CONSTRUCCION,
+            Fine::TIPO_OTRO
+        ];
+
+        Property::inRandomOrder()
+            ->take(15)
+            ->get()
+            ->each(function ($propiedad) use ($tiposManuales, $empleados, $admin) {
+                $tipo = Arr::random($tiposManuales);
+                
+                Fine::create([
+                    'propiedad_id' => $propiedad->id,
+                    'tipo' => $tipo,
+                    'nombre' => Fine::obtenerTiposMulta()[$tipo],
+                    'monto' => Fine::obtenerMontosBase()[$tipo],
+                    'descripcion' => 'Multa aplicada por: ' . fake()->sentence(),
+                    'fecha_aplicacion' => now()->subDays(rand(1, 60)),
+                    'estado' => Arr::random([Fine::ESTADO_PENDIENTE, Fine::ESTADO_PAGADA]),
+                    'aplicada_automaticamente' => false,
+                    'activa' => true,
+                    'creado_por' => $empleados->random()->id ?? $admin->id,
+                ]);
+
+                // Si es multa grave, cortar la propiedad
+                if (in_array($tipo, [Fine::TIPO_CONEXION_CLANDESTINA, Fine::TIPO_MANIPULACION_LLAVES])) {
+                    $propiedad->update(['estado' => 'cortado']);
+                    
+                    // También actualizar deudas a estado cortado
+                    $propiedad->debts()
+                        ->where('estado', 'corte_pendiente')
+                        ->update(['estado' => 'cortado']);
+                }
+            });
+
+        // === 7) ✅ ACTUALIZADO: PAGOS DE EJEMPLO CON NUEVA LÓGICA ===
         $cobradorId = $empleados->random()->id ?? $admin->id;
 
         // Función para generar número de recibo único
@@ -108,79 +177,141 @@ class DatabaseSeeder extends Seeder
             return 'REC-' . str_pad($contador++, 6, '0', STR_PAD_LEFT);
         };
 
-        // Seleccionar algunas propiedades aleatorias para generar pagos
+        // Pagos para propiedades sin multas pendientes
         Property::with(['client', 'tariff'])
+            ->where('estado', 'activo')
             ->inRandomOrder()
-            ->take(15)
+            ->take(20)
             ->get()
             ->each(function ($propiedad) use ($cobradorId, $generarNumeroRecibo) {
                 
-                // Generar 1-3 pagos por propiedad
-                $cantidadPagos = rand(1, 3);
+                // Obtener deudas pendientes de los últimos 6 meses
+                $deudasPendientes = $propiedad->debts()
+                    ->where('estado', 'pendiente')
+                    ->where('fecha_emision', '>=', now()->subMonths(6))
+                    ->inRandomOrder()
+                    ->take(rand(1, 3))
+                    ->get();
                 
-                for ($i = 0; $i < $cantidadPagos; $i++) {
-                    // Mes aleatorio de los últimos 6 meses
-                    $mesesAtras = rand(0, 5);
-                    $mesPagado = now()->subMonths($mesesAtras)->format('Y-m');
-                    
-                    // Fecha de pago aleatoria en ese mes
-                    $fechaPago = now()->subMonths($mesesAtras)
-                        ->startOfMonth()
-                        ->addDays(rand(1, 28));
-                    
+                foreach ($deudasPendientes as $deuda) {
                     Pago::create([
-                        'numero_recibo' => $generarNumeroRecibo(), // ✅ GENERAR NÚMERO DE RECIBO
+                        'numero_recibo' => $generarNumeroRecibo(),
                         'cliente_id' => $propiedad->cliente_id,
                         'propiedad_id' => $propiedad->id,
-                        'monto' => $propiedad->tariff->precio_mensual,
-                        'mes_pagado' => $mesPagado,
-                        'fecha_pago' => $fechaPago,
-                        'metodo' => Arr::random(['efectivo', 'transferencia']),
+                        'monto' => $deuda->monto_pendiente,
+                        'mes_pagado' => $deuda->fecha_emision->format('Y-m'),
+                        'fecha_pago' => now()->subDays(rand(1, 30)),
+                        'metodo' => Arr::random(['efectivo', 'transferencia', 'qr']),
                         'comprobante' => fake()->boolean(50) ? 'COMP-' . fake()->randomNumber(6) : null,
                         'observaciones' => fake()->boolean(30) ? fake()->sentence() : null,
                         'registrado_por' => $cobradorId,
                     ]);
                     
-                    // ✅ OPCIONAL: Marcar la deuda correspondiente como pagada
-                    $deudaCorrespondiente = Debt::where('propiedad_id', $propiedad->id)
-                        ->whereYear('fecha_emision', Carbon::parse($mesPagado)->year)
-                        ->whereMonth('fecha_emision', Carbon::parse($mesPagado)->month)
-                        ->first();
-                        
-                    if ($deudaCorrespondiente) {
-                        $deudaCorrespondiente->update([
-                            'estado' => 'pagada',
-                            'monto_pendiente' => 0
-                        ]);
-                    }
+                    // Actualizar deuda
+                    $deuda->update([
+                        'estado' => 'pagada',
+                        'monto_pendiente' => 0
+                    ]);
                 }
             });
 
-        // === 8) ✅ PAGOS MÚLTIPLES DE EJEMPLO (cliente que paga varios meses) ===
-        $propiedadEjemplo = Property::inRandomOrder()->first();
+        // === 8) ✅ NUEVO: PAGOS CON MULTAS (propiedades cortadas) ===
+        Property::where('estado', 'cortado')
+            ->inRandomOrder()
+            ->take(5)
+            ->get()
+            ->each(function ($propiedad) use ($cobradorId, $generarNumeroRecibo) {
+                
+                // Obtener deudas cortadas y multas pendientes
+                $deudasCortadas = $propiedad->debts()
+                    ->where('estado', 'cortado')
+                    ->get();
+                
+                $multasPendientes = $propiedad->multas()
+                    ->where('estado', Fine::ESTADO_PENDIENTE)
+                    ->get();
+                
+                // Pagar deudas cortadas
+                foreach ($deudasCortadas as $deuda) {
+                    Pago::create([
+                        'numero_recibo' => $generarNumeroRecibo(),
+                        'cliente_id' => $propiedad->cliente_id,
+                        'propiedad_id' => $propiedad->id,
+                        'monto' => $deuda->monto_pendiente,
+                        'mes_pagado' => $deuda->fecha_emision->format('Y-m'),
+                        'fecha_pago' => now(),
+                        'metodo' => 'efectivo',
+                        'comprobante' => 'PAGO-RECONEXION',
+                        'observaciones' => 'Pago incluye deuda cortada',
+                        'registrado_por' => $cobradorId,
+                    ]);
+                    
+                    $deuda->update([
+                        'estado' => 'pagada',
+                        'monto_pendiente' => 0
+                    ]);
+                }
+                
+                // Marcar multas como pagadas
+                foreach ($multasPendientes as $multa) {
+                    $multa->update(['estado' => Fine::ESTADO_PAGADA]);
+                }
+                
+                // Restaurar propiedad
+                $propiedad->update(['estado' => 'activo']);
+            });
+
+        // === 9) ✅ NUEVO: PAGOS MÚLTIPLES CON ADELANTOS ===
+        $propiedadEjemplo = Property::where('estado', 'activo')->inRandomOrder()->first();
         if ($propiedadEjemplo) {
-            $meses = [
+            $mesesAdelanto = [
                 now()->format('Y-m'),
                 now()->addMonth()->format('Y-m'),
                 now()->addMonths(2)->format('Y-m'),
             ];
             
-            foreach ($meses as $mes) {
+            foreach ($mesesAdelanto as $mes) {
+                // Crear deuda adelantada si no existe
+                $fechaEmision = Carbon::createFromFormat('Y-m', $mes)->startOfMonth();
+                $deuda = Debt::firstOrCreate(
+                    ['propiedad_id' => $propiedadEjemplo->id, 'fecha_emision' => $fechaEmision],
+                    [
+                        // ✅ REMOVIDO TEMPORALMENTE: 'cliente_id' => $propiedadEjemplo->cliente_id,
+                        'tarifa_id' => $propiedadEjemplo->tarifa_id,
+                        'monto_pendiente' => $propiedadEjemplo->tariff->precio_mensual,
+                        'fecha_vencimiento' => $fechaEmision->copy()->addDays(30),
+                        'estado' => 'pendiente',
+                        'pagada_adelantada' => true,
+                    ]
+                );
+                
                 Pago::create([
-                    'numero_recibo' => $generarNumeroRecibo(), // ✅ GENERAR NÚMERO DE RECIBO
+                    'numero_recibo' => $generarNumeroRecibo(),
                     'cliente_id' => $propiedadEjemplo->cliente_id,
                     'propiedad_id' => $propiedadEjemplo->id,
                     'monto' => $propiedadEjemplo->tariff->precio_mensual,
                     'mes_pagado' => $mes,
                     'fecha_pago' => now(),
-                    'metodo' => 'efectivo',
-                    'comprobante' => 'PAGO-ADELANTADO',
+                    'metodo' => 'transferencia',
+                    'comprobante' => 'ADELANTO-' . fake()->randomNumber(6),
                     'observaciones' => 'Pago adelantado de varios meses',
                     'registrado_por' => $cobradorId,
+                ]);
+                
+                $deuda->update([
+                    'estado' => 'pagada',
+                    'monto_pendiente' => 0
                 ]);
             }
         }
 
-        $this->command->info('✅ Seeder ejecutado correctamente con pagos de ejemplo.');
+        $this->command->info('✅ Seeder ejecutado correctamente con el nuevo sistema de multas y cortes.');
+        $this->command->info('📊 Estadísticas generadas:');
+        $this->command->info('   - Propiedades activas: ' . Property::where('estado', 'activo')->count());
+        $this->command->info('   - Propiedades corte pendiente: ' . Property::where('estado', 'corte_pendiente')->count());
+        $this->command->info('   - Propiedades cortadas: ' . Property::where('estado', 'cortado')->count());
+        $this->command->info('   - Multas generadas: ' . Fine::count());
+        $this->command->info('   - Multas automáticas: ' . Fine::where('aplicada_automaticamente', true)->count());
+        $this->command->info('   - Multas pendientes: ' . Fine::where('estado', Fine::ESTADO_PENDIENTE)->count());
     }
 }

@@ -31,7 +31,8 @@ return new class extends Migration
            $table->decimal('latitud', 10, 8)->nullable();
            $table->decimal('longitud', 11, 8)->nullable();
 
-           $table->enum('estado', ['activo', 'inactivo', 'cortado'])->default('activo')->index();
+           // En tu migración de propiedades, actualizar el enum de estado:
+$table->enum('estado', ['activo', 'inactivo', 'cortado', 'corte_pendiente'])->default('activo')->index();
             $table->timestamps();        
         });
     }

@@ -77,5 +77,15 @@ class Property extends Model
     {
         return $this->cliente ? $this->cliente->nombre : 'Cliente No Asignado';
     }
+    // En tu modelo Property, agregar:
+    public function multas()
+    {
+        return $this->hasMany(Fine::class, 'propiedad_id');
+    }
+
+    public function multasPendientes()
+    {
+        return $this->multas()->where('estado', Fine::ESTADO_PENDIENTE);
+    }
 }
     

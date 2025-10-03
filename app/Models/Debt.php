@@ -50,8 +50,25 @@ class Debt extends Model
     {
         return $q->where('estado', 'pendiente');
     }
+    
+// En tu modelo Debt, agregar:
     public function multas()
-{
-    return $this->hasMany(Fine::class, 'deuda_id');
-}
+    {
+        return $this->hasMany(Fine::class, 'deuda_id');
+    }
+
+    public function multasPendientes()
+    {
+        return $this->multas()->where('estado', Fine::ESTADO_PENDIENTE);
+    }
+
+    public function tieneMultasPendientes()
+    {
+        return $this->multasPendientes()->exists();
+    }
+
+    public function totalMultasPendientes()
+    {
+        return $this->multasPendientes()->sum('monto');
+    }
 }

@@ -351,6 +351,16 @@ return [
             'route' => 'admin.debts.index',
             'icon' => 'fa fa-file-invoice-dollar',
         ],
+        [
+            'text' => 'Cortes',
+            'route' => 'admin.cortes.pendientes',
+            'icon' => 'fas fa-faucet fa-fw',
+        ],
+        [
+            'text' => 'Multas',
+            'route' => 'admin.multas.index',
+            'icon' => 'fas fa-gavel fa-fw',
+        ],
         ['header' => 'labels'],
         [
             'text' => 'important',

@@ -24,8 +24,7 @@ return new class extends Migration
             $table->decimal('monto_pendiente', 10, 2);
             $table->date('fecha_emision')->useCurrent();
             $table->date('fecha_vencimiento')->nullable();
-            $table->enum('estado', ['pendiente', 'pagada', 'vencida', 'anulada'])
-            ->default('pendiente');
+            $table->enum('estado', ['pendiente', 'pagada', 'vencida', 'anulada', 'corte_pendiente', 'cortado'])->default('pendiente');
             $table->boolean('pagada_adelantada')->default(false);   
             // 1 deuda por propiedad y mes:
             $table->unique(['propiedad_id','fecha_emision']); 

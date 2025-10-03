@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\TariffController;
 use App\Http\Controllers\Admin\PropertyController;
 use App\Http\Controllers\Admin\DebtController;
 use App\Http\Controllers\Admin\PagoController;
+use App\Http\Controllers\Admin\FineController; // ✅ NUEVO
+use App\Http\Controllers\Admin\CorteController; // ✅ NUEVO
 
 Route::middleware(['auth'])
     ->prefix('admin')
@@ -45,4 +47,24 @@ Route::middleware(['auth'])
         Route::resource('pagos', PagoController::class)->names('admin.pagos');
         Route::get('/pagos/{pago}/print', [PagoController::class, 'print'])->name('admin.pagos.print');
         Route::put('/pagos/{pago}/anular', [PagoController::class, 'anular'])->name('admin.pagos.anular');
+        
+        // ✅ NUEVO: CRUD COMPLETO DE MULTAS
+        Route::resource('multas', FineController::class)->names('admin.multas');
+        
+        // ✅ NUEVO: ACCIONES ADICIONALES PARA MULTAS
+        Route::prefix('multas')->group(function () {
+            Route::post('/{multa}/marcar-pagada', [FineController::class, 'marcarPagada'])->name('admin.multas.marcar-pagada');
+            Route::post('/{multa}/anular', [FineController::class, 'anular'])->name('admin.multas.anular');
+            Route::post('/{multa}/restaurar', [FineController::class, 'restaurar'])->name('admin.multas.restaurar');
+            Route::get('/obtener-monto-base', [FineController::class, 'obtenerMontoBase'])->name('admin.multas.obtener-monto-base');
+        });
+        
+        // ✅ NUEVO: RUTAS PARA GESTIÓN DE CORTES
+        Route::prefix('cortes')->group(function () {
+            Route::get('/pendientes', [CorteController::class, 'indexCortePendiente'])->name('admin.cortes.pendientes');
+            Route::get('/cortadas', [CorteController::class, 'indexCortadas'])->name('admin.cortes.cortadas');
+            Route::post('/marcar-cortado/{propiedad}', [CorteController::class, 'marcarComoCortado'])->name('admin.cortes.marcar-cortado');
+            Route::post('/aplicar-multa/{deuda}', [CorteController::class, 'aplicarMultaReconexion'])->name('admin.cortes.aplicar-multa');
+        });
+        
     });

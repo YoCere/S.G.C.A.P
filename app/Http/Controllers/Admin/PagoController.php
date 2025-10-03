@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Pago;
 use App\Models\Property;
+use App\Models\Debt; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -56,13 +57,23 @@ class PagoController extends Controller
     public function create(Request $request)
     {
         $propiedadSeleccionada = null;
+        $deudasPendientes = collect();
         
-        // ✅ Si viene propiedad_id por URL, cargar esa propiedad
+        // ✅ Si viene propiedad_id por URL, cargar esa propiedad Y SUS DEUDAS
         if ($request->has('propiedad_id')) {
             $propiedadSeleccionada = Property::with(['client', 'tariff'])
                 ->where('id', $request->propiedad_id)
                 ->where('estado', 'activo')
                 ->first();
+                
+            if ($propiedadSeleccionada) {
+                // CARGAR DEUDAS PENDIENTES de esta propiedad
+                $deudasPendientes = Debt::with('multas')
+                    ->where('propiedad_id', $propiedadSeleccionada->id)
+                    ->where('estado', 'pendiente')
+                    ->orderBy('fecha_emision', 'asc')
+                    ->get();
+            }
         }
         
         $propiedades = Property::with(['client', 'tariff'])
@@ -70,9 +81,8 @@ class PagoController extends Controller
                             ->orderBy('referencia')
                             ->get();
         
-        return view('admin.pagos.create', compact('propiedades', 'propiedadSeleccionada'));
+        return view('admin.pagos.create', compact('propiedades', 'propiedadSeleccionada', 'deudasPendientes'));
     }
-
     private function generarNumeroRecibo()
     {
         $ultimoPago = Pago::orderBy('id', 'desc')->first();
@@ -198,4 +208,20 @@ class PagoController extends Controller
         return redirect()->route('admin.pagos.index')
             ->with('info', 'Pago anulado correctamente');
     }
+    public function obtenerDeudasPendientes(Property $propiedad)
+{
+    $deudasPendientes = Debt::with('multas')
+        ->where('propiedad_id', $propiedad->id)
+        ->where('estado', 'pendiente')
+        ->orderBy('fecha_emision', 'asc')
+        ->get();
+    
+    $mesesAdeudados = $propiedad->obtenerMesesAdeudados();
+    
+    return response()->json([
+        'deudas' => $deudasPendientes,
+        'meses_adeudados' => $mesesAdeudados,
+        'total_deudas' => $deudasPendientes->sum('monto_pendiente')
+    ]);
+}
 }

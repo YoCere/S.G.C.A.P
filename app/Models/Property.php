@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Pago;
 
 class Property extends Model
 {
@@ -22,7 +23,33 @@ class Property extends Model
     ];
 
     
+    // Agregar este método al modelo Property
+    public function obtenerMesesAdeudados()
+    {
+        // Obtener todos los pagos de esta propiedad
+        $pagos = Pago::where('propiedad_id', $this->id)->get();
+        $mesesPagados = $pagos->pluck('mes_pagado')->toArray();
+        
+        // Generar los últimos 12 meses
+        $mesesAdeudados = [];
+        $fechaActual = now();
+        
+        for ($i = 11; $i >= 0; $i--) {
+            $mes = $fechaActual->copy()->subMonths($i)->format('Y-m');
+            
+            // Si el mes no está pagado, agregarlo a adeudados
+            if (!in_array($mes, $mesesPagados)) {
+                $mesesAdeudados[] = $mes;
+            }
+        }
+        
+        return $mesesAdeudados;
+    }
 
+    public function getTotalDeudasPendientesAttribute()
+    {
+        return $this->debts()->where('estado', 'pendiente')->sum('monto_pendiente');
+    }
     // Relaciones
     public function client()
     {

@@ -26,20 +26,23 @@ Route::middleware(['auth'])
         Route::put('/properties/{property}/cut', [PropertyController::class, 'cutService'])->name('admin.properties.cut');
         Route::put('/properties/{property}/restore', [PropertyController::class, 'restoreService'])->name('admin.properties.restore');
         
-        // ✅ DEBTS CORREGIDO (sin duplicados)
+        // Búsqueda de propiedades
+        Route::get('/propiedades/buscar', [PropertyController::class, 'search'])->name('admin.propiedades.search');
+        
+        // ✅ RUTA CORREGIDA PARA DEUDAS PENDIENTES
+        Route::get('/propiedades/{propiedad}/deudaspendientes', [PagoController::class, 'obtenerDeudasPendientes'])->name('admin.propiedades.deudaspendientes');
+        
+        // Deudas
         Route::resource('debts', DebtController::class)
             ->parameters(['debts' => 'debt'])
             ->names('admin.debts')
-            ->except(['edit', 'update']); // ❌ ELIMINAR edición
-
-        // ✅ RUTAS ADICIONALES PARA DEUDAS
+            ->except(['edit', 'update']);
+            
         Route::post('/debts/{debt}/annul', [DebtController::class, 'annul'])->name('admin.debts.annul');
         Route::post('/debts/{debt}/mark-as-paid', [DebtController::class, 'markAsPaid'])->name('admin.debts.mark-as-paid');
 
-        // ✅ PAGOS
+        // Pagos
         Route::resource('pagos', PagoController::class)->names('admin.pagos');
         Route::get('/pagos/{pago}/print', [PagoController::class, 'print'])->name('admin.pagos.print');
         Route::put('/pagos/{pago}/anular', [PagoController::class, 'anular'])->name('admin.pagos.anular');
-        // En el grupo de rutas admin
-        Route::get('/propiedades/buscar', [PropertyController::class, 'search'])->name('admin.propiedades.search');
     });

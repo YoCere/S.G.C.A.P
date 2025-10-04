@@ -65,6 +65,8 @@ Route::middleware(['auth'])
             Route::get('/cortadas', [CorteController::class, 'indexCortadas'])->name('admin.cortes.cortadas');
             Route::post('/marcar-cortado/{propiedad}', [CorteController::class, 'marcarComoCortado'])->name('admin.cortes.marcar-cortado');
             Route::post('/aplicar-multa/{deuda}', [CorteController::class, 'aplicarMultaReconexion'])->name('admin.cortes.aplicar-multa');
+            Route::put('/properties/{property}/cancel-cut', [PropertyController::class, 'cancelCutService'])
+            ->name('admin.properties.cancel-cut');
         });
         
     });

@@ -15,30 +15,85 @@ use Illuminate\Support\Facades\Log;
 class PropertyController extends Controller
 {
     public function index(Request $request)
-    {
-        $query = Property::with(['client', 'tariff']);
+{
+    $query = Property::with(['client', 'tariff']);
 
-        // ✅ BÚSQUEDA por referencia, barrio o cliente
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('referencia', 'like', "%{$search}%")
-                  ->orWhere('barrio', 'like', "%{$search}%")
-                  ->orWhereHas('client', function($q) use ($search) {
-                      $q->where('nombre', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        // Filtro por estado si se necesita
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        }
-
-        $properties = $query->orderByDesc('id')->paginate(12);
-
-        return view('admin.properties.index', compact('properties'));
+    // Aplicar filtros
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('referencia', 'like', "%{$search}%")
+              ->orWhereHas('client', function($q) use ($search) {
+                  $q->where('nombre', 'like', "%{$search}%")
+                    ->orWhere('ci', 'like', "%{$search}%");
+              });
+        });
     }
+
+    if ($request->filled('estado')) {
+        $query->where('estado', $request->estado);
+    }
+
+    if ($request->filled('barrio')) {
+        $query->where('barrio', $request->barrio);
+    }
+
+    if ($request->filled('tarifa_id')) {
+        $query->where('tarifa_id', $request->tarifa_id);
+    }
+
+    if ($request->filled('cliente_id')) {
+        $query->where('cliente_id', $request->cliente_id);
+    }
+
+    if ($request->filled('estado_cuenta')) {
+        $query->whereHas('client', function($q) use ($request) {
+            $q->where('estado_cuenta', $request->estado_cuenta);
+        });
+    }
+
+    // Ordenamiento
+    switch ($request->orden) {
+        case 'antiguo':
+            $query->orderBy('created_at', 'asc');
+            break;
+        case 'referencia':
+            $query->orderBy('referencia', 'asc');
+            break;
+        case 'cliente':
+            $query->join('clientes', 'propiedades.cliente_id', '=', 'clientes.id')
+                  ->orderBy('clientes.nombre', 'asc')
+                  ->select('propiedades.*');
+            break;
+        case 'barrio':
+            $query->orderBy('barrio', 'asc');
+            break;
+        default: // reciente
+            $query->orderBy('created_at', 'desc');
+            break;
+    }
+
+    $properties = $query->paginate(20);
+
+    // Estadísticas para las tarjetas
+    $estadisticas = [
+        'activas' => Property::where('estado', 'activo')->count(),
+        'corte_pendiente' => Property::where('estado', 'corte_pendiente')->count(),
+        'cortadas' => Property::where('estado', 'cortado')->count(),
+        'con_ubicacion' => Property::whereNotNull('latitud')->whereNotNull('longitud')->count(),
+        'clientes_activos' => Client::where('estado_cuenta', 'activo')->count(),
+    ];
+
+    $clients = Client::orderBy('nombre')->get();
+    $tariffs = Tariff::orderBy('nombre')->get();
+
+    return view('admin.properties.index', compact(
+        'properties', 
+        'clients', 
+        'tariffs',
+        'estadisticas'
+    ))->with('totalPropiedades', Property::count());
+}
 
     public function create()
     {
@@ -108,18 +163,38 @@ class PropertyController extends Controller
     }
 
     public function cutService(Property $property)
-    {
-        try {
-            $property->update(['estado' => 'cortado']);
-            
-            return redirect()->back()
-                ->with('info', 'Servicio cortado para: ' . $property->referencia);
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Error al cortar servicio: ' . $e->getMessage());
-        }
+{
+    // Cambiar estado a "corte_pendiente" en lugar de "cortado"
+    $property->update(['estado' => 'corte_pendiente']);
+    
+    // También actualizar las deudas a estado "corte_pendiente"
+    $property->debts()
+        ->where('estado', 'pendiente')
+        ->update(['estado' => 'corte_pendiente']);
+
+    return redirect()->route('admin.properties.index')
+        ->with('success', 'Propiedad marcada para corte pendiente. El equipo físico procederá con el corte.');
+}
+
+// Agregar este método para cancelar corte pendiente
+public function cancelCutService(Property $property)
+{
+    // Solo permitir si está en corte_pendiente
+    if ($property->estado !== 'corte_pendiente') {
+        return redirect()->back()
+            ->with('error', 'Solo se puede cancelar cortes pendientes');
     }
+
+    $property->update(['estado' => 'activo']);
+    
+    // Revertir deudas a estado pendiente
+    $property->debts()
+        ->where('estado', 'corte_pendiente')
+        ->update(['estado' => 'pendiente']);
+
+    return redirect()->route('admin.properties.index')
+        ->with('success', 'Corte pendiente cancelado. Propiedad reactivada.');
+}
 
     public function restoreService(Property $property)
     {

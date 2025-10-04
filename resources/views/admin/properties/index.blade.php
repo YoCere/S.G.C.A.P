@@ -26,6 +26,203 @@
     </div>
   @endif
 
+  <!-- FILTROS AVANZADOS -->
+  <div class="card card-outline card-primary">
+    <div class="card-header">
+      <h3 class="card-title">
+        <i class="fas fa-filter mr-2"></i>Filtros de Búsqueda
+      </h3>
+      <div class="card-tools">
+        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+          <i class="fas fa-minus"></i>
+        </button>
+      </div>
+    </div>
+    <div class="card-body">
+      <form action="{{ route('admin.properties.index') }}" method="GET" id="filterForm">
+        <div class="row">
+          <!-- Búsqueda general -->
+          <div class="col-md-4">
+            <div class="form-group">
+              <label for="search">Búsqueda General</label>
+              <input type="text" name="search" id="search" class="form-control form-control-sm" 
+                     placeholder="Referencia, cliente, cédula..." 
+                     value="{{ request('search') }}">
+            </div>
+          </div>
+
+          <!-- Filtro por Estado -->
+          <div class="col-md-3">
+            <div class="form-group">
+              <label for="estado">Estado de Propiedad</label>
+              <select name="estado" id="estado" class="form-control form-control-sm">
+                <option value="">Todos los estados</option>
+                <option value="activo" {{ request('estado') == 'activo' ? 'selected' : '' }}>Activo</option>
+                <option value="corte_pendiente" {{ request('estado') == 'corte_pendiente' ? 'selected' : '' }}>Corte Pendiente</option>
+                <option value="cortado" {{ request('estado') == 'cortado' ? 'selected' : '' }}>Cortado</option>
+                <option value="inactivo" {{ request('estado') == 'inactivo' ? 'selected' : '' }}>Inactivo</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Filtro por Barrio -->
+          <div class="col-md-3">
+            <div class="form-group">
+              <label for="barrio">Barrio</label>
+              <select name="barrio" id="barrio" class="form-control form-control-sm">
+                <option value="">Todos los barrios</option>
+                <option value="Centro" {{ request('barrio') == 'Centro' ? 'selected' : '' }}>Centro</option>
+                <option value="Aroma" {{ request('barrio') == 'Aroma' ? 'selected' : '' }}>Aroma</option>
+                <option value="Los Valles" {{ request('barrio') == 'Los Valles' ? 'selected' : '' }}>Los Valles</option>
+                <option value="Caipitandy" {{ request('barrio') == 'Caipitandy' ? 'selected' : '' }}>Caipitandy</option>
+                <option value="Primavera" {{ request('barrio') == 'Primavera' ? 'selected' : '' }}>Primavera</option>
+                <option value="Arboleda" {{ request('barrio') == 'Arboleda' ? 'selected' : '' }}>Arboleda</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Filtro por Tarifa -->
+          <div class="col-md-2">
+            <div class="form-group">
+              <label for="tarifa_id">Tarifa</label>
+              <select name="tarifa_id" id="tarifa_id" class="form-control form-control-sm">
+                <option value="">Todas las tarifas</option>
+                @foreach($tariffs as $tarifa)
+                  <option value="{{ $tarifa->id }}" {{ request('tarifa_id') == $tarifa->id ? 'selected' : '' }}>
+                    {{ $tarifa->nombre }}
+                  </option>
+                @endforeach
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <!-- Filtro por Cliente -->
+          <div class="col-md-6">
+            <div class="form-group">
+              <label for="cliente_id">Cliente Específico</label>
+              <select name="cliente_id" id="cliente_id" class="form-control form-control-sm">
+                <option value="">Todos los clientes</option>
+                @foreach($clients as $cliente)
+                  <option value="{{ $cliente->id }}" {{ request('cliente_id') == $cliente->id ? 'selected' : '' }}>
+                    {{ $cliente->nombre }} @if($cliente->ci) ({{ $cliente->ci }}) @endif
+                  </option>
+                @endforeach
+              </select>
+            </div>
+          </div>
+
+          <!-- Filtro por Estado de Cuenta del Cliente -->
+          <div class="col-md-3">
+            <div class="form-group">
+              <label for="estado_cuenta">Estado de Cuenta</label>
+              <select name="estado_cuenta" id="estado_cuenta" class="form-control form-control-sm">
+                <option value="">Todos</option>
+                <option value="activo" {{ request('estado_cuenta') == 'activo' ? 'selected' : '' }}>Cuenta Activa</option>
+                <option value="inactivo" {{ request('estado_cuenta') == 'inactivo' ? 'selected' : '' }}>Cuenta Inactiva</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Ordenamiento -->
+          <div class="col-md-3">
+            <div class="form-group">
+              <label for="orden">Ordenar por</label>
+              <select name="orden" id="orden" class="form-control form-control-sm">
+                <option value="reciente" {{ request('orden') == 'reciente' ? 'selected' : '' }}>Más recientes</option>
+                <option value="antiguo" {{ request('orden') == 'antiguo' ? 'selected' : '' }}>Más antiguos</option>
+                <option value="referencia" {{ request('orden') == 'referencia' ? 'selected' : '' }}>Referencia (A-Z)</option>
+                <option value="cliente" {{ request('orden') == 'cliente' ? 'selected' : '' }}>Cliente (A-Z)</option>
+                <option value="barrio" {{ request('orden') == 'barrio' ? 'selected' : '' }}>Barrio</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="row">
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="fas fa-search mr-1"></i> Aplicar Filtros
+            </button>
+            <a href="{{ route('admin.properties.index') }}" class="btn btn-secondary btn-sm">
+              <i class="fas fa-undo mr-1"></i> Limpiar Filtros
+            </a>
+            <button type="button" class="btn btn-info btn-sm" id="toggleFilters">
+              <i class="fas fa-eye mr-1"></i> Mostrar/Ocultar Filtros
+            </button>
+            
+            @if(request()->anyFilled(['search', 'estado', 'barrio', 'tarifa_id', 'cliente_id', 'estado_cuenta', 'orden']))
+              <span class="badge badge-success ml-2">
+                <i class="fas fa-filter mr-1"></i>Filtros activos
+              </span>
+            @endif
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ESTADÍSTICAS RÁPIDAS -->
+  <div class="row mb-4">
+    <div class="col-md-2 col-sm-6">
+      <div class="info-box bg-gradient-info">
+        <span class="info-box-icon"><i class="fas fa-home"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">Total</span>
+          <span class="info-box-number">{{ $totalPropiedades }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2 col-sm-6">
+      <div class="info-box bg-gradient-success">
+        <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">Activas</span>
+          <span class="info-box-number">{{ $estadisticas['activas'] ?? 0 }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2 col-sm-6">
+      <div class="info-box bg-gradient-warning">
+        <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">Corte Pendiente</span>
+          <span class="info-box-number">{{ $estadisticas['corte_pendiente'] ?? 0 }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2 col-sm-6">
+      <div class="info-box bg-gradient-danger">
+        <span class="info-box-icon"><i class="fas fa-ban"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">Cortadas</span>
+          <span class="info-box-number">{{ $estadisticas['cortadas'] ?? 0 }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2 col-sm-6">
+      <div class="info-box bg-gradient-secondary">
+        <span class="info-box-icon"><i class="fas fa-map-marker-alt"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">Con Ubicación</span>
+          <span class="info-box-number">{{ $estadisticas['con_ubicacion'] ?? 0 }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2 col-sm-6">
+      <div class="info-box bg-gradient-primary">
+        <span class="info-box-icon"><i class="fas fa-users"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">Clientes Activos</span>
+          <span class="info-box-number">{{ $estadisticas['clientes_activos'] ?? 0 }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA DE PROPIEDADES -->
   <div class="card">
     <div class="card-header">
       <div class="row align-items-center">
@@ -33,40 +230,19 @@
           <a class="btn btn-primary btn-sm" href="{{ route('admin.properties.create') }}">
             <i class="fas fa-plus-circle mr-1"></i>Nueva Propiedad
           </a>
+          <a href="{{ route('admin.cortes.pendientes') }}" class="btn btn-warning btn-sm ml-2">
+            <i class="fas fa-clock mr-1"></i>Ver Cortes Pendientes
+          </a>
         </div>
-        <div class="col-md-6">
-          <form action="{{ route('admin.properties.index') }}" method="GET" class="form-inline float-right">
-            <div class="input-group input-group-sm">
-              <input type="text" name="search" class="form-control" 
-                     placeholder="Buscar por referencia, cliente o barrio..." 
-                     value="{{ request('search') }}">
-              <div class="input-group-append">
-                <button class="btn btn-outline-secondary" type="submit" title="Buscar">
-                  <i class="fas fa-search"></i>
-                </button>
-                @if(request('search'))
-                  <a href="{{ route('admin.properties.index') }}" class="btn btn-outline-danger" title="Limpiar búsqueda">
-                    <i class="fas fa-times"></i>
-                  </a>
-                @endif
-              </div>
-            </div>
-          </form>
+        <div class="col-md-6 text-right">
+          <span class="badge badge-light">
+            Mostrando {{ $properties->count() }} de {{ $properties->total() }} propiedades
+          </span>
         </div>
       </div>
     </div>
 
     <div class="card-body p-0">
-      @if(request('search'))
-        <div class="alert alert-info mb-0 mx-3 mt-3">
-          <i class="fas fa-info-circle mr-1"></i>
-          Mostrando resultados para: <strong>"{{ request('search') }}"</strong>
-          <a href="{{ route('admin.properties.index') }}" class="float-right text-dark font-weight-bold">
-            <i class="fas fa-times mr-1"></i>Limpiar
-          </a>
-        </div>
-      @endif
-
       @if($properties->count())
         <div class="table-responsive">
           <table class="table table-hover table-striped mb-0">
@@ -78,8 +254,8 @@
                 <th>Barrio</th>
                 <th>Tarifa</th>
                 <th width="100">Precio</th>
-                <th width="100">Estado</th>
-                <th width="250" class="text-center">Acciones</th>
+                <th width="120">Estado</th>
+                <th width="300" class="text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -90,12 +266,17 @@
                     <div class="d-flex flex-column">
                       <strong class="text-primary">{{ $p->client->nombre ?? 'N/A' }}</strong>
                       <small class="text-muted">{{ $p->client->ci ?? 'Sin CI' }}</small>
+                      <small class="text-{{ $p->client->estado_cuenta == 'activo' ? 'success' : 'warning' }}">
+                        {{ $p->client->estado_cuenta ?? 'N/A' }}
+                      </small>
                     </div>
                   </td>
                   <td>
                     <strong>{{ $p->referencia }}</strong>
                     @if($p->estado === 'cortado')
                       <span class="badge badge-danger ml-1">CORTADO</span>
+                    @elseif($p->estado === 'corte_pendiente')
+                      <span class="badge badge-warning ml-1">PENDIENTE</span>
                     @endif
                   </td>
                   <td>
@@ -119,6 +300,8 @@
                   <td>
                     @if($p->estado === 'activo')
                       <span class="badge badge-success">Activo</span>
+                    @elseif($p->estado === 'corte_pendiente')
+                      <span class="badge badge-warning">Corte Pendiente</span>
                     @elseif($p->estado === 'cortado')
                       <span class="badge badge-danger">Cortado</span>
                     @else
@@ -148,21 +331,38 @@
                       Editar
                     </a>
 
-                    {{-- Cortar/Reconectar Servicio --}}
+                    {{-- Cortar/Reconectar/Cancelar Servicio --}}
                     @if($p->estado === 'activo')
                       <form action="{{ route('admin.properties.cut', $p) }}" method="POST" class="d-inline mb-1">
                         @csrf @method('PUT')
                         <button class="btn btn-warning btn-sm" type="button" 
                                 onclick="confirmCutService({{ $p->id }}, '{{ $p->referencia }}')">
-                          Cortar Agua
+                          <i class="fas fa-clock"></i> Solicitar Corte
                         </button>
                       </form>
+                    @elseif($p->estado === 'corte_pendiente')
+                      <div class="btn-group-vertical d-inline mb-1">
+                        <form action="{{ route('admin.cortes.marcar-cortado', $p) }}" method="POST" class="d-inline">
+                          @csrf
+                          <button class="btn btn-danger btn-sm mb-1" type="button" 
+                                  onclick="confirmMarkAsCut({{ $p->id }}, '{{ $p->referencia }}')">
+                            <i class="fas fa-ban"></i> Marcar Cortado
+                          </button>
+                        </form>
+                        <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
+                          @csrf @method('PUT')
+                          <button class="btn btn-secondary btn-sm" type="button" 
+                                  onclick="confirmCancelCut({{ $p->id }}, '{{ $p->referencia }}')">
+                            <i class="fas fa-times"></i> Cancelar
+                          </button>
+                        </form>
+                      </div>
                     @elseif($p->estado === 'cortado')
                       <form action="{{ route('admin.properties.restore', $p) }}" method="POST" class="d-inline mb-1">
                         @csrf @method('PUT')
                         <button class="btn btn-success btn-sm" type="button"
                                 onclick="confirmRestoreService({{ $p->id }}, '{{ $p->referencia }}')">
-                          Reconectar
+                          <i class="fas fa-plug"></i> Reconectar
                         </button>
                       </form>
                     @endif
@@ -182,15 +382,19 @@
         <div class="text-center py-5">
           <i class="fas fa-home fa-3x text-muted mb-3"></i>
           <h4 class="text-muted">
-            @if(request('search'))
-              No se encontraron propiedades para "{{ request('search') }}"
+            @if(request()->anyFilled(['search', 'estado', 'barrio', 'tarifa_id', 'cliente_id', 'estado_cuenta']))
+              No se encontraron propiedades con los filtros aplicados
             @else
               No hay propiedades registradas
             @endif
           </h4>
-          @if(!request('search'))
+          @if(!request()->anyFilled(['search', 'estado', 'barrio', 'tarifa_id', 'cliente_id', 'estado_cuenta']))
             <a href="{{ route('admin.properties.create') }}" class="btn btn-primary mt-2">
               <i class="fas fa-plus-circle mr-1"></i>Crear Primera Propiedad
+            </a>
+          @else
+            <a href="{{ route('admin.properties.index') }}" class="btn btn-secondary mt-2">
+              <i class="fas fa-undo mr-1"></i>Limpiar Filtros
             </a>
           @endif
         </div>
@@ -203,7 +407,7 @@
           <div class="text-muted small">
             Mostrando {{ $properties->firstItem() }} - {{ $properties->lastItem() }} de {{ $properties->total() }} registros
           </div>
-          {{ $properties->links() }}
+          {{ $properties->appends(request()->query())->links() }}
         </div>
       </div>
     @endif
@@ -255,6 +459,15 @@
     #leafletMap {
       border-radius: 0 0 0.25rem 0.25rem;
     }
+    .btn-group-vertical .btn {
+      margin-bottom: 2px;
+    }
+    .info-box {
+      cursor: default;
+    }
+    .card-outline {
+      border-top: 3px solid #007bff;
+    }
   </style>
 @stop
 
@@ -268,6 +481,31 @@
     let leafletMap = null;
     let leafletMarker = null;
 
+    // Inicializar Select2 para selects largos
+    $(document).ready(function() {
+      $('#cliente_id').select2({
+        placeholder: "Seleccione un cliente",
+        allowClear: true,
+        width: '100%'
+      });
+
+      // Auto-submit cuando cambien algunos filtros
+      $('#estado, #barrio, #tarifa_id, #estado_cuenta, #orden').change(function() {
+        $('#filterForm').submit();
+      });
+
+      // Toggle de filtros
+      $('#toggleFilters').click(function() {
+        $('.card-outline .card-body').toggle();
+      });
+
+      // Auto-ocultar alertas después de 5 segundos
+      setTimeout(() => {
+        $('.alert').alert('close');
+      }, 5000);
+    });
+
+    // ... (el resto del código JavaScript del mapa y confirmaciones se mantiene igual)
     $('#mapModal').on('shown.bs.modal', function (event) {
       const button = $(event.relatedTarget);
       const lat = parseFloat(button.data('lat'));
@@ -350,14 +588,14 @@
 
     function confirmCutService(propertyId, propertyRef) {
       Swal.fire({
-        title: '¿Cortar Servicio?',
-        html: `¿Cortar el servicio de agua de: <strong>"${propertyRef}"</strong>?<br>
-               <small class="text-warning">El cliente no podrá recibir agua hasta que se reconecte.</small>`,
+        title: '¿Solicitar Corte?',
+        html: `¿Solicitar corte de servicio para: <strong>"${propertyRef}"</strong>?<br>
+               <small class="text-warning">La propiedad quedará en estado "Corte Pendiente" hasta que el equipo físico realice el corte.</small>`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#ffc107',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, cortar agua',
+        confirmButtonText: 'Sí, solicitar corte',
         cancelButtonText: 'Cancelar',
         reverseButtons: true
       }).then((result) => {
@@ -365,6 +603,57 @@
           const form = document.createElement('form');
           form.method = 'POST';
           form.action = `/admin/properties/${propertyId}/cut`;
+          form.innerHTML = `
+            @csrf
+            @method('PUT')
+          `;
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+    }
+
+    function confirmMarkAsCut(propertyId, propertyRef) {
+      Swal.fire({
+        title: '¿Confirmar Corte Físico?',
+        html: `¿Confirmar que se realizó el corte físico de: <strong>"${propertyRef}"</strong>?<br>
+               <small class="text-danger">Se aplicará multa automáticamente y el servicio se cortará definitivamente.</small>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, corte realizado',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `/admin/cortes/marcar-cortado/${propertyId}`;
+          form.innerHTML = `@csrf`;
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+    }
+
+    function confirmCancelCut(propertyId, propertyRef) {
+      Swal.fire({
+        title: '¿Cancelar Corte Pendiente?',
+        html: `¿Cancelar la solicitud de corte para: <strong>"${propertyRef}"</strong>?<br>
+               <small class="text-info">La propiedad volverá a estado "Activo".</small>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#6c757d',
+        cancelButtonColor: '#28a745',
+        confirmButtonText: 'Sí, cancelar',
+        cancelButtonText: 'Mantener',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `/admin/properties/${propertyId}/cancel-cut`;
           form.innerHTML = `
             @csrf
             @method('PUT')
@@ -401,12 +690,5 @@
         }
       });
     }
-
-    // Auto-ocultar alertas después de 5 segundos
-    $(document).ready(function() {
-      setTimeout(() => {
-        $('.alert').alert('close');
-      }, 5000);
-    });
   </script>
 @stop

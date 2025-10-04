@@ -24,7 +24,7 @@
         </option>
       @endforeach
     </select>
-    @error('tarifa_id') @enderror
+    @error('tarifa_id') <span class="text-danger">{{ $message }}</span> @enderror
   </div>
 </div>
 
@@ -78,7 +78,7 @@
   <div class="form-group col-md-6">
     <label>Latitud</label>
     <div class="input-group">
-      <input type="number" step="0.00000001" name="latitud" id="latitud" class="form-control"
+      <input type="number" step="0.00000001" name="latitud" id="latitud" class="form-control coordinates-input"
              value="{{ old('latitud', $property->latitud ?? '') }}"
              placeholder="Se autocompletará con el mapa" readonly>
       <div class="input-group-append">
@@ -91,7 +91,7 @@
   <div class="form-group col-md-6">
     <label>Longitud</label>
     <div class="input-group">
-      <input type="number" step="0.00000001" name="longitud" id="longitud" class="form-control"
+      <input type="number" step="0.00000001" name="longitud" id="longitud" class="form-control coordinates-input"
              value="{{ old('longitud', $property->longitud ?? '') }}"
              placeholder="Se autocompletará con el mapa" readonly>
       <div class="input-group-append">
@@ -105,7 +105,7 @@
 <div class="form-group">
   <label>Estado</label>
   <select name="estado" class="form-control" required>
-    @foreach (['activo','inactivo','cortado'] as $op)
+    @foreach (['activo','inactivo','corte_pendiente','cortado'] as $op)
       <option value="{{ $op }}" @selected(old('estado', $property->estado ?? 'activo') == $op)>
         {{ ucfirst($op) }}
       </option>

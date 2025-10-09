@@ -7,8 +7,8 @@ use App\Http\Controllers\Admin\TariffController;
 use App\Http\Controllers\Admin\PropertyController;
 use App\Http\Controllers\Admin\DebtController;
 use App\Http\Controllers\Admin\PagoController;
-use App\Http\Controllers\Admin\FineController; // ✅ NUEVO
-use App\Http\Controllers\Admin\CorteController; // ✅ NUEVO
+use App\Http\Controllers\Admin\FineController;
+use App\Http\Controllers\Admin\CorteController;
 
 Route::middleware(['auth'])
     ->prefix('admin')
@@ -27,6 +27,7 @@ Route::middleware(['auth'])
             ->names('admin.properties');
         Route::put('/properties/{property}/cut', [PropertyController::class, 'cutService'])->name('admin.properties.cut');
         Route::put('/properties/{property}/restore', [PropertyController::class, 'restoreService'])->name('admin.properties.restore');
+        Route::put('/properties/{property}/cancel-cut', [PropertyController::class, 'cancelCutService'])->name('admin.properties.cancel-cut');
         
         // Búsqueda de propiedades
         Route::get('/propiedades/buscar', [PropertyController::class, 'search'])->name('admin.propiedades.search');
@@ -43,11 +44,18 @@ Route::middleware(['auth'])
         Route::post('/debts/{debt}/annul', [DebtController::class, 'annul'])->name('admin.debts.annul');
         Route::post('/debts/{debt}/mark-as-paid', [DebtController::class, 'markAsPaid'])->name('admin.debts.mark-as-paid');
 
-        // Pagos
+        // Pagos - ✅ RUTAS REORGANIZADAS Y CORREGIDAS
         Route::resource('pagos', PagoController::class)->names('admin.pagos');
         Route::get('/pagos/{pago}/print', [PagoController::class, 'print'])->name('admin.pagos.print');
         Route::put('/pagos/{pago}/anular', [PagoController::class, 'anular'])->name('admin.pagos.anular');
         
+        // ✅ RUTAS PARA MESES PENDIENTES - CORREGIDAS Y SIN DUPLICADOS
+        Route::get('/pagos/obtener-meses-pendientes/{propiedad}', [PagoController::class, 'obtenerMesesPendientesApi'])
+            ->name('admin.pagos.obtenerMesesPendientes');
+            
+        Route::get('/pagos/validar-meses', [PagoController::class, 'validarMeses'])
+            ->name('admin.pagos.validar-meses');
+
         // ✅ NUEVO: CRUD COMPLETO DE MULTAS
         Route::resource('multas', FineController::class)->names('admin.multas');
         
@@ -65,8 +73,6 @@ Route::middleware(['auth'])
             Route::get('/cortadas', [CorteController::class, 'indexCortadas'])->name('admin.cortes.cortadas');
             Route::post('/marcar-cortado/{propiedad}', [CorteController::class, 'marcarComoCortado'])->name('admin.cortes.marcar-cortado');
             Route::post('/aplicar-multa/{deuda}', [CorteController::class, 'aplicarMultaReconexion'])->name('admin.cortes.aplicar-multa');
-            Route::put('/properties/{property}/cancel-cut', [PropertyController::class, 'cancelCutService'])
-            ->name('admin.properties.cancel-cut');
         });
         
     });

@@ -3,15 +3,17 @@
 <div class="form-row">
   <div class="form-group col-md-6">
     <label>Cliente</label>
-    <select name="cliente_id" class="form-control" required>
+    <select name="cliente_id" class="form-control select2" required>
       <option value="">— Seleccione —</option>
       @foreach ($clients as $c)
         <option value="{{ $c->id }}" @selected(old('cliente_id', $property->cliente_id ?? null) == $c->id)>
-          {{ $c->nombre }} @if($c->ci) (CI: {{ $c->ci }}) @endif
+          {{ $c->nombre }} 
+          @if($c->ci) (CI: {{ $c->ci }}) @endif 
+          @if($c->codigo_cliente) - Código: {{ $c->codigo_cliente }} @endif
         </option>
       @endforeach
     </select>
-    @error('cliente_id') <span class="text-danger">{{ $message }}</span> @enderror
+    @error('cliente_id') <span class="text-danger small">{{ $message }}</span> @enderror
   </div>
 
   <div class="form-group col-md-6">
@@ -21,10 +23,11 @@
       @foreach ($tariffs as $t)
         <option value="{{ $t->id }}" @selected(old('tarifa_id', $property->tarifa_id ?? null) == $t->id)>
           {{ $t->nombre }} (Bs {{ number_format($t->precio_mensual,2) }})
+          @if(!$t->activo) - INACTIVA @endif
         </option>
       @endforeach
     </select>
-    @error('tarifa_id') <span class="text-danger">{{ $message }}</span> @enderror
+    @error('tarifa_id') <span class="text-danger small">{{ $message }}</span> @enderror
   </div>
 </div>
 
@@ -33,7 +36,7 @@
   <input type="text" name="referencia" class="form-control" required
          value="{{ old('referencia', $property->referencia ?? '') }}"
          placeholder="Ej: Casa color azul con portón negro">
-  @error('referencia') <span class="text-danger">{{ $message }}</span> @enderror
+  @error('referencia') <span class="text-danger small">{{ $message }}</span> @enderror
 </div>
 
 <div class="form-group">
@@ -47,15 +50,15 @@
     <option value="Primavera" @selected(old('barrio', $property->barrio ?? null) == 'Primavera')>Primavera</option>
     <option value="Arboleda" @selected(old('barrio', $property->barrio ?? null) == 'Arboleda')>Arboleda</option>
   </select>
-  @error('barrio') <span class="text-danger">{{ $message }}</span> @enderror
+  @error('barrio') <span class="text-danger small">{{ $message }}</span> @enderror
 </div>
 
-{{-- ✅ MAPA INTERACTIVO SIMPLIFICADO --}}
+{{-- MAPA INTERACTIVO MEJORADO --}}
 <div class="form-group">
   <label>Seleccionar ubicación en el mapa</label>
-  <div class="alert alert-info">
-    <small>
-      <i class="fas fa-info-circle"></i> 
+  <div class="alert alert-info py-2">
+    <small class="d-flex align-items-center">
+      <i class="fas fa-info-circle mr-2"></i> 
       Haz clic en el mapa para establecer las coordenadas. Puedes arrastrar el marcador para ajustar.
     </small>
   </div>
@@ -63,13 +66,13 @@
   {{-- Mapa --}}
   <div id="locationMap" style="height: 300px; width: 100%; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 10px;"></div>
   
-  {{-- Botones de acción SIMPLIFICADOS --}}
-  <div class="btn-group mb-3" role="group">
+  {{-- Botones de acción --}}
+  <div class="d-flex flex-wrap gap-2 mb-3">
     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetToCommunityCenter()">
-      <i class="fas fa-home"></i> Centrar mapa
+      <i class="fas fa-home mr-1"></i> Centrar mapa
     </button>
     <button type="button" class="btn btn-outline-warning btn-sm" onclick="clearLocation()">
-      <i class="fas fa-times"></i> Limpiar
+      <i class="fas fa-times mr-1"></i> Limpiar ubicación
     </button>
   </div>
 </div>
@@ -77,7 +80,7 @@
 <div class="form-row">
   <div class="form-group col-md-6">
     <label>Latitud</label>
-    <div class="input-group">
+    <div class="input-group input-group-sm">
       <input type="number" step="0.00000001" name="latitud" id="latitud" class="form-control coordinates-input"
              value="{{ old('latitud', $property->latitud ?? '') }}"
              placeholder="Se autocompletará con el mapa" readonly>
@@ -85,12 +88,12 @@
         <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
       </div>
     </div>
-    @error('latitud') <span class="text-danger">{{ $message }}</span> @enderror
+    @error('latitud') <span class="text-danger small">{{ $message }}</span> @enderror
   </div>
   
   <div class="form-group col-md-6">
     <label>Longitud</label>
-    <div class="input-group">
+    <div class="input-group input-group-sm">
       <input type="number" step="0.00000001" name="longitud" id="longitud" class="form-control coordinates-input"
              value="{{ old('longitud', $property->longitud ?? '') }}"
              placeholder="Se autocompletará con el mapa" readonly>
@@ -98,7 +101,7 @@
         <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
       </div>
     </div>
-    @error('longitud') <span class="text-danger">{{ $message }}</span> @enderror
+    @error('longitud') <span class="text-danger small">{{ $message }}</span> @enderror
   </div>
 </div>
 
@@ -107,17 +110,21 @@
   <select name="estado" class="form-control" required>
     @foreach (['activo','inactivo','corte_pendiente','cortado'] as $op)
       <option value="{{ $op }}" @selected(old('estado', $property->estado ?? 'activo') == $op)>
-        {{ ucfirst($op) }}
+        {{ ucfirst(str_replace('_', ' ', $op)) }}
       </option>
     @endforeach
   </select>
-  @error('estado') <span class="text-danger">{{ $message }}</span> @enderror
+  @error('estado') <span class="text-danger small">{{ $message }}</span> @enderror
 </div>
 
-<button class="btn btn-primary">
-  <i class="fas fa-save mr-1"></i> Guardar
-</button>
-<a href="{{ route('admin.properties.index') }}" class="btn btn-secondary">Cancelar</a>
+<div class="d-flex flex-column flex-sm-row gap-2">
+  <button class="btn btn-primary btn-sm">
+    <i class="fas fa-save mr-1"></i> Guardar Propiedad
+  </button>
+  <a href="{{ route('admin.properties.index') }}" class="btn btn-secondary btn-sm">
+    <i class="fas fa-times mr-1"></i> Cancelar
+  </a>
+</div>
 
 @push('css')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -126,6 +133,7 @@
 #locationMap { cursor: crosshair; }
 .leaflet-popup-content { font-size: 14px; }
 .coordinates-input { background-color: #f8f9fa; }
+.select2-container { width: 100% !important; }
 </style>
 @endpush
 
@@ -134,14 +142,13 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
 <script>
-// ✅ VARIABLES GLOBALES SIMPLIFICADAS
+// ✅ VARIABLES GLOBALES
 let map = null;
 let marker = null;
 const COMMUNITY_CENTER = [-21.9325, -63.6345];
 
 // ✅ INICIALIZACIÓN ROBUSTA
 function initializeMap() {
-    // Solo inicializar si no existe
     if (map) return;
     
     map = L.map('locationMap').setView(COMMUNITY_CENTER, 16);
@@ -150,35 +157,32 @@ function initializeMap() {
         attribution: '&copy; OpenStreetMap'
     }).addTo(map);
 
-    // ✅ EVENTO DE CLIC ÚNICO Y ROBUSTO
+    // ✅ EVENTO DE CLIC ÚNICO
     map.on('click', function(e) {
         handleMapClick(e.latlng);
     });
 
-    // ✅ CARGAR COORDENADAS EXISTENTES AL INICIAR
+    // ✅ CARGAR COORDENADAS EXISTENTES
     loadExistingCoordinates();
 }
 
 // ✅ MANEJADOR PRINCIPAL DE CLIC EN MAPA
 function handleMapClick(latlng) {
-    // Siempre crear nuevo marcador (la función se encarga de limpiar el anterior)
     createMarker(latlng);
     updateCoordinateFields(latlng.lat, latlng.lng);
 }
 
-// ✅ CREAR MARCADOR (SIEMPRE LIMPIA EL ANTERIOR)
+// ✅ CREAR MARCADOR
 function createMarker(latlng) {
-    // Limpiar marcador existente
     if (marker) {
         map.removeLayer(marker);
     }
     
-    // Crear nuevo marcador
     marker = L.marker(latlng, {
         draggable: true
     }).addTo(map);
 
-    // ✅ ACTUALIZAR COORDENADAS AL ARRASTRAR
+    // ✅ ACTUALIZAR AL ARRASTRAR
     marker.on('dragend', function(e) {
         const newPos = marker.getLatLng();
         updateCoordinateFields(newPos.lat, newPos.lng);
@@ -188,7 +192,7 @@ function createMarker(latlng) {
     updateMarkerPopup(latlng);
 }
 
-// ✅ ACTUALIZAR POPUP DEL MARCADOR
+// ✅ ACTUALIZAR POPUP
 function updateMarkerPopup(latlng) {
     if (marker) {
         marker.bindPopup(
@@ -199,13 +203,13 @@ function updateMarkerPopup(latlng) {
     }
 }
 
-// ✅ ACTUALIZAR CAMPOS DE COORDENADAS
+// ✅ ACTUALIZAR CAMPOS
 function updateCoordinateFields(lat, lng) {
     document.getElementById('latitud').value = lat.toFixed(8);
     document.getElementById('longitud').value = lng.toFixed(8);
 }
 
-// ✅ CARGAR COORDENADAS EXISTENTES (SOLO AL INICIAR)
+// ✅ CARGAR COORDENADAS EXISTENTES
 function loadExistingCoordinates() {
     const lat = document.getElementById('latitud').value;
     const lng = document.getElementById('longitud').value;
@@ -217,13 +221,12 @@ function loadExistingCoordinates() {
     }
 }
 
-// ✅ REINICIAR AL CENTRO DE LA COMUNIDAD
+// ✅ REINICIAR AL CENTRO
 function resetToCommunityCenter() {
     map.setView(COMMUNITY_CENTER, 16);
-    // No crear marcador aquí - solo centrar
 }
 
-// ✅ LIMPIAR UBICACIÓN COMPLETAMENTE
+// ✅ LIMPIAR UBICACIÓN
 function clearLocation() {
     if (marker) {
         map.removeLayer(marker);
@@ -234,9 +237,14 @@ function clearLocation() {
     resetToCommunityCenter();
 }
 
-// ✅ INICIALIZAR CUANDO EL DOCUMENTO ESTÉ LISTO
+// ✅ INICIALIZAR
 document.addEventListener('DOMContentLoaded', function() {
     initializeMap();
+    // Inicializar Select2
+    $('.select2').select2({
+        placeholder: "Seleccione un cliente",
+        allowClear: true
+    });
 });
 </script>
 @endpush

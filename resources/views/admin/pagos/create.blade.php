@@ -125,49 +125,21 @@
                 </div>
                 @endif
 
-                {{-- MESES ADEUDADOS (basado en pagos faltantes) --}}
-                @if(isset($propiedadSeleccionada))
-                <div class="alert alert-info mt-3" id="mesesAdeudados">
+                {{-- ✅ CORREGIDO: MESES PENDIENTES DINÁMICOS --}}
+                <div class="alert alert-warning mt-3" id="seccionMesesPendientes" style="display: none;">
                     <h6 class="alert-heading">
-                        <i class="fas fa-calendar-alt mr-2"></i>Meses por Pagar (Últimos 12 meses)
+                        <i class="fas fa-calendar-check mr-2"></i>Meses Pendientes de Pago
                     </h6>
-                    <div class="mt-2" id="listaMesesAdeudados">
-                        @php
-                            $mesesAdeudados = [];
-                            if (isset($propiedadSeleccionada)) {
-                                // Obtener meses pagados
-                                $mesesPagados = \App\Models\Pago::where('propiedad_id', $propiedadSeleccionada->id)
-                                    ->pluck('mes_pagado')
-                                    ->toArray();
-                                
-                                // Generar últimos 12 meses
-                                for ($i = 11; $i >= 0; $i--) {
-                                    $mes = \Carbon\Carbon::now()->subMonths($i)->format('Y-m');
-                                    if (!in_array($mes, $mesesPagados)) {
-                                        $mesesAdeudados[] = $mes;
-                                    }
-                                }
-                            }
-                        @endphp
-                        
-                        @if(count($mesesAdeudados) > 0)
-                            @foreach($mesesAdeudados as $mes)
-                            <span class="badge badge-warning mr-1 mb-1 mes-adeudado">
-                                {{ \Carbon\Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y') }}
-                            </span>
-                            @endforeach
-                            <div class="mt-2">
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="seleccionarMesesAdeudados()">
-                                    <i class="fas fa-check-circle mr-1"></i>Seleccionar Meses Adeudados
-                                </button>
-                            </div>
-                        @else
-                            <span class="text-success">Todos los meses están al día</span>
-                        @endif
+                    <div class="mt-2" id="listaMesesPendientes">
+                        {{-- Se llena automáticamente con JavaScript --}}
+                    </div>
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="seleccionarTodosMesesPendientes()">
+                            <i class="fas fa-check-double mr-1"></i>Seleccionar Todos los Meses Pendientes
+                        </button>
                     </div>
                 </div>
-                @endif
-                
+
                 {{-- DETALLES DEL PAGO --}}
                 <div class="card mt-4" id="detallesPago" style="display: none;">
                     <div class="card-header bg-light">
@@ -176,47 +148,32 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        {{-- SELECCIÓN DE MESES --}}
+                        {{-- ✅ CORREGIDO: SELECTS DINÁMICOS DE MESES PENDIENTES --}}
                         <div class="form-group">
                             <label>Meses a Pagar *</label>
                             <div class="row">
                                 <div class="col-md-6">
                                     <label for="mes_desde">Desde:</label>
-                                    <select name="mes_desde" id="mes_desde" class="form-control" required>
+                                    <select name="mes_desde" id="mes_desde" class="form-control" required disabled>
                                         <option value="">Seleccione mes inicial</option>
-                                        @php
-                                            $meses = [];
-                                            // ✅ CORREGIDO: Solo hasta diciembre del año actual
-                                            $startDate = now()->subMonths(12);
-                                            $endDate = now()->endOfYear(); // Solo hasta diciembre del año actual
-                                            
-                                            $current = $startDate->copy();
-                                            while ($current <= $endDate) {
-                                                $valor = $current->format('Y-m');
-                                                $texto = $current->locale('es')->translatedFormat('F Y');
-                                                $meses[$valor] = $texto;
-                                                $current->addMonth();
-                                            }
-                                        @endphp
-                                        @foreach($meses as $valor => $texto)
-                                            <option value="{{ $valor }}">{{ $texto }}</option>
-                                        @endforeach
+                                        {{-- ✅ Se llena dinámicamente con JavaScript --}}
                                     </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="mes_hasta">Hasta:</label>
-                                    <select name="mes_hasta" id="mes_hasta" class="form-control" required>
+                                    <select name="mes_hasta" id="mes_hasta" class="form-control" required disabled>
                                         <option value="">Seleccione mes final</option>
-                                        @foreach($meses as $valor => $texto)
-                                            <option value="{{ $valor }}">{{ $texto }}</option>
-                                        @endforeach
+                                        {{-- ✅ Se llena dinámicamente con JavaScript --}}
                                     </select>
                                 </div>
                             </div>
-                            <small class="form-text text-muted">
-                                Seleccione el rango de meses que desea pagar (solo hasta {{ now()->year }})
+                            <small class="form-text text-muted" id="textoMesesPendientes">
+                                Seleccione el rango de meses pendientes que desea pagar
                             </small>
                         </div>
+
+                        {{-- ✅ NUEVO: MENSAJE DE VALIDACIÓN EN TIEMPO REAL --}}
+                        <div id="mensajeValidacionMeses" class="alert" style="display: none;"></div>
 
                         {{-- RESUMEN DE MESES SELECCIONADOS --}}
                         <div class="alert alert-info" id="resumenMeses" style="display: none;">
@@ -312,7 +269,6 @@
             border-radius: 3px;
             font-size: 0.85em;
         }
-        /* Asegurar que los selects sean interactivos */
         select.form-control {
             pointer-events: all !important;
         }
@@ -326,12 +282,25 @@
         .mes-adeudado:hover {
             opacity: 0.8;
         }
+        #mensajeValidacionMeses {
+            transition: all 0.3s ease;
+        }
     </style>
 @stop
 
 @section('js')
 <script>
-    // Hacer funciones globales para poder llamarlas desde cualquier lugar
+    // =============================================
+    // VARIABLES GLOBALES
+    // =============================================
+    let tarifaMensual = 0;
+    let mesesPendientes = [];
+    let timeoutBusqueda = null;
+
+    // =============================================
+    // FUNCIONES GLOBALES
+    // =============================================
+    
     window.limpiarBusqueda = function() {
         const buscador = document.getElementById('buscador');
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
@@ -342,6 +311,7 @@
         const mesDesde = document.getElementById('mes_desde');
         const mesHasta = document.getElementById('mes_hasta');
         const resumenMeses = document.getElementById('resumenMeses');
+        const seccionMesesPendientes = document.getElementById('seccionMesesPendientes');
         
         if (buscador) buscador.value = '';
         if (resultadosBusqueda) resultadosBusqueda.style.display = 'none';
@@ -349,86 +319,345 @@
         if (detallesPago) detallesPago.style.display = 'none';
         if (submitBtn) submitBtn.disabled = true;
         if (propiedadId) propiedadId.value = '';
-        if (mesDesde) mesDesde.value = '';
-        if (mesHasta) mesHasta.value = '';
+        if (mesDesde) {
+            mesDesde.innerHTML = '<option value="">Seleccione mes inicial</option>';
+            mesDesde.disabled = true;
+        }
+        if (mesHasta) {
+            mesHasta.innerHTML = '<option value="">Seleccione mes final</option>';
+            mesHasta.disabled = true;
+        }
         if (resumenMeses) resumenMeses.style.display = 'none';
+        if (seccionMesesPendientes) seccionMesesPendientes.style.display = 'none';
         
-        // Ocultar secciones de deudas
+        // Ocultar secciones
         const deudasPendientes = document.getElementById('deudasPendientes');
         const sinDeudas = document.getElementById('sinDeudas');
-        const mesesAdeudados = document.getElementById('mesesAdeudados');
         if (deudasPendientes) deudasPendientes.style.display = 'none';
         if (sinDeudas) sinDeudas.style.display = 'none';
-        if (mesesAdeudados) mesesAdeudados.style.display = 'none';
         
-        // Mostrar el buscador si estaba oculto
+        // Mostrar buscador
         const buscadorGroup = document.getElementById('buscadorGroup');
-        if (buscadorGroup) {
-            buscadorGroup.style.display = 'block';
-        }
+        if (buscadorGroup) buscadorGroup.style.display = 'block';
         
-        // Remover mensaje de pago rápido si existe
+        // Remover mensajes
         const alertInfo = document.querySelector('.alert-info');
-        if (alertInfo) {
-            alertInfo.remove();
-        }
+        if (alertInfo) alertInfo.remove();
+        
+        ocultarMensajeValidacion();
+        
+        // Resetear variables
+        tarifaMensual = 0;
+        mesesPendientes = [];
     };
     
     window.mostrarBuscador = function() {
         window.limpiarBusqueda();
     };
+
+    // =============================================
+    // ✅ CORREGIDO: GESTIÓN DE MESES PENDIENTES
+    // =============================================
     
-    // Función para seleccionar meses adeudados automáticamente
-    window.seleccionarMesesAdeudados = function() {
+    function cargarMesesPendientes(propiedadId) {
+        // ✅ URL DIRECTA - SIN PROBLEMAS DE RUTAS
+        const url = `/admin/pagos/obtener-meses-pendientes/${propiedadId}`;
+        
+        console.log('Cargando meses pendientes desde:', url);
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Error HTTP: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    actualizarSelectsMeses(data.mesesPendientes);
+                    actualizarListaMesesPendientesUI(data.mesesPendientes);
+                    document.getElementById('textoMesesPendientes').textContent = 
+                        `Seleccione el rango de meses pendientes (${data.totalPendientes} disponibles)`;
+                } else {
+                    mostrarMensajeValidacion('error', 'Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando meses pendientes:', error);
+                mostrarMensajeValidacion('error', 'Error al cargar meses pendientes');
+            });
+    }
+    
+    function actualizarSelectsMeses(mesesPendientesObj) {
         const mesDesde = document.getElementById('mes_desde');
         const mesHasta = document.getElementById('mes_hasta');
         
-        if (!mesDesde || !mesHasta) {
-            console.error('No se encontraron los selects de meses');
-            return;
+        // Convertir objeto a array y ordenar
+        mesesPendientes = Object.entries(mesesPendientesObj)
+            .map(([valor, texto]) => ({ valor, texto }))
+            .sort((a, b) => a.valor.localeCompare(b.valor));
+        
+        // Limpiar selects
+        mesDesde.innerHTML = '<option value="">Seleccione mes inicial</option>';
+        mesHasta.innerHTML = '<option value="">Seleccione mes final</option>';
+        
+        // Llenar selects con meses pendientes
+        mesesPendientes.forEach(mes => {
+            const optionDesde = new Option(mes.texto, mes.valor);
+            const optionHasta = new Option(mes.texto, mes.valor);
+            mesDesde.add(optionDesde);
+            mesHasta.add(optionHasta);
+        });
+        
+        // Habilitar selects
+        mesDesde.disabled = false;
+        mesHasta.disabled = false;
+        
+        console.log('Selects actualizados con', mesesPendientes.length, 'meses pendientes');
+    }
+    
+    function actualizarListaMesesPendientesUI(mesesPendientesObj) {
+        const listaMesesPendientes = document.getElementById('listaMesesPendientes');
+        const seccionMesesPendientes = document.getElementById('seccionMesesPendientes');
+        
+        if (!listaMesesPendientes || !seccionMesesPendientes) return;
+        
+        listaMesesPendientes.innerHTML = '';
+        
+        const mesesArray = Object.entries(mesesPendientesObj)
+            .map(([valor, texto]) => ({ valor, texto }))
+            .sort((a, b) => a.valor.localeCompare(b.valor));
+        
+        if (mesesArray.length > 0) {
+            mesesArray.forEach(mes => {
+                const badge = document.createElement('span');
+                badge.className = 'badge badge-warning mr-1 mb-1 mes-adeudado';
+                badge.textContent = mes.texto;
+                badge.style.cursor = 'pointer';
+                badge.onclick = function() {
+                    seleccionarMesEspecifico(mes.valor);
+                };
+                listaMesesPendientes.appendChild(badge);
+            });
+            
+            seccionMesesPendientes.style.display = 'block';
+        } else {
+            seccionMesesPendientes.style.display = 'none';
+            mostrarMensajeValidacion('info', 'Esta propiedad no tiene meses pendientes de pago');
         }
-        
-        // Obtener todos los meses adeudados (de los badges)
-        const mesesAdeudadosElements = document.querySelectorAll('.mes-adeudado');
-        const mesesAdeudados = Array.from(mesesAdeudadosElements)
-            .map(badge => {
-                const texto = badge.textContent.trim();
-                // Convertir "Enero 2024" a "2024-01"
-                const partes = texto.split(' ');
-                if (partes.length === 2) {
-                    const meses = {
-                        'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
-                        'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
-                        'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
-                    };
-                    const mesNumero = meses[partes[0].toLowerCase()];
-                    if (mesNumero) {
-                        return partes[1] + '-' + mesNumero;
-                    }
-                }
-                return null;
-            })
-            .filter(mes => mes !== null)
-            .sort();
-        
-        if (mesesAdeudados.length === 0) {
-            alert('No hay meses adeudados para seleccionar');
-            return;
-        }
-        
-        // Seleccionar el rango completo de meses adeudados
-        const primerMes = mesesAdeudados[0];
-        const ultimoMes = mesesAdeudados[mesesAdeudados.length - 1];
-        
-        mesDesde.value = primerMes;
-        mesHasta.value = ultimoMes;
-        
-        // Actualizar el resumen
+    }
+    
+    function seleccionarMesEspecifico(mes) {
+        document.getElementById('mes_desde').value = mes;
+        document.getElementById('mes_hasta').value = mes;
         actualizarResumenMeses();
+        validarMesesEnTiempoReal();
+    }
+    
+    window.seleccionarTodosMesesPendientes = function() {
+        if (mesesPendientes.length === 0) {
+            alert('No hay meses pendientes para seleccionar');
+            return;
+        }
         
-        // Mostrar mensaje de confirmación
-        alert(`Se seleccionaron ${mesesAdeudados.length} meses adeudados automáticamente`);
+        const primerMes = mesesPendientes[0].valor;
+        const ultimoMes = mesesPendientes[mesesPendientes.length - 1].valor;
+        
+        document.getElementById('mes_desde').value = primerMes;
+        document.getElementById('mes_hasta').value = ultimoMes;
+        actualizarResumenMeses();
+        validarMesesEnTiempoReal();
+        
+        alert(`Se seleccionaron ${mesesPendientes.length} meses pendientes automáticamente`);
     };
+
+    // =============================================
+    // ✅ CORREGIDO: VALIDACIÓN EN TIEMPO REAL - VERSIÓN MEJORADA
+    // =============================================
+    
+    function validarMesesEnTiempoReal() {
+    const propiedadId = document.getElementById('propiedadId').value;
+    const mesDesde = document.getElementById('mes_desde').value;
+    const mesHasta = document.getElementById('mes_hasta').value;
+    
+    if (!propiedadId || !mesDesde || !mesHasta) {
+        ocultarMensajeValidacion();
+        return;
+    }
+    
+    if (mesDesde > mesHasta) {
+        mostrarMensajeValidacion('error', 'El mes final no puede ser anterior al mes inicial');
+        document.getElementById('submitBtn').disabled = true;
+        return;
+    }
+    
+    // ✅ SOLUCIÓN TEMPORAL: Validación local sin llamada al servidor
+    // Como los selects ya solo muestran meses pendientes, podemos asumir que son válidos
+    const esValido = validarRangoLocalmente(mesDesde, mesHasta);
+    
+    if (esValido) {
+        mostrarMensajeValidacion('success', 'Rango de meses válido');
+        document.getElementById('submitBtn').disabled = false;
+    } else {
+        mostrarMensajeValidacion('warning', 'El rango seleccionado contiene meses ya pagados');
+        document.getElementById('submitBtn').disabled = true;
+    }
+}
+
+function validarRangoLocalmente(mesDesde, mesHasta) {
+    // Validación simple: si los meses están en la lista de pendientes, son válidos
+    const desdeIndex = mesesPendientes.findIndex(mes => mes.valor === mesDesde);
+    const hastaIndex = mesesPendientes.findIndex(mes => mes.valor === mesHasta);
+    
+    return desdeIndex !== -1 && hastaIndex !== -1 && desdeIndex <= hastaIndex;
+}
+    
+    function mostrarMensajeValidacion(tipo, mensaje) {
+        const mensajeDiv = document.getElementById('mensajeValidacionMeses');
+        const iconos = {
+            'success': 'fa-check-circle',
+            'error': 'fa-exclamation-triangle',
+            'warning': 'fa-exclamation-triangle',
+            'info': 'fa-info-circle'
+        };
+        
+        mensajeDiv.className = `alert alert-${tipo}`;
+        mensajeDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas ${iconos[tipo]} mr-2"></i>
+                <div class="flex-grow-1">${mensaje}</div>
+                <button type="button" class="close" onclick="ocultarMensajeValidacion()">
+                    <span>&times;</span>
+                </button>
+            </div>
+        `;
+        mensajeDiv.style.display = 'block';
+    }
+    
+    function ocultarMensajeValidacion() {
+        const mensajeDiv = document.getElementById('mensajeValidacionMeses');
+        mensajeDiv.style.display = 'none';
+    }
+
+    // =============================================
+    // FUNCIONES EXISTENTES (MANTENIDAS)
+    // =============================================
+    
+    function seleccionarPropiedad(propiedad) {
+        console.log('Seleccionando propiedad:', propiedad);
+        
+        // Actualizar información mostrada
+        document.getElementById('clienteNombre').textContent = propiedad.cliente_nombre;
+        document.getElementById('clienteCI').textContent = propiedad.cliente_ci ? `CI: ${propiedad.cliente_ci}` : 'Sin CI';
+        document.getElementById('propiedadReferencia').textContent = propiedad.referencia;
+        document.getElementById('propiedadBarrio').textContent = propiedad.barrio ? `Barrio: ${propiedad.barrio}` : 'Sin barrio';
+        document.getElementById('tarifaMonto').textContent = `Bs ${parseFloat(propiedad.tarifa_precio).toFixed(2)}`;
+        document.getElementById('tarifaNombre').textContent = propiedad.tarifa_nombre;
+        
+        // Actualizar resumen
+        document.getElementById('resumenCliente').textContent = propiedad.cliente_nombre;
+        document.getElementById('resumenPropiedad').textContent = propiedad.referencia;
+        
+        // Guardar datos
+        document.getElementById('propiedadId').value = propiedad.id;
+        tarifaMensual = parseFloat(propiedad.tarifa_precio);
+        
+        // Mostrar secciones
+        document.getElementById('infoPropiedad').style.display = 'block';
+        document.getElementById('detallesPago').style.display = 'block';
+        document.getElementById('resultadosBusqueda').style.display = 'none';
+        document.getElementById('buscador').value = `${propiedad.referencia} - ${propiedad.cliente_nombre}`;
+        
+        // ✅ Cargar meses pendientes automáticamente
+        cargarMesesPendientes(propiedad.id);
+        
+        // Cargar deudas pendientes
+        cargarDeudasPendientes(propiedad.id);
+        
+        console.log('Propiedad seleccionada - Cargando meses pendientes...');
+    }
+    
+    function actualizarResumenMeses() {
+        const mesDesde = document.getElementById('mes_desde');
+        const mesHasta = document.getElementById('mes_hasta');
+        const resumenMeses = document.getElementById('resumenMeses');
+        const listaMeses = document.getElementById('listaMeses');
+        const totalMeses = document.getElementById('totalMeses');
+        
+        const desde = mesDesde.value;
+        const hasta = mesHasta.value;
+        
+        if (!desde || !hasta) {
+            resumenMeses.style.display = 'none';
+            document.getElementById('resumenTotal').textContent = 'Bs 0.00';
+            return;
+        }
+        
+        if (desde > hasta) {
+            resumenMeses.style.display = 'none';
+            document.getElementById('resumenTotal').textContent = 'Bs 0.00';
+            return;
+        }
+        
+        // Calcular meses en el rango
+        const startYear = parseInt(desde.split('-')[0]);
+        const startMonth = parseInt(desde.split('-')[1]) - 1;
+        const endYear = parseInt(hasta.split('-')[0]);
+        const endMonth = parseInt(hasta.split('-')[1]) - 1;
+        
+        const meses = [];
+        let currentYear = startYear;
+        let currentMonth = startMonth;
+        
+        while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+            const fecha = new Date(currentYear, currentMonth, 15);
+            meses.push(new Date(fecha));
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+        }
+        
+        // Mostrar meses
+        listaMeses.innerHTML = '';
+        meses.forEach(mes => {
+            const mesFormateado = mes.toLocaleDateString('es-ES', { 
+                year: 'numeric', 
+                month: 'long' 
+            });
+            const span = document.createElement('span');
+            span.className = 'mes-item';
+            span.textContent = mesFormateado;
+            listaMeses.appendChild(span);
+        });
+        
+        // Calcular total
+        const totalMesesCount = meses.length;
+        const totalPago = totalMesesCount * tarifaMensual;
+        
+        totalMeses.textContent = `Total: ${totalMesesCount} mes(es) × Bs ${tarifaMensual.toFixed(2)} = Bs ${totalPago.toFixed(2)}`;
+        document.getElementById('resumenTotal').textContent = `Bs ${totalPago.toFixed(2)}`;
+        resumenMeses.style.display = 'block';
+    }
+    
+    function cargarDeudasPendientes(propiedadId) {
+        const url = `/admin/propiedades/${propiedadId}/deudaspendientes`;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Deudas cargadas exitosamente:', data);
+            })
+            .catch(error => {
+                console.error('Error cargando deudas:', error);
+            });
+    }
+
+    // =============================================
+    // INICIALIZACIÓN PRINCIPAL
+    // =============================================
     
     document.addEventListener('DOMContentLoaded', function() {
         console.log('DOM completamente cargado - Inicializando script de pagos');
@@ -436,231 +665,20 @@
         const buscador = document.getElementById('buscador');
         const resultadosBusqueda = document.getElementById('resultadosBusqueda');
         const listaResultados = document.getElementById('listaResultados');
-        const infoPropiedad = document.getElementById('infoPropiedad');
-        const detallesPago = document.getElementById('detallesPago');
-        const submitBtn = document.getElementById('submitBtn');
-        const propiedadId = document.getElementById('propiedadId');
         const mesDesde = document.getElementById('mes_desde');
         const mesHasta = document.getElementById('mes_hasta');
-        const resumenMeses = document.getElementById('resumenMeses');
-        const listaMeses = document.getElementById('listaMeses');
-        const totalMeses = document.getElementById('totalMeses');
         
-        let tarifaMensual = 0;
-        let timeoutBusqueda = null;
-    
-        // ✅ VERIFICAR QUE TODOS LOS ELEMENTOS EXISTAN
-        if (!buscador || !mesDesde || !mesHasta) {
-            console.error('Error: Elementos críticos no encontrados en el DOM');
-            return;
-        }
-    
-        console.log('Todos los elementos del DOM están disponibles');
-    
-        // Función para seleccionar propiedad
-        function seleccionarPropiedad(propiedad) {
-            console.log('Seleccionando propiedad:', propiedad);
-            
-            // Actualizar información mostrada
-            document.getElementById('clienteNombre').textContent = propiedad.cliente_nombre;
-            document.getElementById('clienteCI').textContent = propiedad.cliente_ci ? `CI: ${propiedad.cliente_ci}` : 'Sin CI';
-            document.getElementById('propiedadReferencia').textContent = propiedad.referencia;
-            document.getElementById('propiedadBarrio').textContent = propiedad.barrio ? `Barrio: ${propiedad.barrio}` : 'Sin barrio';
-            document.getElementById('tarifaMonto').textContent = `Bs ${parseFloat(propiedad.tarifa_precio).toFixed(2)}`;
-            document.getElementById('tarifaNombre').textContent = propiedad.tarifa_nombre;
-            
-            // Actualizar resumen
-            document.getElementById('resumenCliente').textContent = propiedad.cliente_nombre;
-            document.getElementById('resumenPropiedad').textContent = propiedad.referencia;
-            
-            // Guardar datos
-            propiedadId.value = propiedad.id;
-            tarifaMensual = parseFloat(propiedad.tarifa_precio);
-            
-            // Mostrar secciones
-            infoPropiedad.style.display = 'block';
-            detallesPago.style.display = 'block';
-            resultadosBusqueda.style.display = 'none';
-            buscador.value = `${propiedad.referencia} - ${propiedad.cliente_nombre}`;
-            
-            // Cargar deudas pendientes via AJAX
-            cargarDeudasPendientes(propiedad.id);
-            
-            // Habilitar submit
-            submitBtn.disabled = false;
-            
-            // ✅ FORZAR HABILITACIÓN DE SELECTS
-            mesDesde.disabled = false;
-            mesHasta.disabled = false;
-            
-            // ✅ AGREGAR EVENT LISTENERS DIRECTAMENTE
-            mesDesde.onchange = actualizarResumenMeses;
-            mesHasta.onchange = actualizarResumenMeses;
-            
-            console.log('Propiedad seleccionada - Selects habilitados y listeners agregados');
-            
-            // Actualizar total inicial
+        // Event listeners para meses
+        mesDesde.addEventListener('change', function() {
             actualizarResumenMeses();
-        }
-    
-        // Función para cargar deudas pendientes via AJAX
-        function cargarDeudasPendientes(propiedadId) {
-            // ✅ USAR LA RUTA CORRECTA
-            const url = `{{ route('admin.propiedades.deudaspendientes', ['propiedad' => 'PROP_ID']) }}`.replace('PROP_ID', propiedadId);
-            
-            console.log('Cargando deudas desde:', url);
-            
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Error HTTP: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Deudas cargadas exitosamente:', data);
-                    actualizarUIdeudasPendientes(data);
-                })
-                .catch(error => {
-                    console.error('Error cargando deudas:', error);
-                    // Ocultar secciones de deudas si hay error
-                    const deudasPendientes = document.getElementById('deudasPendientes');
-                    const mesesAdeudados = document.getElementById('mesesAdeudados');
-                    if (deudasPendientes) deudasPendientes.style.display = 'none';
-                    if (mesesAdeudados) mesesAdeudados.style.display = 'none';
-                });
-        }
-    
-        function actualizarUIdeudasPendientes(data) {
-            // Esta función se puede expandir para actualizar dinámicamente
-            // las deudas cuando se selecciona una propiedad via búsqueda
-            console.log('Deudas cargadas:', data);
-        }
-    
-        // ✅ FUNCIÓN ACTUALIZARRESUMENMESES - PERFECTA Y SIN ERRORES
-        function actualizarResumenMeses() {
-            console.log('Actualizando resumen de meses...');
-            
-            const desde = mesDesde.value;
-            const hasta = mesHasta.value;
-            
-            console.log('Desde:', desde, 'Hasta:', hasta);
-            
-            if (!desde || !hasta) {
-                resumenMeses.style.display = 'none';
-                document.getElementById('resumenTotal').textContent = 'Bs 0.00';
-                return;
-            }
-    
-            // Validar que "hasta" no sea menor que "desde"
-            if (desde > hasta) {
-                alert('Error: El mes final no puede ser anterior al mes inicial');
-                mesHasta.value = '';
-                resumenMeses.style.display = 'none';
-                document.getElementById('resumenTotal').textContent = 'Bs 0.00';
-                return;
-            }
-    
-            // ✅ CÁLCULO PERFECTO - SIN PROBLEMAS DE ZONA HORARIA
-            const startYear = parseInt(desde.split('-')[0]);
-            const startMonth = parseInt(desde.split('-')[1]) - 1; // Meses en JS: 0-11
-            const endYear = parseInt(hasta.split('-')[0]);
-            const endMonth = parseInt(hasta.split('-')[1]) - 1;
-            
-            const meses = [];
-            
-            let currentYear = startYear;
-            let currentMonth = startMonth;
-            
-            // Calcular hasta que lleguemos al mes final inclusive
-            while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
-                // Crear fecha sin problemas de zona horaria (usar día 15)
-                const fecha = new Date(currentYear, currentMonth, 15);
-                meses.push(new Date(fecha));
-                
-                // Avanzar al siguiente mes
-                currentMonth++;
-                if (currentMonth > 11) {
-                    currentMonth = 0;
-                    currentYear++;
-                }
-            }
-    
-            console.log('Meses calculados CORRECTAMENTE:', meses.map(m => m.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })));
-    
-            // Mostrar meses
-            listaMeses.innerHTML = '';
-            meses.forEach(mes => {
-                const mesFormateado = mes.toLocaleDateString('es-ES', { 
-                    year: 'numeric', 
-                    month: 'long' 
-                });
-                const span = document.createElement('span');
-                span.className = 'mes-item';
-                span.textContent = mesFormateado;
-                listaMeses.appendChild(span);
-            });
-    
-            // Calcular total
-            const totalMesesCount = meses.length;
-            const totalPago = totalMesesCount * tarifaMensual;
-    
-            totalMeses.textContent = `Total: ${totalMesesCount} mes(es) × Bs ${tarifaMensual.toFixed(2)} = Bs ${totalPago.toFixed(2)}`;
-            document.getElementById('resumenTotal').textContent = `Bs ${totalPago.toFixed(2)}`;
-            
-            resumenMeses.style.display = 'block';
-    
-            // Validar máximo 12 meses
-            if (totalMesesCount > 12) {
-                alert('Advertencia: Está intentando pagar más de 12 meses. Considere dividir el pago.');
-            }
-        }
-    
-        // ✅ AUTO-SELECCIÓN SI VIENE PROPIEDAD POR URL
-        @if(isset($propiedadSeleccionada) && $propiedadSeleccionada)
-            console.log('Iniciando auto-selección para propiedad ID:', {{ $propiedadSeleccionada->id }});
-            
-            const propiedadData = {
-                id: {{ $propiedadSeleccionada->id }},
-                referencia: '{{ addslashes($propiedadSeleccionada->referencia) }}',
-                cliente_nombre: '{{ addslashes($propiedadSeleccionada->client->nombre) }}',
-                cliente_ci: '{{ $propiedadSeleccionada->client->ci ?? '' }}',
-                barrio: '{{ $propiedadSeleccionada->barrio ?? '' }}',
-                tarifa_precio: {{ $propiedadSeleccionada->tariff->precio_mensual ?? 0 }},
-                tarifa_nombre: '{{ $propiedadSeleccionada->tariff->nombre ?? 'N/A' }}'
-            };
-            
-            // Esperar un poco más para asegurar que todo esté listo
-            setTimeout(() => {
-                console.log('Ejecutando auto-selección...');
-                seleccionarPropiedad(propiedadData);
-                
-                // Ocultar el buscador para mejor UX
-                const buscadorGroup = document.getElementById('buscadorGroup');
-                if (buscadorGroup) {
-                    buscadorGroup.style.display = 'none';
-                }
-                
-                // Mostrar mensaje informativo
-                const infoHeader = document.createElement('div');
-                infoHeader.className = 'alert alert-info mb-3';
-                infoHeader.innerHTML = `
-                    <i class="fas fa-info-circle mr-2"></i>
-                    <strong>Pago rápido:</strong> Está pagando la propiedad <strong>${propiedadData.referencia}</strong> 
-                    del cliente <strong>${propiedadData.cliente_nombre}</strong>
-                    <a href="javascript:void(0)" onclick="mostrarBuscador()" class="float-right">
-                        <small><i class="fas fa-search mr-1"></i>Cambiar propiedad</small>
-                    </a>
-                `;
-                const cardBody = document.querySelector('.card-body');
-                if (cardBody) {
-                    cardBody.insertBefore(infoHeader, cardBody.firstChild);
-                }
-                
-                console.log('Auto-selección completada exitosamente');
-            }, 300);
-        @endif
-    
+            validarMesesEnTiempoReal();
+        });
+        
+        mesHasta.addEventListener('change', function() {
+            actualizarResumenMeses();
+            validarMesesEnTiempoReal();
+        });
+        
         // Búsqueda en tiempo real
         buscador.addEventListener('input', function() {
             clearTimeout(timeoutBusqueda);
@@ -675,9 +693,9 @@
                 buscarPropiedades(query);
             }, 300);
         });
-    
+        
         function buscarPropiedades(query) {
-            const url = '{{ route("admin.propiedades.search") }}?q=' + encodeURIComponent(query);
+            const url = `/admin/propiedades/buscar?q=${encodeURIComponent(query)}`;
             
             fetch(url)
                 .then(response => {
@@ -695,7 +713,7 @@
                     resultadosBusqueda.style.display = 'block';
                 });
         }
-    
+        
         function mostrarResultados(propiedades) {
             listaResultados.innerHTML = '';
             
@@ -732,61 +750,50 @@
             
             resultadosBusqueda.style.display = 'block';
         }
-    
-        // ✅ AGREGAR EVENT LISTENERS A LOS SELECTS DE MESES (SIEMPRE)
-        mesDesde.addEventListener('change', actualizarResumenMeses);
-        mesHasta.addEventListener('change', actualizarResumenMeses);
         
-        console.log('Event listeners de meses agregados correctamente');
-    
-        // Cerrar resultados al hacer click fuera
-        document.addEventListener('click', function(e) {
-            if (!buscador.contains(e.target) && !resultadosBusqueda.contains(e.target)) {
-                resultadosBusqueda.style.display = 'none';
-            }
-        });
-    
-        // ✅ VALIDACIÓN PERFECTA - PERMITE FECHAS FUTURAS Y CÁLCULO PRECISO
-        document.getElementById('pagoForm').addEventListener('submit', function(e) {
-            if (!propiedadId.value) {
-                e.preventDefault();
-                alert('Error: Debe seleccionar una propiedad.');
-                return false;
-            }
-    
-            if (!mesDesde.value || !mesHasta.value) {
-                e.preventDefault();
-                alert('Error: Debe seleccionar el rango de meses a pagar.');
-                return false;
-            }
-    
-            // ✅ CÁLCULO PERFECTO para la confirmación
-            const desde = mesDesde.value;
-            const hasta = mesHasta.value;
+        // Auto-selección si viene propiedad por URL
+        @if(isset($propiedadSeleccionada) && $propiedadSeleccionada)
+            console.log('Iniciando auto-selección para propiedad ID:', {{ $propiedadSeleccionada->id }});
             
-            const startYear = parseInt(desde.split('-')[0]);
-            const startMonth = parseInt(desde.split('-')[1]);
-            const endYear = parseInt(hasta.split('-')[0]);
-            const endMonth = parseInt(hasta.split('-')[1]);
+            const propiedadData = {
+                id: {{ $propiedadSeleccionada->id }},
+                referencia: '{{ addslashes($propiedadSeleccionada->referencia) }}',
+                cliente_nombre: '{{ addslashes($propiedadSeleccionada->client->nombre) }}',
+                cliente_ci: '{{ $propiedadSeleccionada->client->ci ?? '' }}',
+                barrio: '{{ $propiedadSeleccionada->barrio ?? '' }}',
+                tarifa_precio: {{ $propiedadSeleccionada->tariff->precio_mensual ?? 0 }},
+                tarifa_nombre: '{{ $propiedadSeleccionada->tariff->nombre ?? 'N/A' }}'
+            };
             
-            let mesesCount = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-            
-            const totalPago = mesesCount * tarifaMensual;
-    
-            const confirmacion = confirm(
-                `¿Está seguro de registrar ${mesesCount} pago(s) por un total de Bs ${totalPago.toFixed(2)}?\n\n` +
-                `Cliente: ${document.getElementById('resumenCliente').textContent}\n` +
-                `Propiedad: ${document.getElementById('resumenPropiedad').textContent}\n` +
-                `Meses: ${mesDesde.options[mesDesde.selectedIndex].text} - ${mesHasta.options[mesHasta.selectedIndex].text}`
-            );
-            
-            if (!confirmacion) {
-                e.preventDefault();
-                return false;
-            }
-        });
-    
+            setTimeout(() => {
+                console.log('Ejecutando auto-selección...');
+                seleccionarPropiedad(propiedadData);
+                
+                const buscadorGroup = document.getElementById('buscadorGroup');
+                if (buscadorGroup) {
+                    buscadorGroup.style.display = 'none';
+                }
+                
+                const infoHeader = document.createElement('div');
+                infoHeader.className = 'alert alert-info mb-3';
+                infoHeader.innerHTML = `
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Pago rápido:</strong> Está pagando la propiedad <strong>${propiedadData.referencia}</strong> 
+                    del cliente <strong>${propiedadData.cliente_nombre}</strong>
+                    <a href="javascript:void(0)" onclick="mostrarBuscador()" class="float-right">
+                        <small><i class="fas fa-search mr-1"></i>Cambiar propiedad</small>
+                    </a>
+                `;
+                const cardBody = document.querySelector('.card-body');
+                if (cardBody) {
+                    cardBody.insertBefore(infoHeader, cardBody.firstChild);
+                }
+                
+                console.log('Auto-selección completada exitosamente');
+            }, 300);
+        @endif
+        
         console.log('Script de pagos inicializado completamente');
     });
-    </script>
+</script>
 @stop

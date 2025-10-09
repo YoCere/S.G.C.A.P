@@ -10,10 +10,9 @@ class Pago extends Model
     protected $table = 'pagos';
 
     protected $fillable = [
-        'numero_recibo',
+        'numero_recibo', // ✅ AHORA EXISTE EN LA BD
         'cliente_id',
         'propiedad_id', 
-        'cliente_id',
         'monto',
         'mes_pagado',
         'fecha_pago',
@@ -44,11 +43,7 @@ class Pago extends Model
         return $this->belongsTo(User::class, 'registrado_por');
     }
 
-    // ✅ MÉTODOS ÚTILES
-    public function getNumeroReciboAttribute(): string
-    {
-        return 'REC-' . str_pad($this->id, 6, '0', STR_PAD_LEFT);
-    }
+    // ✅ ELIMINADO: Accessor getNumeroReciboAttribute (ya es campo real)
 
     public function getMesPagadoFormateadoAttribute(): string
     {

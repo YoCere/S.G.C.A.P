@@ -3,7 +3,7 @@
 @section('title', 'Pagos Registrados')
 
 @section('content_header')
-    <h1>Pagos Registrados</h1>
+    <h1 class="h5 font-weight-bold mb-0">Pagos Registrados</h1>
     <small class="text-muted">Historial de pagos de agua - Sistema de múltiples meses</small>
 @stop
 
@@ -17,27 +17,27 @@
         </div>
     @endif
 
-    <div class="card">
+    <div class="card shadow-sm">
         <div class="card-header">
-            <div class="row">
-                <div class="col-md-6">
-                    <a class="btn btn-primary btn-sm" href="{{ route('admin.pagos.create') }}">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2">
+                <div class="mb-2 mb-md-0">
+                    <a class="btn btn-primary btn-sm mb-1" href="{{ route('admin.pagos.create') }}">
                         <i class="fas fa-plus-circle mr-1"></i>Nuevo Pago
                     </a>
-                    <button class="btn btn-outline-info btn-sm" onclick="mostrarEstadisticas()">
+                    <button class="btn btn-outline-info btn-sm mb-1" onclick="mostrarEstadisticas()">
                         <i class="fas fa-chart-bar mr-1"></i>Estadísticas
                     </button>
                 </div>
-                <div class="col-md-6">
-                    {{-- FILTROS AVANZADOS --}}
-                    <form action="{{ route('admin.pagos.index') }}" method="GET" class="form-inline float-right">
-                        <div class="input-group input-group-sm">
-                            <input type="text" name="search" class="form-control" 
-                                   placeholder="Buscar cliente, propiedad, CI o recibo..." 
-                                   value="{{ request('search') }}">
-                            
-                            {{-- FILTRO POR MES --}}
-                            <select name="mes" class="form-control form-control-sm ml-2" style="max-width: 150px;">
+                
+                <!-- Filtros Responsivos -->
+                <form action="{{ route('admin.pagos.index') }}" method="GET" class="w-100 w-md-auto">
+                    <div class="row g-2">
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <input type="text" name="search" class="form-control form-control-sm" 
+                                   placeholder="Buscar..." value="{{ request('search') }}">
+                        </div>
+                        <div class="col-6 col-sm-3 col-md-2">
+                            <select name="mes" class="form-control form-control-sm">
                                 <option value="">Todos los meses</option>
                                 @php
                                     $meses = [];
@@ -52,54 +52,84 @@
                                     </option>
                                 @endforeach
                             </select>
-                            
-                            {{-- FILTRO POR MÉTODO --}}
-                            <select name="metodo" class="form-control form-control-sm ml-2" style="max-width: 130px;">
-                                <option value="">Todos los métodos</option>
+                        </div>
+                        <div class="col-6 col-sm-3 col-md-2">
+                            <select name="metodo" class="form-control form-control-sm">
+                                <option value="">Todos</option>
                                 <option value="efectivo" {{ request('metodo') == 'efectivo' ? 'selected' : '' }}>Efectivo</option>
                                 <option value="transferencia" {{ request('metodo') == 'transferencia' ? 'selected' : '' }}>Transferencia</option>
                                 <option value="qr" {{ request('metodo') == 'qr' ? 'selected' : '' }}>QR</option>
                             </select>
-
-                            {{-- FILTRO POR RANGO DE FECHAS --}}
-                            <input type="date" name="fecha_desde" class="form-control form-control-sm ml-2" 
-                                   placeholder="Desde" value="{{ request('fecha_desde') }}" style="max-width: 140px;">
-                            <input type="date" name="fecha_hasta" class="form-control form-control-sm ml-1" 
-                                   placeholder="Hasta" value="{{ request('fecha_hasta') }}" style="max-width: 140px;">
-
-                            <div class="input-group-append">
-                                <button class="btn btn-outline-primary" type="submit" title="Buscar">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                                @if(request()->anyFilled(['search', 'mes', 'metodo', 'fecha_desde', 'fecha_hasta']))
-                                    <a href="{{ route('admin.pagos.index') }}" class="btn btn-outline-danger" title="Limpiar filtros">
-                                        <i class="fas fa-times"></i>
-                                    </a>
-                                @endif
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-2">
+                            <input type="date" name="fecha_desde" class="form-control form-control-sm" 
+                                   value="{{ request('fecha_desde') }}" placeholder="Desde">
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-2">
+                            <div class="input-group input-group-sm">
+                                <input type="date" name="fecha_hasta" class="form-control form-control-sm" 
+                                       value="{{ request('fecha_hasta') }}" placeholder="Hasta">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-primary" type="submit" title="Buscar">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                    @if(request()->anyFilled(['search', 'mes', 'metodo', 'fecha_desde', 'fecha_hasta']))
+                                        <a href="{{ route('admin.pagos.index') }}" class="btn btn-outline-danger" title="Limpiar">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                    @endif
+                                </div>
                             </div>
                         </div>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
+
+            <!-- Filtro adicional por código cliente -->
+            <form action="{{ route('admin.pagos.index') }}" method="GET" class="mt-2">
+                <div class="form-row align-items-center">
+                    <div class="col-auto">
+                        <label for="codigo_cliente" class="col-form-label col-form-label-sm">Filtrar por código cliente:</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="text" name="codigo_cliente" class="form-control form-control-sm" 
+                               placeholder="Ej: 48372" value="{{ request('codigo_cliente') }}"
+                               style="width: 120px;">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-filter mr-1"></i>Filtrar
+                        </button>
+                        @if(request('codigo_cliente'))
+                            <a href="{{ route('admin.pagos.index') }}" class="btn btn-sm btn-outline-secondary ml-1">
+                                <i class="fas fa-times mr-1"></i>Limpiar
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            </form>
         </div>
 
         <div class="card-body p-0">
             {{-- RESUMEN DE FILTROS APLICADOS --}}
-            @if(request()->anyFilled(['search', 'mes', 'metodo', 'fecha_desde', 'fecha_hasta']))
+            @if(request()->anyFilled(['search', 'mes', 'metodo', 'fecha_desde', 'fecha_hasta', 'codigo_cliente']))
                 <div class="alert alert-info mb-0 mx-3 mt-3">
                     <i class="fas fa-filter mr-1"></i>
                     <strong>Filtros aplicados:</strong>
                     @if(request('search'))
-                        <span class="badge badge-light mr-2">Búsqueda: "{{ request('search') }}"</span>
+                        <span class="badge badge-light mr-1 mb-1">Búsqueda: "{{ request('search') }}"</span>
+                    @endif
+                    @if(request('codigo_cliente'))
+                        <span class="badge badge-light mr-1 mb-1">Código: {{ request('codigo_cliente') }}</span>
                     @endif
                     @if(request('mes'))
-                        <span class="badge badge-light mr-2">Mes: {{ \Carbon\Carbon::parse(request('mes'))->format('F Y') }}</span>
+                        <span class="badge badge-light mr-1 mb-1">Mes: {{ \Carbon\Carbon::parse(request('mes'))->format('F Y') }}</span>
                     @endif
                     @if(request('metodo'))
-                        <span class="badge badge-light mr-2">Método: {{ ucfirst(request('metodo')) }}</span>
+                        <span class="badge badge-light mr-1 mb-1">Método: {{ ucfirst(request('metodo')) }}</span>
                     @endif
                     @if(request('fecha_desde') || request('fecha_hasta'))
-                        <span class="badge badge-light">
+                        <span class="badge badge-light mr-1 mb-1">
                             Fecha: 
                             {{ request('fecha_desde') ? \Carbon\Carbon::parse(request('fecha_desde'))->format('d/m/Y') : 'Inicio' }}
                             -
@@ -114,38 +144,38 @@
 
             {{-- ESTADÍSTICAS RÁPIDAS --}}
             <div class="row mx-3 mt-3" id="estadisticas">
-                <div class="col-md-3">
-                    <div class="info-box bg-light">
+                <div class="col-6 col-sm-3 mb-3">
+                    <div class="info-box bg-light shadow-sm">
                         <span class="info-box-icon bg-success"><i class="fas fa-receipt"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Total Pagos</span>
+                            <span class="info-box-text small">Total Pagos</span>
                             <span class="info-box-number">{{ $pagos->total() }}</span>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="info-box bg-light">
+                <div class="col-6 col-sm-3 mb-3">
+                    <div class="info-box bg-light shadow-sm">
                         <span class="info-box-icon bg-primary"><i class="fas fa-money-bill-wave"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Ingreso Total</span>
+                            <span class="info-box-text small">Ingreso Total</span>
                             <span class="info-box-number">Bs {{ number_format($pagos->sum('monto'), 2) }}</span>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="info-box bg-light">
+                <div class="col-6 col-sm-3 mb-3">
+                    <div class="info-box bg-light shadow-sm">
                         <span class="info-box-icon bg-warning"><i class="fas fa-calendar-alt"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Mes Actual</span>
+                            <span class="info-box-text small">Mes Actual</span>
                             <span class="info-box-number">{{ $pagos->where('mes_pagado', now()->format('Y-m'))->count() }}</span>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="info-box bg-light">
+                <div class="col-6 col-sm-3 mb-3">
+                    <div class="info-box bg-light shadow-sm">
                         <span class="info-box-icon bg-info"><i class="fas fa-users"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Clientes Únicos</span>
+                            <span class="info-box-text small">Clientes Únicos</span>
                             <span class="info-box-number">{{ $pagos->pluck('cliente_id')->unique()->count() }}</span>
                         </div>
                     </div>
@@ -153,120 +183,197 @@
             </div>
 
             @if($pagos->count())
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped mb-0">
-                        <thead class="thead-light">
-                            <tr>
-                                <th width="100">Recibo</th>
-                                <th>Cliente / Propiedad</th>
-                                <th>Mes Pagado</th>
-                                <th width="110">Monto</th>
-                                <th width="110">Fecha Pago</th>
-                                <th width="100">Método</th>
-                                <th width="120" class="text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($pagos as $pago)
+                <!-- Vista Escritorio -->
+                <div class="d-none d-md-block">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="thead-light">
                                 <tr>
-                                    <td>
-                                        <strong class="text-primary">{{ $pago->numero_recibo }}</strong>
-                                        @if($pago->comprobante)
-                                            <br>
-                                            <small class="text-muted">Ref: {{ $pago->comprobante }}</small>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-start">
-                                            <div>
-                                                <strong>{{ $pago->cliente->nombre }}</strong>
+                                    <th width="100">Recibo</th>
+                                    <th width="120">Código</th>
+                                    <th>Cliente / Propiedad</th>
+                                    <th width="110">Mes Pagado</th>
+                                    <th width="110">Monto</th>
+                                    <th width="110">Fecha Pago</th>
+                                    <th width="100">Método</th>
+                                    <th width="120" class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($pagos as $pago)
+                                    <tr>
+                                        <td>
+                                            <strong class="text-primary">{{ $pago->numero_recibo }}</strong>
+                                            @if($pago->comprobante)
                                                 <br>
-                                                <small class="text-muted">
-                                                    {{ $pago->cliente->ci ?? 'Sin CI' }} | 
-                                                    {{ $pago->propiedad->referencia }}
-                                                </small>
-                                                <br>
-                                                <small class="text-info">
-                                                    {{ $pago->propiedad->barrio ?? 'Sin barrio' }}
-                                                </small>
+                                                <small class="text-muted">Ref: {{ $pago->comprobante }}</small>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-primary">
+                                                {{ $pago->cliente->codigo_cliente }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-start">
+                                                <div>
+                                                    <strong>{{ $pago->cliente->nombre }}</strong>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        {{ $pago->cliente->ci ?? 'Sin CI' }} | 
+                                                        {{ $pago->propiedad->referencia }}
+                                                    </small>
+                                                    <br>
+                                                    <small class="text-info">
+                                                        {{ $pago->propiedad->barrio ?? 'Sin barrio' }}
+                                                    </small>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-info">
-                                            {{ \Carbon\Carbon::createFromFormat('Y-m', $pago->mes_pagado)->format('M Y') }}
-                                        </span>
-                                        @if($pago->mes_pagado == now()->format('Y-m'))
-                                            <span class="badge badge-success ml-1">Actual</span>
-                                        @elseif($pago->mes_pagado > now()->format('Y-m'))
-                                            <span class="badge badge-warning ml-1">Futuro</span>
-                                        @elseif($pago->mes_pagado < now()->subMonth()->format('Y-m'))
-                                            <span class="badge badge-secondary ml-1">Antiguo</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <strong class="text-success">Bs {{ number_format($pago->monto, 2) }}</strong>
-                                    </td>
-                                    <td>
-                                        <small>{{ $pago->fecha_pago->format('d/m/Y') }}</small>
-                                        <br>
-                                        <small class="text-muted">{{ $pago->fecha_pago->diffForHumans() }}</small>
-                                    </td>
-                                    <td>
-                                        @if($pago->metodo == 'efectivo')
-                                            <span class="badge badge-success">Efectivo</span>
-                                        @elseif($pago->metodo == 'transferencia')
-                                            <span class="badge badge-primary">Transferencia</span>
-                                        @else
-                                            <span class="badge badge-secondary">QR</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            {{-- VER DETALLES --}}
-                                            <a class="btn btn-info" href="{{ route('admin.pagos.show', $pago) }}" 
-                                               title="Ver detalles del pago">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-
-                                            {{-- IMPRIMIR RECIBO --}}
-                                            <a class="btn btn-warning" href="{{ route('admin.pagos.print', $pago) }}" 
-                                               target="_blank" title="Imprimir recibo">
-                                                <i class="fas fa-print"></i>
-                                            </a>
-
-                                            {{-- ANULAR PAGO --}}
-                                            @if($pago->fecha_pago->greaterThanOrEqualTo(now()->subDays(30)))
-                                                <button class="btn btn-danger" 
-                                                        onclick="confirmAnular({{ $pago->id }}, '{{ $pago->numero_recibo }}')"
-                                                        title="Anular pago">
-                                                    <i class="fas fa-ban"></i>
-                                                </button>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-info">
+                                                {{ \Carbon\Carbon::createFromFormat('Y-m', $pago->mes_pagado)->format('M Y') }}
+                                            </span>
+                                            @if($pago->mes_pagado == now()->format('Y-m'))
+                                                <span class="badge badge-success ml-1">Actual</span>
+                                            @elseif($pago->mes_pagado > now()->format('Y-m'))
+                                                <span class="badge badge-warning ml-1">Futuro</span>
+                                            @elseif($pago->mes_pagado < now()->subMonth()->format('Y-m'))
+                                                <span class="badge badge-secondary ml-1">Antiguo</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <strong class="text-success">Bs {{ number_format($pago->monto, 2) }}</strong>
+                                        </td>
+                                        <td>
+                                            <small>{{ $pago->fecha_pago->format('d/m/Y') }}</small>
+                                            <br>
+                                            <small class="text-muted">{{ $pago->fecha_pago->diffForHumans() }}</small>
+                                        </td>
+                                        <td>
+                                            @if($pago->metodo == 'efectivo')
+                                                <span class="badge badge-success">Efectivo</span>
+                                            @elseif($pago->metodo == 'transferencia')
+                                                <span class="badge badge-primary">Transferencia</span>
                                             @else
-                                                <button class="btn btn-outline-secondary" disabled
-                                                        title="No se puede anular después de 30 días">
-                                                    <i class="fas fa-ban"></i>
-                                                </button>
+                                                <span class="badge badge-secondary">QR</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a class="btn btn-info" href="{{ route('admin.pagos.show', $pago) }}" 
+                                                   title="Ver detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a class="btn btn-warning" href="{{ route('admin.pagos.print', $pago) }}" 
+                                                   target="_blank" title="Imprimir recibo">
+                                                    <i class="fas fa-print"></i>
+                                                </a>
+                                                @if($pago->fecha_pago->greaterThanOrEqualTo(now()->subDays(30)))
+                                                    <button class="btn btn-danger" 
+                                                            onclick="confirmAnular({{ $pago->id }}, '{{ $pago->numero_recibo }}')"
+                                                            title="Anular pago">
+                                                        <i class="fas fa-ban"></i>
+                                                    </button>
+                                                @else
+                                                    <button class="btn btn-outline-secondary" disabled
+                                                            title="No se puede anular después de 30 días">
+                                                        <i class="fas fa-ban"></i>
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Vista Móvil -->
+                <div class="d-block d-md-none">
+                    <div class="list-group list-group-flush">
+                        @foreach ($pagos as $pago)
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="mb-1 font-weight-bold">{{ $pago->cliente->nombre }}</h6>
+                                        <div class="d-flex flex-wrap gap-1 mb-2">
+                                            <span class="badge badge-primary">
+                                                {{ $pago->cliente->codigo_cliente }}
+                                            </span>
+                                            <span class="badge badge-info">
+                                                {{ \Carbon\Carbon::createFromFormat('Y-m', $pago->mes_pagado)->format('M Y') }}
+                                            </span>
+                                            @if($pago->metodo == 'efectivo')
+                                                <span class="badge badge-success">Efectivo</span>
+                                            @elseif($pago->metodo == 'transferencia')
+                                                <span class="badge badge-primary">Transferencia</span>
+                                            @else
+                                                <span class="badge badge-secondary">QR</span>
                                             @endif
                                         </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                                    </div>
+                                    <div class="text-right">
+                                        <strong class="text-success">Bs {{ number_format($pago->monto, 2) }}</strong>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <div class="small">
+                                        <strong>Recibo:</strong> {{ $pago->numero_recibo }}
+                                    </div>
+                                    <div class="small text-muted">
+                                        <strong>Propiedad:</strong> {{ $pago->propiedad->referencia }}
+                                    </div>
+                                    @if($pago->comprobante)
+                                        <div class="small text-muted">
+                                            <strong>Comprobante:</strong> {{ $pago->comprobante }}
+                                        </div>
+                                    @endif
+                                </div>
+                                
+                                <div class="small text-muted mb-2">
+                                    <i class="fas fa-calendar mr-1"></i>
+                                    {{ $pago->fecha_pago->format('d/m/Y') }}
+                                </div>
+                                
+                                <div class="btn-group w-100" role="group">
+                                    <a href="{{ route('admin.pagos.show', $pago) }}" 
+                                       class="btn btn-outline-info btn-sm flex-fill">
+                                        <i class="fas fa-eye mr-1"></i>Ver
+                                    </a>
+                                    <a href="{{ route('admin.pagos.print', $pago) }}" 
+                                       target="_blank" class="btn btn-outline-warning btn-sm flex-fill">
+                                        <i class="fas fa-print mr-1"></i>Imprimir
+                                    </a>
+                                    @if($pago->fecha_pago->greaterThanOrEqualTo(now()->subDays(30)))
+                                        <button class="btn btn-outline-danger btn-sm flex-fill" 
+                                                onclick="confirmAnular({{ $pago->id }}, '{{ $pago->numero_recibo }}')">
+                                            <i class="fas fa-ban mr-1"></i>Anular
+                                        </button>
+                                    @else
+                                        <button class="btn btn-outline-secondary btn-sm flex-fill" disabled>
+                                            <i class="fas fa-ban mr-1"></i>Anular
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
             @else
                 <div class="text-center py-5">
                     <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
                     <h4 class="text-muted">
-                        @if(request()->anyFilled(['search', 'mes', 'metodo', 'fecha_desde', 'fecha_hasta']))
+                        @if(request()->anyFilled(['search', 'mes', 'metodo', 'fecha_desde', 'fecha_hasta', 'codigo_cliente']))
                             No se encontraron pagos con los filtros aplicados
                         @else
                             No hay pagos registrados
                         @endif
                     </h4>
-                    @if(!request()->anyFilled(['search', 'mes', 'metodo', 'fecha_desde', 'fecha_hasta']))
-                        <a href="{{ route('admin.pagos.create') }}" class="btn btn-primary mt-2">
+                    @if(!request()->anyFilled(['search', 'mes', 'metodo', 'fecha_desde', 'fecha_hasta', 'codigo_cliente']))
+                        <a href="{{ route('admin.pagos.create') }}" class="btn btn-primary btn-sm mt-2">
                             <i class="fas fa-plus-circle mr-1"></i>Registrar Primer Pago
                         </a>
                     @endif
@@ -276,8 +383,8 @@
 
         @if($pagos->count())
             <div class="card-footer">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="text-muted small">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+                    <div class="text-muted small mb-2 mb-md-0">
                         Mostrando {{ $pagos->firstItem() }} - {{ $pagos->lastItem() }} de {{ $pagos->total() }} pagos
                     </div>
                     {{ $pagos->links() }}
@@ -296,12 +403,28 @@
             font-size: 0.75em;
         }
         .info-box {
+            min-height: 80px;
             box-shadow: 0 0 1px rgba(0,0,0,.125), 0 1px 3px rgba(0,0,0,.2);
             border-radius: 0.25rem;
         }
-        .mes-lote {
-            background: #e3f2fd;
-            border-left: 3px solid #2196f3;
+        .info-box .info-box-icon {
+            width: 60px;
+            height: 60px;
+            line-height: 60px;
+        }
+        @media (max-width: 768px) {
+            .list-group-item {
+                padding: 1rem 0.75rem;
+            }
+            .btn-group .btn {
+                font-size: 0.75rem;
+            }
+            .gap-1 > * {
+                margin-right: 0.25rem;
+            }
+            .gap-1 > *:last-child {
+                margin-right: 0;
+            }
         }
     </style>
 @stop
@@ -353,7 +476,8 @@
                 </div>
             `,
             icon: 'info',
-            confirmButtonText: 'Cerrar'
+            confirmButtonText: 'Cerrar',
+            width: '500px'
         });
     }
 

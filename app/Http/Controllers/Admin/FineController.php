@@ -13,7 +13,7 @@ class FineController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Fine::with(['propiedad', 'deuda', 'usuario']);
+        $query = Fine::with(['propiedad.client', 'deuda', 'usuario']);
 
         // ✅ ACTUALIZADO: BÚSQUEDA INCLUYE CÓDIGO CLIENTE
         if ($request->filled('search')) {
@@ -25,6 +25,7 @@ class FineController extends Controller
                       $q->where('referencia', 'like', "%{$search}%")
                         ->orWhereHas('client', function($q) use ($search) {
                             $q->where('nombre', 'like', "%{$search}%")
+                              ->orWhere('ci', 'like', "%{$search}%")
                               ->orWhere('codigo_cliente', 'like', "%{$search}%"); // ✅ NUEVO
                         });
                   });
@@ -61,7 +62,7 @@ class FineController extends Controller
     public function create()
     {
         $propiedades = Property::activas()->with('client')->get();
-        $deudas = Debt::pendientes()->with('propiedad')->get();
+        $deudas = Debt::pendientes()->with('propiedad.client')->get(); // ✅ ACTUALIZADO: incluir client
         $tipos = Fine::obtenerTiposMulta();
         $montosBase = Fine::obtenerMontosBase();
 
@@ -138,7 +139,7 @@ class FineController extends Controller
     public function edit(Fine $multa)
     {
         $propiedades = Property::activas()->with('client')->get();
-        $deudas = Debt::pendientes()->with('propiedad')->get();
+        $deudas = Debt::pendientes()->with('propiedad.client')->get(); // ✅ ACTUALIZADO: incluir client
         $tipos = Fine::obtenerTiposMulta();
         $montosBase = Fine::obtenerMontosBase();
 

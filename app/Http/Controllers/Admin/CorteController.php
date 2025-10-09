@@ -18,18 +18,26 @@ class CorteController extends Controller
     {
         $query = Property::where('estado', 'corte_pendiente')
             ->with(['client', 'debts' => function($q) {
-                $q->where('estado', 'corte_pendiente');
+                $q->where('estado', 'corte_pendiente'); // ✅ CORREGIDO: usar string directamente
             }]);
 
-        // Filtros
+        // ✅ ACTUALIZADO: BÚSQUEDA INCLUYE CÓDIGO CLIENTE
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('referencia', 'like', "%{$search}%")
                   ->orWhereHas('client', function($q) use ($search) {
                       $q->where('nombre', 'like', "%{$search}%")
-                        ->orWhere('ci', 'like', "%{$search}%");
+                        ->orWhere('ci', 'like', "%{$search}%")
+                        ->orWhere('codigo_cliente', 'like', "%{$search}%"); // ✅ NUEVO
                   });
+            });
+        }
+
+        // ✅ NUEVO: FILTRO POR CÓDIGO CLIENTE
+        if ($request->filled('codigo_cliente')) {
+            $query->whereHas('client', function($q) use ($request) {
+                $q->where('codigo_cliente', 'like', "%{$request->codigo_cliente}%");
             });
         }
 
@@ -51,20 +59,28 @@ class CorteController extends Controller
     {
         $query = Property::where('estado', 'cortado')
             ->with(['client', 'debts' => function($q) {
-                $q->where('estado', 'cortado');
+                $q->where('estado', 'cortado'); // ✅ CORREGIDO: usar string directamente
             }, 'multas' => function($q) {
-                $q->where('estado', Fine::ESTADO_PENDIENTE);
+                $q->where('estado', 'pendiente'); // ✅ CORREGIDO: usar string directamente
             }]);
 
-        // Filtros
+        // ✅ ACTUALIZADO: BÚSQUEDA INCLUYE CÓDIGO CLIENTE
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('referencia', 'like', "%{$search}%")
                   ->orWhereHas('client', function($q) use ($search) {
                       $q->where('nombre', 'like', "%{$search}%")
-                        ->orWhere('ci', 'like', "%{$search}%");
+                        ->orWhere('ci', 'like', "%{$search}%")
+                        ->orWhere('codigo_cliente', 'like', "%{$search}%"); // ✅ NUEVO
                   });
+            });
+        }
+
+        // ✅ NUEVO: FILTRO POR CÓDIGO CLIENTE
+        if ($request->filled('codigo_cliente')) {
+            $query->whereHas('client', function($q) use ($request) {
+                $q->where('codigo_cliente', 'like', "%{$request->codigo_cliente}%");
             });
         }
 
@@ -93,10 +109,10 @@ class CorteController extends Controller
                     ->with('error', 'Solo se pueden cortar propiedades con estado "Corte Pendiente"');
             }
 
-            // Cambiar estado de las deudas de "corte_pendiente" a "cortado"
+            // ✅ CORREGIDO: Usar strings directamente en lugar de constantes
             $propiedad->debts()
-                ->where('estado', Debt::ESTADO_CORTE_PENDIENTE)
-                ->update(['estado' => Debt::ESTADO_CORTADO]);
+                ->where('estado', 'corte_pendiente')
+                ->update(['estado' => 'cortado']);
             
             // Actualizar estado de la propiedad
             $propiedad->update(['estado' => 'cortado']);
@@ -116,7 +132,7 @@ class CorteController extends Controller
     {
         // Obtener la deuda más antigua en corte_pendiente para calcular meses de mora
         $deudaMasAntigua = $propiedad->debts()
-            ->where('estado', Debt::ESTADO_CORTADO)
+            ->where('estado', 'cortado')
             ->orderBy('fecha_emision', 'asc')
             ->first();
 
@@ -126,20 +142,39 @@ class CorteController extends Controller
 
         // Calcular meses de mora
         $mesesMora = now()->diffInMonths($deudaMasAntigua->fecha_vencimiento);
+        
+        // ✅ CORREGIDO: Usar strings directamente en lugar de constantes
         $tipoMulta = $mesesMora >= 12 ? 
-            Fine::TIPO_RECONEXION_12MESES : 
-            Fine::TIPO_RECONEXION_3MESES;
+            'reconexion_12meses' : 
+            'reconexion_3meses';
+
+        // ✅ CORREGIDO: Usar array de tipos de multa del modelo Fine
+        $tiposMulta = [
+            'reconexion_3meses' => 'Reconexión (3+ meses mora)',
+            'reconexion_12meses' => 'Reconexión (12+ meses mora)',
+            'conexion_clandestina' => 'Conexión Clandestina',
+            'manipulacion_llaves' => 'Manipulación de Llaves',
+            'construccion' => 'Construcción'
+        ];
+
+        $montosBase = [
+            'reconexion_3meses' => 100,
+            'reconexion_12meses' => 300,
+            'conexion_clandestina' => 500,
+            'manipulacion_llaves' => 500,
+            'construccion' => 200
+        ];
 
         // Crear multa automática
         Fine::create([
             'propiedad_id' => $propiedad->id,
             'deuda_id' => $deudaMasAntigua->id,
             'tipo' => $tipoMulta,
-            'nombre' => Fine::obtenerTiposMulta()[$tipoMulta],
-            'monto' => Fine::obtenerMontosBase()[$tipoMulta],
+            'nombre' => $tiposMulta[$tipoMulta] ?? 'Multa de Reconexión',
+            'monto' => $montosBase[$tipoMulta] ?? 100,
             'descripcion' => 'Multa por reconexión de servicio - ' . $mesesMora . ' meses de mora',
             'fecha_aplicacion' => now(),
-            'estado' => Fine::ESTADO_PENDIENTE,
+            'estado' => 'pendiente', // ✅ CORREGIDO: usar string directamente
             'aplicada_automaticamente' => true,
             'activa' => true,
             'creado_por' => auth()->id(),
@@ -154,7 +189,7 @@ class CorteController extends Controller
         $deuda = Debt::findOrFail($deudaId);
         
         // Verificar que la deuda esté en estado cortado
-        if ($deuda->estado !== Debt::ESTADO_CORTADO) {
+        if ($deuda->estado !== 'cortado') {
             return response()->json([
                 'success' => false,
                 'message' => 'Solo se puede aplicar multa a deudas cortadas'
@@ -163,21 +198,33 @@ class CorteController extends Controller
 
         // Determinar tipo de multa basado en meses de mora
         $mesesMora = now()->diffInMonths($deuda->fecha_vencimiento);
+        
+        // ✅ CORREGIDO: Usar strings directamente
         $tipoMulta = $mesesMora >= 12 ? 
-            Fine::TIPO_RECONEXION_12MESES : 
-            Fine::TIPO_RECONEXION_3MESES;
+            'reconexion_12meses' : 
+            'reconexion_3meses';
 
-        DB::transaction(function () use ($deuda, $tipoMulta, $mesesMora) {
+        $tiposMulta = [
+            'reconexion_3meses' => 'Reconexión (3+ meses mora)',
+            'reconexion_12meses' => 'Reconexión (12+ meses mora)'
+        ];
+
+        $montosBase = [
+            'reconexion_3meses' => 100,
+            'reconexion_12meses' => 300
+        ];
+
+        DB::transaction(function () use ($deuda, $tipoMulta, $mesesMora, $tiposMulta, $montosBase) {
             // Crear multa
             Fine::create([
                 'deuda_id' => $deuda->id,
                 'propiedad_id' => $deuda->propiedad_id,
                 'tipo' => $tipoMulta,
-                'nombre' => Fine::obtenerTiposMulta()[$tipoMulta],
-                'monto' => Fine::obtenerMontosBase()[$tipoMulta],
+                'nombre' => $tiposMulta[$tipoMulta],
+                'monto' => $montosBase[$tipoMulta],
                 'descripcion' => 'Multa aplicada manualmente - ' . $mesesMora . ' meses de mora',
                 'fecha_aplicacion' => now(),
-                'estado' => Fine::ESTADO_PENDIENTE,
+                'estado' => 'pendiente', // ✅ CORREGIDO: usar string directamente
                 'aplicada_automaticamente' => false,
                 'activa' => true,
                 'creado_por' => auth()->id(),
@@ -206,7 +253,7 @@ class CorteController extends Controller
 
             // Verificar que no tenga deudas pendientes
             $deudasPendientes = $propiedad->debts()
-                ->where('estado', Debt::ESTADO_CORTADO)
+                ->where('estado', 'cortado') // ✅ CORREGIDO: usar string directamente
                 ->count();
 
             if ($deudasPendientes > 0) {
@@ -216,7 +263,7 @@ class CorteController extends Controller
 
             // Verificar que no tenga multas pendientes
             $multasPendientes = $propiedad->multas()
-                ->where('estado', Fine::ESTADO_PENDIENTE)
+                ->where('estado', 'pendiente') // ✅ CORREGIDO: usar string directamente
                 ->count();
 
             if ($multasPendientes > 0) {
@@ -239,7 +286,7 @@ class CorteController extends Controller
     {
         $cortesPendientes = Property::where('estado', 'corte_pendiente')->count();
         $cortesRealizados = Property::where('estado', 'cortado')->count();
-        $multasPendientes = Fine::where('estado', Fine::ESTADO_PENDIENTE)->count();
+        $multasPendientes = Fine::where('estado', 'pendiente')->count(); // ✅ CORREGIDO: usar string directamente
 
         return response()->json([
             'cortes_pendientes' => $cortesPendientes,
@@ -255,7 +302,7 @@ class CorteController extends Controller
     {
         $propiedades = Property::where('estado', 'corte_pendiente')
             ->with(['client', 'debts' => function($q) {
-                $q->where('estado', 'corte_pendiente');
+                $q->where('estado', 'corte_pendiente'); // ✅ CORREGIDO: usar string directamente
             }])
             ->orderBy('barrio')
             ->orderBy('referencia')
@@ -278,12 +325,13 @@ class CorteController extends Controller
                 $query->where('referencia', 'like', "%{$search}%")
                       ->orWhereHas('client', function($q) use ($search) {
                           $q->where('nombre', 'like', "%{$search}%")
-                            ->orWhere('ci', 'like', "%{$search}%");
+                            ->orWhere('ci', 'like', "%{$search}%")
+                            ->orWhere('codigo_cliente', 'like', "%{$search}%"); // ✅ NUEVO
                       });
             })
             ->whereIn('estado', ['corte_pendiente', 'cortado'])
             ->with(['client', 'debts' => function($q) {
-                $q->whereIn('estado', [Debt::ESTADO_CORTE_PENDIENTE, Debt::ESTADO_CORTADO]);
+                $q->whereIn('estado', ['corte_pendiente', 'cortado']); // ✅ CORREGIDO: usar strings directamente
             }])
             ->limit(10)
             ->get();

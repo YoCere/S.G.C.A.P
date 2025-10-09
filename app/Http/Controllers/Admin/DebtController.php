@@ -15,15 +15,25 @@ class DebtController extends Controller
     {
         $query = Debt::with(['propiedad.client', 'tarifa']);
 
-        // Búsqueda por cliente o propiedad
+        // ✅ ACTUALIZADO: BÚSQUEDA INCLUYE CÓDIGO CLIENTE
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->whereHas('propiedad.client', function($q) use ($search) {
-                    $q->where('nombre', 'like', "%{$search}%");
+                    $q->where('nombre', 'like', "%{$search}%")
+                      ->orWhere('ci', 'like', "%{$search}%")
+                      ->orWhere('codigo_cliente', 'like', "%{$search}%"); // ✅ NUEVO
                 })->orWhereHas('propiedad', function($q) use ($search) {
-                    $q->where('referencia', 'like', "%{$search}%");
+                    $q->where('referencia', 'like', "%{$search}%")
+                      ->orWhere('barrio', 'like', "%{$search}%");
                 });
+            });
+        }
+
+        // ✅ NUEVO: FILTRO POR CÓDIGO CLIENTE
+        if ($request->filled('codigo_cliente')) {
+            $query->whereHas('propiedad.client', function($q) use ($request) {
+                $q->where('codigo_cliente', 'like', "%{$request->codigo_cliente}%");
             });
         }
 
@@ -36,6 +46,18 @@ class DebtController extends Controller
         if ($request->filled('mes')) {
             $query->whereYear('fecha_emision', Carbon::parse($request->mes)->year)
                   ->whereMonth('fecha_emision', Carbon::parse($request->mes)->month);
+        }
+
+        // ✅ NUEVO: FILTRO POR CLIENTE ESPECÍFICO
+        if ($request->filled('cliente_id')) {
+            $query->whereHas('propiedad', function($q) use ($request) {
+                $q->where('cliente_id', $request->cliente_id);
+            });
+        }
+
+        // ✅ NUEVO: FILTRO POR PROPIEDAD ESPECÍFICA
+        if ($request->filled('propiedad_id')) {
+            $query->where('propiedad_id', $request->propiedad_id);
         }
 
         $debts = $query->orderBy('fecha_emision', 'desc')->paginate(15);

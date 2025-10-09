@@ -9,6 +9,13 @@ class Debt extends Model
 {
     use HasFactory;
 
+    // ✅ NUEVO: Constantes para estados de deuda
+    const ESTADO_PENDIENTE = 'pendiente';
+    const ESTADO_PAGADA = 'pagada';
+    const ESTADO_ANULADA = 'anulada';
+    const ESTADO_CORTE_PENDIENTE = 'corte_pendiente';
+    const ESTADO_CORTADO = 'cortado';
+
     protected $table = 'deudas';
 
     protected $fillable = [
@@ -48,10 +55,9 @@ class Debt extends Model
     // Scopes útiles
     public function scopePendientes($q)
     {
-        return $q->where('estado', 'pendiente');
+        return $q->where('estado', self::ESTADO_PENDIENTE);
     }
     
-// En tu modelo Debt, agregar:
     public function multas()
     {
         return $this->hasMany(Fine::class, 'deuda_id');

@@ -9,24 +9,30 @@ use Illuminate\Http\Request;
 class ClientController extends Controller
 {
     public function index(Request $request)
-{
-    // ✅ CORREGIDO: Cargar la relación properties
-    $query = Client::with(['properties']);
+    {
+        // ✅ CORREGIDO: Cargar la relación properties
+        $query = Client::with(['properties']);
 
-    // Búsqueda simple
-    if ($request->filled('search')) {
-        $search = $request->search;
-        $query->where(function($q) use ($search) {
-            $q->where('nombre', 'like', "%{$search}%")
-              ->orWhere('ci', 'like', "%{$search}%")
-              ->orWhere('telefono', 'like', "%{$search}%");
-        });
+        // ✅ ACTUALIZADO: BÚSQUEDA INCLUYE CÓDIGO CLIENTE
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nombre', 'like', "%{$search}%")
+                  ->orWhere('ci', 'like', "%{$search}%")
+                  ->orWhere('telefono', 'like', "%{$search}%")
+                  ->orWhere('codigo_cliente', 'like', "%{$search}%"); // ✅ NUEVO
+            });
+        }
+
+        // ✅ NUEVO: FILTRO ESPECÍFICO POR CÓDIGO CLIENTE
+        if ($request->filled('codigo_cliente')) {
+            $query->where('codigo_cliente', 'like', "%{$request->codigo_cliente}%");
+        }
+
+        $clients = $query->orderBy('nombre')->paginate(15);
+
+        return view('admin.clients.index', compact('clients'));
     }
-
-    $clients = $query->orderBy('nombre')->paginate(15);
-
-    return view('admin.clients.index', compact('clients'));
-}
 
     public function create()
     {
@@ -41,23 +47,28 @@ class ClientController extends Controller
             'telefono' => 'nullable|string|max:20',
         ]);
         
-        $client = Client::create($request->all());
+        // ✅ NUEVO: Generar código de cliente automáticamente
+        $clientData = $request->all();
+        $clientData['codigo_cliente'] = Client::generarCodigoAleatorioUnico();
+        
+        $client = Client::create($clientData);
         return redirect()->route('admin.clients.edit', $client)->with('info', 'Cliente creado con éxito');
     }
 
     public function show(Client $client)
-{
-    // ✅ CARGAR relaciones correctamente
-    $client->load([
-        'properties.client', 
-        'properties.tariff',
-        'properties.debts' => function($query) {
-            $query->where('estado', 'pendiente'); // Solo deudas pendientes
-        }
-    ]);
-    
-    return view('admin.clients.show', compact('client'));
-}
+    {
+        // ✅ CARGAR relaciones correctamente
+        $client->load([
+            'properties.client', 
+            'properties.tariff',
+            'properties.debts' => function($query) {
+                $query->where('estado', 'pendiente'); // Solo deudas pendientes
+            }
+        ]);
+        
+        return view('admin.clients.show', compact('client'));
+    }
+
     public function edit(Client $client)
     {
         return view('admin.clients.edit', compact('client'));
@@ -69,9 +80,12 @@ class ClientController extends Controller
             'nombre' => 'required|string|max:255',
             'ci' => 'required|string|max:20|unique:clientes,ci,'.$client->id,
             'telefono' => 'nullable|string|max:20',
+            // ❌ NO validar codigo_cliente
         ]);
         
-        $client->update($request->all());
+        // ❌ NO actualizar el código, excluirlo del update
+        $client->update($request->only(['nombre', 'ci', 'telefono']));
+        
         return redirect()->route('admin.clients.edit', $client)->with('info', 'Cliente actualizado con éxito');
     }
 

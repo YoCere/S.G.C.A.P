@@ -4,12 +4,16 @@
 
 @section('content_header')
     <h1>Cliente: {{ $client->nombre }}</h1>
+    <small class="text-muted">Detalles completos del cliente y sus propiedades</small>
 @stop
 
 @section('content')
     @if (session('info'))
-        <div class="alert alert-success">
+        <div class="alert alert-success alert-dismissible fade show">
             {{ session('info') }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
         </div>
     @endif
 
@@ -22,7 +26,15 @@
                 <div class="card-body">
                     <table class="table table-sm">
                         <tr>
-                            <th width="120">Nombre:</th>
+                            <th width="140">Código Cliente:</th> {{-- ✅ NUEVO --}}
+                            <td>
+                                <span class="badge badge-primary font-weight-bold">
+                                    {{ $client->codigo_cliente }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Nombre:</th>
                             <td>{{ $client->nombre }}</td>
                         </tr>
                         <tr>
@@ -46,6 +58,20 @@
                             <td>{{ $client->fecha_registro->format('d/m/Y') }}</td>
                         </tr>
                     </table>
+                </div>
+                <div class="card-footer">
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ route('admin.clients.edit', $client) }}" class="btn btn-primary">
+                            <i class="fas fa-edit mr-1"></i>Editar
+                        </a>
+                        <a href="{{ route('admin.properties.create') }}?cliente_id={{ $client->id }}" 
+                           class="btn btn-success">
+                            <i class="fas fa-plus mr-1"></i>Agregar Propiedad
+                        </a>
+                        <a href="{{ route('admin.clients.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left mr-1"></i>Volver
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -92,13 +118,35 @@
                     </div>
                 </div>
             </div>
+
+            {{-- ✅ NUEVO: ACCIONES RÁPIDAS --}}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h3 class="card-title">Acciones Rápidas</h3>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('admin.debts.index') }}?cliente_id={{ $client->id }}" 
+                           class="btn btn-warning btn-sm">
+                            <i class="fas fa-file-invoice-dollar mr-1"></i>Ver Todas las Deudas
+                        </a>
+                        <a href="{{ route('admin.pagos.index') }}?cliente_id={{ $client->id }}" 
+                           class="btn btn-info btn-sm">
+                            <i class="fas fa-history mr-1"></i>Ver Historial de Pagos
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     {{-- PROPIEDADES DEL CLIENTE --}}
     <div class="card mt-4">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title">Propiedades del Cliente</h3>
+            <span class="badge badge-primary">
+                {{ $client->properties ? $client->properties->count() : 0 }} propiedades
+            </span>
         </div>
         <div class="card-body">
             @if($client->properties && $client->properties->count() > 0)
@@ -112,7 +160,7 @@
                                 <th>Tarifa</th>
                                 <th>Estado</th>
                                 <th>Deudas Pendientes</th>
-                                <th>Acciones</th>
+                                <th width="180">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -154,20 +202,21 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.properties.show', $propiedad) }}" 
-                                           class="btn btn-info btn-sm" title="Ver propiedad">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="{{ route('admin.debts.index') }}?propiedad_id={{ $propiedad->id }}" 
-                                           class="btn btn-warning btn-sm" title="Ver deudas">
-                                            <i class="fas fa-file-invoice-dollar"></i>
-                                        </a>
-                                        
-                                        {{-- ✅ NUEVO BOTÓN DE PAGO RÁPIDO --}}
-                                        <a href="{{ route('admin.pagos.create') }}?propiedad_id={{ $propiedad->id }}" 
-                                           class="btn btn-success btn-sm" title="Pagar deuda">
-                                            <i class="fas fa-money-bill-wave"></i> Pagar
-                                        </a>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ route('admin.properties.show', $propiedad) }}" 
+                                               class="btn btn-info" title="Ver propiedad">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('admin.debts.index') }}?propiedad_id={{ $propiedad->id }}" 
+                                               class="btn btn-warning" title="Ver deudas">
+                                                <i class="fas fa-file-invoice-dollar"></i>
+                                            </a>
+                                            {{-- BOTÓN DE PAGO RÁPIDO --}}
+                                            <a href="{{ route('admin.pagos.create') }}?propiedad_id={{ $propiedad->id }}" 
+                                               class="btn btn-success" title="Pagar deuda">
+                                                <i class="fas fa-money-bill-wave"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -180,7 +229,7 @@
                     <p class="text-muted">El cliente no tiene propiedades registradas.</p>
                     <a href="{{ route('admin.properties.create') }}?cliente_id={{ $client->id }}" 
                        class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus mr-1"></i>Agregar Propiedad
+                        <i class="fas fa-plus mr-1"></i>Agregar Primera Propiedad
                     </a>
                 </div>
             @endif
@@ -197,5 +246,17 @@
             background-color: #f8f9fa;
             border-bottom: 1px solid #dee2e6;
         }
+        .btn-group-sm > .btn {
+            padding: 0.25rem 0.5rem;
+        }
     </style>
+@stop
+
+@section('js')
+<script>
+    // Auto-ocultar alertas después de 5 segundos
+    setTimeout(() => {
+        $('.alert').alert('close');
+    }, 5000);
+</script>
 @stop

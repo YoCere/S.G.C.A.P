@@ -18,6 +18,7 @@ class ClientFactory extends Factory
     {
         
         return [
+            'codigo_cliente' => null,
             'nombre'         => $this->faker->name(),
             'ci'             => $this->faker->unique()->numerify('1#######'),
             'telefono'       => $this->faker->optional()->numerify('7#######'),

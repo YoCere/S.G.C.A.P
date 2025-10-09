@@ -15,7 +15,30 @@ class FineController extends Controller
     {
         $query = Fine::with(['propiedad', 'deuda', 'usuario']);
 
-        // Filtros
+        // ✅ ACTUALIZADO: BÚSQUEDA INCLUYE CÓDIGO CLIENTE
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nombre', 'like', "%{$search}%")
+                  ->orWhere('descripcion', 'like', "%{$search}%")
+                  ->orWhereHas('propiedad', function($q) use ($search) {
+                      $q->where('referencia', 'like', "%{$search}%")
+                        ->orWhereHas('client', function($q) use ($search) {
+                            $q->where('nombre', 'like', "%{$search}%")
+                              ->orWhere('codigo_cliente', 'like', "%{$search}%"); // ✅ NUEVO
+                        });
+                  });
+            });
+        }
+
+        // ✅ NUEVO: FILTRO POR CÓDIGO CLIENTE
+        if ($request->filled('codigo_cliente')) {
+            $query->whereHas('propiedad.client', function($q) use ($request) {
+                $q->where('codigo_cliente', 'like', "%{$request->codigo_cliente}%");
+            });
+        }
+
+        // Filtros existentes
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
         }
@@ -28,19 +51,8 @@ class FineController extends Controller
             $query->where('activa', $request->activa);
         }
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('nombre', 'like', "%{$search}%")
-                  ->orWhere('descripcion', 'like', "%{$search}%")
-                  ->orWhereHas('propiedad', function($q) use ($search) {
-                      $q->where('referencia', 'like', "%{$search}%");
-                  });
-            });
-        }
-
         $multas = $query->latest()->paginate(20);
-        $estados = Fine::ESTADO_PENDIENTE; // Esto lo ajustaremos
+        $estados = Fine::ESTADO_PENDIENTE;
         $tipos = Fine::obtenerTiposMulta();
 
         return view('admin.multas.index', compact('multas', 'estados', 'tipos'));
@@ -91,37 +103,37 @@ class FineController extends Controller
     }
 
     public function show(Fine $multa)
-{
-    try {
-        // ✅ CARGAR TODAS LAS RELACIONES CON VERIFICACIÓN
-        $multa->load([
-            'propiedad.client',
-            'propiedad.tariff',
-            'deuda.propiedad.client',
-            'deuda.tarifa',
-            'usuario'
-        ]);
+    {
+        try {
+            // ✅ CARGAR TODAS LAS RELACIONES CON VERIFICACIÓN
+            $multa->load([
+                'propiedad.client',
+                'propiedad.tariff',
+                'deuda.propiedad.client',
+                'deuda.tarifa',
+                'usuario'
+            ]);
 
-        // ✅ VERIFICAR Y PREPARAR DATOS PARA LA VISTA
-        $cliente = null;
-        $propiedad = null;
+            // ✅ VERIFICAR Y PREPARAR DATOS PARA LA VISTA
+            $cliente = null;
+            $propiedad = null;
 
-        if ($multa->propiedad) {
-            $propiedad = $multa->propiedad;
-            $cliente = $propiedad->client;
-        } elseif ($multa->deuda && $multa->deuda->propiedad) {
-            $propiedad = $multa->deuda->propiedad;
-            $cliente = $propiedad->client;
+            if ($multa->propiedad) {
+                $propiedad = $multa->propiedad;
+                $cliente = $propiedad->client;
+            } elseif ($multa->deuda && $multa->deuda->propiedad) {
+                $propiedad = $multa->deuda->propiedad;
+                $cliente = $propiedad->client;
+            }
+
+            return view('admin.multas.show', compact('multa', 'cliente', 'propiedad'));
+
+        } catch (\Exception $e) {
+            \Log::error('Error en show de multa: ' . $e->getMessage());
+            return redirect()->route('admin.multas.index')
+                ->with('error', 'Error al cargar los detalles de la multa: ' . $e->getMessage());
         }
-
-        return view('admin.multas.show', compact('multa', 'cliente', 'propiedad'));
-
-    } catch (\Exception $e) {
-        \Log::error('Error en show de multa: ' . $e->getMessage());
-        return redirect()->route('admin.multas.index')
-            ->with('error', 'Error al cargar los detalles de la multa: ' . $e->getMessage());
     }
-}
 
     public function edit(Fine $multa)
     {

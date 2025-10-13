@@ -20,11 +20,12 @@ class DebtGeneratorService
             'errors' => []
         ];
 
-        // ✅ CORREGIDO: Solo propiedades ACTIVAS (no cortadas/inactivas)
-        $properties = Property::where('estado', 'activo') // ← FILTRO CRÍTICO
-            ->activas()
-            ->with(['cliente', 'tariff'])
+        // ✅ CORREGIDO: Solo propiedades ACTIVAS con relación correcta
+        $properties = Property::where('estado', 'activo')
+            ->with(['client', 'tariff']) // ← CORREGIDO: 'client' no 'cliente'
             ->get();
+
+        Log::info("Generando deudas para {$month->format('F Y')}. Propiedades activas: " . $properties->count());
 
         foreach ($properties as $property) {
             DB::beginTransaction();
@@ -32,45 +33,52 @@ class DebtGeneratorService
             try {
                 $result['properties_processed']++;
                 
-                // Verificar si ya existe deuda para este mes y propiedad
+                // ✅ CORREGIDO: Verificación más precisa de deuda existente
+                $mesFormato = $month->format('Y-m');
                 $existingDebt = Debt::where('propiedad_id', $property->id)
                     ->whereYear('fecha_emision', $month->year)
                     ->whereMonth('fecha_emision', $month->month)
                     ->first();
 
-                if ($existingDebt && !$force) {
-                    $result['debts_skipped']++;
-                    DB::commit();
-                    continue;
+                if ($existingDebt) {
+                    if (!$force) {
+                        $result['debts_skipped']++;
+                        Log::info("Deuda ya existe para {$property->referencia} - {$mesFormato}. Omitiendo.");
+                        DB::commit();
+                        continue;
+                    } else {
+                        // Si force=true, eliminar la deuda existente
+                        $existingDebt->delete();
+                        Log::info("Deuda existente eliminada para {$property->referencia} - {$mesFormato} (force=true)");
+                    }
                 }
 
-                if ($existingDebt && $force) {
-                    $existingDebt->delete();
-                }
-
-                // Calcular fechas
+                // ✅ CORREGIDO CRÍTICO: Fechas calculadas CORRECTAMENTE
                 $fechaEmision = $month->copy()->startOfMonth();
-                $fechaVencimiento = $fechaEmision->copy()->addDays(15);
+                $fechaVencimiento = $month->copy()->endOfMonth(); // ← ¡CORREGIDO: fin de mes, no 15 días!
+
+                Log::info("Fechas para {$property->referencia}: Emisión: {$fechaEmision->format('Y-m-d')}, Vencimiento: {$fechaVencimiento->format('Y-m-d')}");
 
                 // Obtener tarifa
-                $tarifa = $property->tariff ?? Tariff::first();
+                $tarifa = $property->tariff ?? Tariff::where('activo', true)->first();
                 
                 if (!$tarifa) {
-                    throw new \Exception("No hay tarifas configuradas para la propiedad: {$property->referencia}");
+                    throw new \Exception("No hay tarifas activas configuradas para la propiedad: {$property->referencia}");
                 }
 
-                // Crear la deuda
+                // ✅ CORREGIDO: Crear la deuda con fechas correctas
                 Debt::create([
                     'propiedad_id' => $property->id,
                     'tarifa_id' => $tarifa->id,
                     'monto_pendiente' => $tarifa->precio_mensual,
                     'fecha_emision' => $fechaEmision,
-                    'fecha_vencimiento' => $fechaVencimiento,
+                    'fecha_vencimiento' => $fechaVencimiento, // ← FIN DE MES
                     'estado' => 'pendiente',
                     'pagada_adelantada' => false,
                 ]);
 
                 $result['debts_created']++;
+                Log::info("✅ Deuda creada para {$property->referencia} - {$mesFormato}");
                 DB::commit();
                 
             } catch (\Exception $e) {
@@ -81,6 +89,7 @@ class DebtGeneratorService
             }
         }
 
+        Log::info("Generación completada: {$result['debts_created']} deudas creadas, {$result['debts_skipped']} omitidas");
         return $result;
     }
 
@@ -91,21 +100,27 @@ class DebtGeneratorService
     {
         $result = [
             'months_processed' => 0,
-            'total_debts_created' => 0
+            'total_debts_created' => 0,
+            'monthly_results' => []
         ];
 
         $currentMonth = $startDate->copy()->startOfMonth();
         
+        Log::info("Iniciando generación de deudas desde {$startDate->format('Y-m')} hasta {$endDate->format('Y-m')}");
+
         while ($currentMonth->lte($endDate)) {
             $monthResult = $this->generateDebtsForMonth($currentMonth);
             
             $result['months_processed']++;
             $result['total_debts_created'] += $monthResult['debts_created'];
-            $result["month_{$currentMonth->format('Y_m')}"] = $monthResult;
+            $result['monthly_results'][$currentMonth->format('Y-m')] = $monthResult;
+            
+            Log::info("Mes {$currentMonth->format('Y-m')}: {$monthResult['debts_created']} deudas creadas");
             
             $currentMonth->addMonth();
         }
 
+        Log::info("Generación por rango completada: {$result['total_debts_created']} deudas totales");
         return $result;
     }
 }

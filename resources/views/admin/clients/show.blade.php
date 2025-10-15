@@ -89,7 +89,8 @@
                         if($client->properties) {
                             foreach($client->properties as $propiedad) {
                                 if($propiedad->debts) {
-                                    $deudasPendientes = $propiedad->debts->where('estado', 'pendiente');
+                                    $deudasPendientes = $propiedad->debts->where('estado', 'pendiente')
+                                        ->where('monto_pendiente', '>', 0); // ✅ SOLO DEUDAS CON MONTO > 0
                                     $totalDeudas += $deudasPendientes->sum('monto_pendiente');
                                     $propiedadesConDeuda += $deudasPendientes->count() > 0 ? 1 : 0;
                                 }

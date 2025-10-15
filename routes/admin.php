@@ -32,8 +32,8 @@ Route::middleware(['auth'])
         // Búsqueda de propiedades
         Route::get('/propiedades/buscar', [PropertyController::class, 'search'])->name('admin.propiedades.search');
         
-        // ✅ RUTA CORREGIDA PARA DEUDAS PENDIENTES
-        Route::get('/propiedades/{propiedad}/deudaspendientes', [PagoController::class, 'obtenerDeudasPendientes'])->name('admin.propiedades.deudaspendientes');
+        Route::get('/properties/{propiedad}/deudaspendientes', [PagoController::class, 'obtenerDeudasPendientes'])
+        ->name('admin.propiedades.deudaspendientes');
         
         // Deudas
         Route::resource('debts', DebtController::class)
@@ -74,5 +74,9 @@ Route::middleware(['auth'])
             Route::post('/marcar-cortado/{propiedad}', [CorteController::class, 'marcarComoCortado'])->name('admin.cortes.marcar-cortado');
             Route::post('/aplicar-multa/{deuda}', [CorteController::class, 'aplicarMultaReconexion'])->name('admin.cortes.aplicar-multa');
         });
-        
+        Route::get('/sincronizar-deudas', function() {
+            $controller = app()->make(App\Http\Controllers\Admin\PagoController::class);
+            $actualizadas = $controller->sincronizarDeudasConPagos();
+            return "Deudas actualizadas: {$actualizadas}";
+        });
     });

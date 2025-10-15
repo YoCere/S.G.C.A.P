@@ -24,27 +24,39 @@ class Property extends Model
 
     
     // Agregar este método al modelo Property
-    public function obtenerMesesAdeudados()
-    {
-        // Obtener todos los pagos de esta propiedad
-        $pagos = Pago::where('propiedad_id', $this->id)->get();
-        $mesesPagados = $pagos->pluck('mes_pagado')->toArray();
-        
-        // Generar los últimos 12 meses
+    // En Property.php, reemplazar el método obtenerMesesAdeudados:
+public function obtenerMesesAdeudados()
+{
+    try {
+        // Obtener meses ya pagados
+        $mesesPagados = Pago::where('propiedad_id', $this->id)
+            ->pluck('mes_pagado')
+            ->toArray();
+
+        // Generar los últimos 12 meses + año actual completo
         $mesesAdeudados = [];
-        $fechaActual = now();
+        $fechaInicio = now()->subMonths(12)->startOfMonth();
+        $fechaFin = now()->endOfYear();
         
-        for ($i = 11; $i >= 0; $i--) {
-            $mes = $fechaActual->copy()->subMonths($i)->format('Y-m');
+        $fechaActual = $fechaInicio->copy();
+        while ($fechaActual <= $fechaFin) {
+            $mes = $fechaActual->format('Y-m');
             
             // Si el mes no está pagado, agregarlo a adeudados
             if (!in_array($mes, $mesesPagados)) {
                 $mesesAdeudados[] = $mes;
             }
+            
+            $fechaActual->addMonth();
         }
         
         return $mesesAdeudados;
+
+    } catch (\Exception $e) {
+        \Log::error("Error en obtenerMesesAdeudados para propiedad {$this->id}: " . $e->getMessage());
+        return [];
     }
+}
 
     public function getTotalDeudasPendientesAttribute()
     {

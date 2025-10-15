@@ -69,13 +69,14 @@ class DebtGeneratorService
                 // ✅ CORREGIDO: Crear la deuda con fechas correctas
                 Debt::create([
                     'propiedad_id' => $property->id,
-                    'tarifa_id' => $tarifa->id,
+                    // ❌ ELIMINADO: tarifa_id (redundante)
                     'monto_pendiente' => $tarifa->precio_mensual,
                     'fecha_emision' => $fechaEmision,
-                    'fecha_vencimiento' => $fechaVencimiento, // ← FIN DE MES
+                    'fecha_vencimiento' => $fechaVencimiento,
                     'estado' => 'pendiente',
-                    'pagada_adelantada' => false,
+                    // ❌ ELIMINADO: pagada_adelantada (no se usa)
                 ]);
+    
 
                 $result['debts_created']++;
                 Log::info("✅ Deuda creada para {$property->referencia} - {$mesFormato}");

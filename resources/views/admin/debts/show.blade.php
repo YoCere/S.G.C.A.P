@@ -68,8 +68,8 @@
                         <tr>
                             <th width="140">Tarifa:</th>
                             <td>
-                                {{ $debt->tarifa->nombre }}
-                                @if(!$debt->tarifa->activo)
+                                {{ $debt->propiedad->tariff->nombre }}
+                                @if(!$debt->propiedad->tariff->activo)
                                     <span class="badge badge-warning ml-1">INACTIVA</span>
                                 @endif
                             </td>

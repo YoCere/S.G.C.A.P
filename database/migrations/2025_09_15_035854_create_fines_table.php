@@ -10,8 +10,11 @@ return new class extends Migration
     {
         Schema::create('multas', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('deuda_id')->nullable()->constrained('deudas')->onDelete('cascade');
-            $table->foreignId('propiedad_id')->nullable()->constrained('propiedades')->onDelete('cascade');
+            
+            // ✅ CORREGIDO: Relaciones REQUERIDAS
+            $table->foreignId('deuda_id')->constrained('deudas')->onDelete('cascade');
+            $table->foreignId('propiedad_id')->constrained('propiedades')->onDelete('cascade');
+            
             $table->enum('tipo', [
                 'reconexion_3meses',
                 'reconexion_12meses', 
@@ -20,16 +23,25 @@ return new class extends Migration
                 'construccion',
                 'otro'
             ])->default('otro');
-            $table->string('nombre'); // Nombre descriptivo de la multa
+            
+            $table->string('nombre');
             $table->decimal('monto', 10, 2)->default(0);
             $table->text('descripcion')->nullable();
             $table->date('fecha_aplicacion');
+            
+            // ✅ CORREGIDO: Solo estados de multa
             $table->enum('estado', ['pendiente', 'pagada', 'anulada'])->default('pendiente');
+            
             $table->boolean('aplicada_automaticamente')->default(false);
-            $table->boolean('activa')->default(true); // Para "archivar" en lugar de eliminar
+            $table->boolean('activa')->default(true);
             $table->foreignId('creado_por')->constrained('users')->onDelete('cascade');
+            
             $table->timestamps();
-            $table->softDeletes(); // Para historial completo
+            $table->softDeletes();
+            
+            // ✅ AGREGADO: Índices
+            $table->index(['estado', 'activa']);
+            $table->index(['tipo', 'fecha_aplicacion']);
         });
     }
 

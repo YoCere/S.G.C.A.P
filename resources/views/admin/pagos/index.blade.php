@@ -171,15 +171,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-sm-3 mb-3">
-                    <div class="info-box bg-light shadow-sm">
-                        <span class="info-box-icon bg-info"><i class="fas fa-users"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text small">Clientes Únicos</span>
-                            <span class="info-box-number">{{ $pagos->pluck('cliente_id')->unique()->count() }}</span>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             @if($pagos->count())
@@ -211,16 +202,16 @@
                                         </td>
                                         <td>
                                             <span class="badge badge-primary">
-                                                {{ $pago->cliente->codigo_cliente }}
+                                                {{ $pago->propiedad->client->codigo_cliente ?? 'N/A' }}
                                             </span>
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-start">
                                                 <div>
-                                                    <strong>{{ $pago->cliente->nombre }}</strong>
+                                                    <strong>{{ $pago->propiedad->client->nombre ?? 'N/A' }}</strong>
                                                     <br>
                                                     <small class="text-muted">
-                                                        {{ $pago->cliente->ci ?? 'Sin CI' }} | 
+                                                        {{ $pago->propiedad->client->ci ?? 'Sin CI' }} | 
                                                         {{ $pago->propiedad->referencia }}
                                                     </small>
                                                     <br>
@@ -297,10 +288,10 @@
                             <div class="list-group-item">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div>
-                                        <h6 class="mb-1 font-weight-bold">{{ $pago->cliente->nombre }}</h6>
+                                        <h6 class="mb-1 font-weight-bold">{{ $pago->propiedad->client->nombre ?? 'N/A' }}</h6>
                                         <div class="d-flex flex-wrap gap-1 mb-2">
                                             <span class="badge badge-primary">
-                                                {{ $pago->cliente->codigo_cliente }}
+                                                {{ $pago->propiedad->client->codigo_cliente ?? 'N/A' }}
                                             </span>
                                             <span class="badge badge-info">
                                                 {{ \Carbon\Carbon::createFromFormat('Y-m', $pago->mes_pagado)->format('M Y') }}
@@ -467,7 +458,6 @@
                     <p><strong>Total General:</strong> {{ $pagos->total() }} pagos</p>
                     <p><strong>Ingreso Total:</strong> Bs {{ number_format($pagos->sum('monto'), 2) }}</p>
                     <p><strong>Promedio por Pago:</strong> Bs {{ number_format($pagos->avg('monto'), 2) }}</p>
-                    <p><strong>Clientes Únicos:</strong> {{ $pagos->pluck('cliente_id')->unique()->count() }}</p>
                     <hr>
                     <p><strong>Métodos de Pago:</strong></p>
                     <p>• Efectivo: {{ $pagos->where('metodo', 'efectivo')->count() }}</p>

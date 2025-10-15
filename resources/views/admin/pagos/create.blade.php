@@ -360,31 +360,37 @@
     // =============================================
     
     function cargarMesesPendientes(propiedadId) {
-        // ✅ URL DIRECTA - SIN PROBLEMAS DE RUTAS
-        const url = `/admin/pagos/obtener-meses-pendientes/${propiedadId}`;
-        
-        console.log('Cargando meses pendientes desde:', url);
-        
-        fetch(url)
-            .then(response => {
-                if (!response.ok) throw new Error('Error HTTP: ' + response.status);
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    actualizarSelectsMeses(data.mesesPendientes);
-                    actualizarListaMesesPendientesUI(data.mesesPendientes);
-                    document.getElementById('textoMesesPendientes').textContent = 
-                        `Seleccione el rango de meses pendientes (${data.totalPendientes} disponibles)`;
-                } else {
-                    mostrarMensajeValidacion('error', 'Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error cargando meses pendientes:', error);
-                mostrarMensajeValidacion('error', 'Error al cargar meses pendientes');
-            });
-    }
+    const url = `/admin/pagos/obtener-meses-pendientes/${propiedadId}`;
+    
+    console.log('🔍 Cargando meses pendientes desde:', url);
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Error HTTP: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('📊 DATOS COMPLETOS DE LA API:', data); // ✅ DEBUG COMPLETO
+            
+            if (data.success && data.mesesPendientes) {
+                console.log('✅ Meses pendientes recibidos:', data.mesesPendientes);
+                console.log('✅ Total de meses:', data.totalPendientes);
+                
+                actualizarSelectsMeses(data.mesesPendientes);
+                actualizarListaMesesPendientesUI(data.mesesPendientes);
+                
+                document.getElementById('textoMesesPendientes').textContent = 
+                    `Seleccione el rango de meses pendientes (${data.totalPendientes} disponibles)`;
+            } else {
+                console.error('❌ Error en respuesta API:', data.message);
+                mostrarMensajeValidacion('error', 'Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('💥 Error cargando meses pendientes:', error);
+            mostrarMensajeValidacion('error', 'Error al cargar meses pendientes');
+        });
+}
     
     function actualizarSelectsMeses(mesesPendientesObj) {
         const mesDesde = document.getElementById('mes_desde');
@@ -640,20 +646,23 @@ function validarRangoLocalmente(mesDesde, mesHasta) {
     }
     
     function cargarDeudasPendientes(propiedadId) {
-        const url = `/admin/propiedades/${propiedadId}/deudaspendientes`;
-        
-        fetch(url)
-            .then(response => {
-                if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-                return response.json();
-            })
-            .then(data => {
-                console.log('Deudas cargadas exitosamente:', data);
-            })
-            .catch(error => {
-                console.error('Error cargando deudas:', error);
-            });
-    }
+    // ✅ CORREGIR la URL para que coincida con la ruta
+    const url = `/admin/properties/${propiedadId}/deudaspendientes`;
+    
+    console.log('Cargando deudas desde:', url);
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Deudas cargadas exitosamente:', data);
+        })
+        .catch(error => {
+            console.error('Error cargando deudas:', error);
+        });
+}
 
     // =============================================
     // INICIALIZACIÓN PRINCIPAL

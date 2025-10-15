@@ -13,7 +13,8 @@ class DebtController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Debt::with(['propiedad.client', 'tarifa']);
+        // ✅ CORREGIDO: Cargar tarifa a través de la propiedad, no directamente
+        $query = Debt::with(['propiedad.client', 'propiedad.tariff']);
 
         // ✅ ACTUALIZADO: BÚSQUEDA INCLUYE CÓDIGO CLIENTE
         if ($request->filled('search')) {
@@ -22,7 +23,7 @@ class DebtController extends Controller
                 $q->whereHas('propiedad.client', function($q) use ($search) {
                     $q->where('nombre', 'like', "%{$search}%")
                       ->orWhere('ci', 'like', "%{$search}%")
-                      ->orWhere('codigo_cliente', 'like', "%{$search}%"); // ✅ NUEVO
+                      ->orWhere('codigo_cliente', 'like', "%{$search}%");
                 })->orWhereHas('propiedad', function($q) use ($search) {
                     $q->where('referencia', 'like', "%{$search}%")
                       ->orWhere('barrio', 'like', "%{$search}%");
@@ -93,10 +94,7 @@ class DebtController extends Controller
             'estado' => 'required|in:pendiente,pagada',
         ]);
 
-        // Tarifa automática desde propiedad
-        $propiedad = Property::find($data['propiedad_id']);
-        $data['tarifa_id'] = $propiedad->tarifa_id;
-
+        // ✅ CORREGIDO: Ya no asignamos tarifa_id (se eliminó de la tabla)
         Debt::create($data);
 
         return redirect()->route('admin.debts.index')
@@ -105,7 +103,8 @@ class DebtController extends Controller
 
     public function show(Debt $debt)
     {
-        $debt->load(['propiedad.client', 'tarifa']);
+        // ✅ CORREGIDO: Cargar tarifa a través de la propiedad
+        $debt->load(['propiedad.client', 'propiedad.tariff']);
         return view('admin.debts.show', compact('debt'));
     }
 
@@ -141,7 +140,7 @@ class DebtController extends Controller
 
         $debt->update([
             'estado' => 'pagada',
-            'pagada_adelantada' => now()->lt($debt->fecha_emision) // true si paga antes de emisión
+            // ❌ ELIMINADO: 'pagada_adelantada' ya no existe en la tabla
         ]);
 
         return back()->with('info', 'Deuda marcada como pagada');

@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('clientes', function (Blueprint $table) {
@@ -17,17 +14,15 @@ return new class extends Migration
             $table->string('nombre');
             $table->string('ci')->unique();
             $table->string('telefono')->nullable();
-
-
-            $table->string('estado_cuenta')->default('activo'); // activo, inactivo, deudor
+            $table->string('estado_cuenta')->default('activo');
             $table->timestamp('fecha_registro')->useCurrent();
             $table->timestamps();
+            
+            // ✅ AGREGADO: Índice para búsquedas frecuentes
+            $table->index(['estado_cuenta', 'fecha_registro']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('clientes');

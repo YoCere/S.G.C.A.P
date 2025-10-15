@@ -10,8 +10,7 @@ class Pago extends Model
     protected $table = 'pagos';
 
     protected $fillable = [
-        'numero_recibo', // ✅ AHORA EXISTE EN LA BD
-        'cliente_id',
+        'numero_recibo',
         'propiedad_id', 
         'monto',
         'mes_pagado',
@@ -27,15 +26,15 @@ class Pago extends Model
         'monto' => 'decimal:2'
     ];
 
-    // ✅ RELACIONES DIRECTAS
-    public function cliente(): BelongsTo
-    {
-        return $this->belongsTo(Client::class);
-    }
+    // ✅ CORREGIDO: Eliminar relación cliente() que no existe
+     public function cliente(): BelongsTo
+     {
+         return $this->belongsTo(Client::class);
+     }
 
     public function propiedad(): BelongsTo
     {
-        return $this->belongsTo(Property::class);
+        return $this->belongsTo(Property::class, 'propiedad_id');
     }
 
     public function registradoPor(): BelongsTo
@@ -43,11 +42,16 @@ class Pago extends Model
         return $this->belongsTo(User::class, 'registrado_por');
     }
 
-    // ✅ ELIMINADO: Accessor getNumeroReciboAttribute (ya es campo real)
+    // ✅ ACCESOR para obtener cliente a través de propiedad
+    public function getClienteAttribute()
+    {
+        return $this->propiedad->client;
+    }
 
     public function getMesPagadoFormateadoAttribute(): string
     {
         return \Carbon\Carbon::createFromFormat('Y-m', $this->mes_pagado)
-                            ->format('F Y');
+                            ->locale('es')
+                            ->translatedFormat('F Y');
     }
 }

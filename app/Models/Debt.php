@@ -20,7 +20,6 @@ class Debt extends Model
 
     protected $fillable = [
         'propiedad_id',
-        'tarifa_id',
         'monto_pendiente',
         'fecha_emision',
         'fecha_vencimiento',
@@ -39,10 +38,7 @@ class Debt extends Model
         return $this->belongsTo(Property::class, 'propiedad_id');
     }
 
-    public function tarifa()
-    {
-        return $this->belongsTo(Tariff::class, 'tarifa_id');
-    }
+    
 
     // NUEVO: recibos que han aplicado pagos a esta deuda
     public function recibos()

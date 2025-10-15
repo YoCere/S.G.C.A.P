@@ -38,7 +38,7 @@
                 <div class="form-group">
                     <label>Tarifa Aplicada</label>
                     <div class="form-control-plaintext p-2 border rounded bg-light">
-                        <strong>{{ $debt->tarifa->nombre }}</strong> - 
+                        <strong>{{ $debt->propiedad->tariff->nombre }}</strong> - 
                         <span class="text-success">Bs {{ number_format($debt->tarifa->precio_mensual, 2) }}</span>
                         @if(!$debt->tarifa->activo)
                             <span class="badge badge-warning ml-2">TARIFA INACTIVA</span>

@@ -10,28 +10,29 @@ return new class extends Migration
     {
         Schema::create('pagos', function (Blueprint $table) {
             $table->id();
-            // ✅ RELACIONES ESENCIALES
-            $table->foreignId('cliente_id')->constrained('clientes');
+            $table->string('numero_recibo'); // ✅ MANTENIDO: Sin unique pero requerido
+            
+            // ✅ CORREGIDO: Solo relación esencial
             $table->foreignId('propiedad_id')->constrained('propiedades');
             
-            // ✅ INFORMACIÓN DEL PAGO
+            // ❌ ELIMINADO: cliente_id redundante
+            
             $table->decimal('monto', 10, 2);
-            $table->string('mes_pagado'); // Ej: "2024-10", "2024-11"
+            $table->string('mes_pagado');
             $table->date('fecha_pago');
             
-            // ✅ MÉTODO DE PAGO SIMPLE
             $table->enum('metodo', ['efectivo', 'transferencia', 'qr'])->default('efectivo');
             $table->string('comprobante')->nullable();
             
-            // ✅ INFORMACIÓN ADICIONAL
             $table->text('observaciones')->nullable();
             $table->foreignId('registrado_por')->constrained('users');
             
             $table->timestamps();
             
-            // ✅ ÍNDICES PARA BÚSQUEDA RÁPIDA
-            $table->index(['cliente_id', 'fecha_pago']);
+            // ✅ MEJORADO: Índices optimizados
             $table->index(['propiedad_id', 'mes_pagado']);
+            $table->index(['fecha_pago']);
+            $table->index(['numero_recibo']); // Índice sin unique
         });
     }
 

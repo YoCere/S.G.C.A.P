@@ -6,35 +6,37 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('deudas', function (Blueprint $table) {
             $table->id();
-            // Relación con cliente
-            $table->foreignId('cliente_id')
-                  ->constrained('clientes')
-                  ->cascadeOnDelete();
-
-            // Campos propios de la deuda
+            
+            // ✅ CORREGIDO: Solo relación esencial con propiedad
             $table->foreignId('propiedad_id')->constrained('propiedades')->cascadeOnDelete();
-            $table->foreignId('tarifa_id')->constrained('tarifas');   // <-- AÑADIDO
+            
+            // ❌ ELIMINADO: tarifa_id redundante
+            // ❌ ELIMINADO: cliente_id redundante
+            
             $table->decimal('monto_pendiente', 10, 2);
             $table->date('fecha_emision')->useCurrent();
             $table->date('fecha_vencimiento')->nullable();
-            $table->enum('estado', ['pendiente', 'pagada', 'vencida', 'anulada', 'corte_pendiente', 'cortado'])->default('pendiente');
-            $table->boolean('pagada_adelantada')->default(false);   
+            
+            // ✅ CORREGIDO: Solo estados de deuda, no duplicados de propiedad
+            $table->enum('estado', ['pendiente', 'pagada', 'vencida', 'anulada'])->default('pendiente');
+            
+            // ❌ ELIMINADO: pagada_adelantada (no se usa)
+            
             // 1 deuda por propiedad y mes:
             $table->unique(['propiedad_id','fecha_emision']); 
+            
             $table->timestamps();
+            
+            // ✅ AGREGADO: Índices para consultas frecuentes
+            $table->index(['estado', 'fecha_vencimiento']);
+            $table->index(['fecha_emision']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('deudas');

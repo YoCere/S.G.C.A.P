@@ -106,7 +106,7 @@ class PropertyController extends Controller
 
     public function create()
     {
-        $clients = Client::orderBy('nombre')->get(['id', 'nombre', 'ci', 'codigo_cliente']); // ✅ NUEVO: incluir codigo_cliente
+        $clients = Client::orderBy('nombre')->get(['id', 'nombre', 'ci', 'codigo_cliente']);
         $tariffs = Tariff::activas()->orderBy('nombre')->get();
         
         return view('admin.properties.create', compact('clients', 'tariffs'));
@@ -133,9 +133,7 @@ class PropertyController extends Controller
 
     public function edit(Property $property)
     {
-        $clients = Client::orderBy('nombre')->get(['id', 'nombre', 'ci', 'codigo_cliente']); // ✅ NUEVO: incluir codigo_cliente
-        
-        // ✅ MOSTRAR TODAS las tarifas en edición, pero marcar inactivas
+        $clients = Client::orderBy('nombre')->get(['id', 'nombre', 'ci', 'codigo_cliente']);
         $tariffs = Tariff::orderBy('activo', 'desc')->orderBy('nombre')->get();
         
         return view('admin.properties.edit', compact('property', 'clients', 'tariffs'));
@@ -173,19 +171,19 @@ class PropertyController extends Controller
 
     public function cutService(Property $property)
     {
-        // Cambiar estado a "corte_pendiente" en lugar de "cortado"
-        $property->update(['estado' => 'corte_pendiente']);
-        
-        // También actualizar las deudas a estado "corte_pendiente"
-        $property->debts()
-            ->where('estado', 'pendiente')
-            ->update(['estado' => 'corte_pendiente']);
+        try {
+            // ✅ SOLO cambiar el estado de la propiedad (NO las deudas)
+            $property->update(['estado' => 'corte_pendiente']);
 
-        return redirect()->route('admin.properties.index')
-            ->with('success', 'Propiedad marcada para corte pendiente. El equipo físico procederá con el corte.');
+            return redirect()->route('admin.properties.index')
+                ->with('success', 'Propiedad marcada para corte pendiente. El equipo físico procederá con el corte.');
+                
+        } catch (\Exception $e) {
+            \Log::error("Error en cutService: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al marcar corte: ' . $e->getMessage());
+        }
     }
 
-    // Agregar este método para cancelar corte pendiente
     public function cancelCutService(Property $property)
     {
         // Solo permitir si está en corte_pendiente
@@ -194,15 +192,17 @@ class PropertyController extends Controller
                 ->with('error', 'Solo se puede cancelar cortes pendientes');
         }
 
-        $property->update(['estado' => 'activo']);
-        
-        // Revertir deudas a estado pendiente
-        $property->debts()
-            ->where('estado', 'corte_pendiente')
-            ->update(['estado' => 'pendiente']);
+        try {
+            // ✅ SOLO cambiar el estado de la propiedad (NO las deudas)
+            $property->update(['estado' => 'activo']);
 
-        return redirect()->route('admin.properties.index')
-            ->with('success', 'Corte pendiente cancelado. Propiedad reactivada.');
+            return redirect()->route('admin.properties.index')
+                ->with('success', 'Corte pendiente cancelado. Propiedad reactivada.');
+                
+        } catch (\Exception $e) {
+            \Log::error("Error en cancelCutService: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al cancelar corte: ' . $e->getMessage());
+        }
     }
 
     public function restoreService(Property $property)
@@ -231,7 +231,7 @@ class PropertyController extends Controller
                   ->orWhereHas('client', function($q) use ($query) {
                       $q->where('nombre', 'like', "%{$query}%")
                         ->orWhere('ci', 'like', "%{$query}%")
-                        ->orWhere('codigo_cliente', 'like', "%{$query}%"); // ✅ NUEVO
+                        ->orWhere('codigo_cliente', 'like', "%{$query}%");
                   });
             })
             ->limit(10)
@@ -243,7 +243,7 @@ class PropertyController extends Controller
                     'barrio' => $propiedad->barrio,
                     'cliente_nombre' => $propiedad->client->nombre,
                     'cliente_ci' => $propiedad->client->ci,
-                    'cliente_codigo' => $propiedad->client->codigo_cliente, // ✅ NUEVO
+                    'cliente_codigo' => $propiedad->client->codigo_cliente,
                     'tarifa_precio' => $propiedad->tariff->precio_mensual,
                     'tarifa_nombre' => $propiedad->tariff->nombre
                 ];
@@ -251,18 +251,4 @@ class PropertyController extends Controller
         
         return response()->json($propiedades);
     }
-    // En App\Models\Property - AGREGAR este método
-public function estaAlDia()
-{
-    $deudasPendientes = $this->debts()->where('estado', 'pendiente')->count();
-    $mesesAdeudados = count($this->obtenerMesesAdeudados());
-    
-    return $deudasPendientes === 0 && $mesesAdeudados === 0;
-}
-
-// Y este para obtener el total de deudas pendientes
-public function getTotalDeudasPendientesAttribute()
-{
-    return $this->debts()->where('estado', 'pendiente')->sum('monto_pendiente');
-}
 }

@@ -361,22 +361,7 @@ return [
             'route' => 'admin.multas.index',
             'icon' => 'fas fa-gavel fa-fw',
         ],
-        ['header' => 'labels'],
-        [
-            'text' => 'important',
-            'icon_color' => 'red',
-            'url' => '#',
-        ],
-        [
-            'text' => 'warning',
-            'icon_color' => 'yellow',
-            'url' => '#',
-        ],
-        [
-            'text' => 'information',
-            'icon_color' => 'cyan',
-            'url' => '#',
-        ],
+        
     ],
 
     /*

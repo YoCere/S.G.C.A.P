@@ -25,35 +25,43 @@ class Property extends Model
     
     // Agregar este método al modelo Property
     // En Property.php, reemplazar el método obtenerMesesAdeudados:
+// En App\Models\Property - REEMPLAZAR el método obtenerMesesAdeudados()
 public function obtenerMesesAdeudados()
 {
     try {
-        // Obtener meses ya pagados
+        \Log::info("🔍 Calculando meses adeudados para propiedad: {$this->id}");
+
+        // Obtener TODOS los meses pagados para esta propiedad
         $mesesPagados = Pago::where('propiedad_id', $this->id)
             ->pluck('mes_pagado')
             ->toArray();
 
-        // Generar los últimos 12 meses + año actual completo
-        $mesesAdeudados = [];
-        $fechaInicio = now()->subMonths(12)->startOfMonth();
-        $fechaFin = now()->endOfYear();
-        
-        $fechaActual = $fechaInicio->copy();
-        while ($fechaActual <= $fechaFin) {
-            $mes = $fechaActual->format('Y-m');
-            
-            // Si el mes no está pagado, agregarlo a adeudados
-            if (!in_array($mes, $mesesPagados)) {
-                $mesesAdeudados[] = $mes;
-            }
-            
-            $fechaActual->addMonth();
-        }
-        
-        return $mesesAdeudados;
+        \Log::info("💰 Meses pagados: " . json_encode($mesesPagados));
+
+        // Obtener meses con deudas PENDIENTES
+        $mesesConDeudaPendiente = Debt::where('propiedad_id', $this->id)
+            ->where('estado', 'pendiente')
+            ->where('monto_pendiente', '>', 0)
+            ->get()
+            ->map(function($deuda) {
+                return $deuda->fecha_emision->format('Y-m');
+            })
+            ->toArray();
+
+        \Log::info("📋 Meses con deuda pendiente: " . json_encode($mesesConDeudaPendiente));
+
+        // ✅ CORRECCIÓN: Solo son meses adeudados los que tienen deuda pendiente
+        // Y que no están pagados (por si hay inconsistencia)
+        $mesesAdeudados = array_filter($mesesConDeudaPendiente, function($mes) use ($mesesPagados) {
+            return !in_array($mes, $mesesPagados);
+        });
+
+        \Log::info("✅ Meses adeudados finales: " . json_encode($mesesAdeudados) . " - Total: " . count($mesesAdeudados));
+
+        return array_values($mesesAdeudados); // Reindexar array
 
     } catch (\Exception $e) {
-        \Log::error("Error en obtenerMesesAdeudados para propiedad {$this->id}: " . $e->getMessage());
+        \Log::error("💥 Error en obtenerMesesAdeudados para propiedad {$this->id}: " . $e->getMessage());
         return [];
     }
 }

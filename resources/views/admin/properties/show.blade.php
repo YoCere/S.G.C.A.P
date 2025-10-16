@@ -247,57 +247,89 @@
       </div>
 
       <!-- Información Adicional -->
-      <div class="card mt-3">
-        <div class="card-header bg-secondary text-white">
-          <h5 class="card-title mb-0">
-            <i class="fas fa-chart-bar mr-2"></i>Estadísticas
-          </h5>
-        </div>
-        <div class="card-body">
-          <div class="row text-center">
-            <div class="col-6 mb-2">
+<div class="card mt-3">
+  <div class="card-header bg-secondary text-white">
+      <h5 class="card-title mb-0">
+          <i class="fas fa-chart-bar mr-2"></i>Estadísticas
+      </h5>
+  </div>
+  <div class="card-body">
+      <div class="row text-center">
+          <div class="col-6 mb-2">
               <small class="text-muted d-block">Deudas Pendientes</small>
-              <strong class="text-danger">Bs {{ number_format($property->total_deudas_pendientes ?? 0, 2) }}</strong>
-            </div>
-            <div class="col-6 mb-2">
-              <small class="text-muted d-block">Meses Adeudados</small>
-              <strong>{{ count($property->obtenerMesesAdeudados() ?? []) }}</strong>
-            </div>
-            <div class="col-6">
-              <small class="text-muted d-block">Multas Pendientes</small>
-              <strong>{{ $property->multasPendientes()->count() ?? 0 }}</strong>
-            </div>
-            <div class="col-6">
-              <small class="text-muted d-block">Estado General</small>
-              @if($property->estado === 'activo')
-                <span class="badge badge-success">AL DÍA</span>
-              @else
-                <span class="badge badge-warning">CON DEUDA</span>
-              @endif
-            </div>
+              <strong class="text-danger">Bs {{ number_format($property->debts->where('estado', 'pendiente')->sum('monto_pendiente'), 2) }}</strong>
           </div>
-          
-          @if($property->debts->count() > 0)
-            <div class="mt-3">
-              <small class="text-muted d-block mb-2">Deudas Registradas:</small>
-              <div class="list-group list-group-flush">
-                @foreach($property->debts->take(3) as $debt)
-                  <div class="list-group-item px-0 py-1 small">
-                    <div class="d-flex justify-content-between">
-                      <span>Deuda #{{ $debt->id }}</span>
-                      <span class="text-danger">Bs {{ number_format($debt->monto_pendiente, 2) }}</span>
-                    </div>
-                    <small class="text-muted">{{ $debt->fecha_emision->format('d/m/Y') }}</small>
-                  </div>
-                @endforeach
-              </div>
-              @if($property->debts->count() > 3)
-                <small class="text-muted">+{{ $property->debts->count() - 3 }} más...</small>
+          <div class="col-6 mb-2">
+              <small class="text-muted d-block">Meses Adeudados</small>
+              <strong>{{ count($property->obtenerMesesAdeudados()) }}</strong>
+          </div>
+          <div class="col-6">
+              <small class="text-muted d-block">Multas Pendientes</small>
+              <strong>{{ $property->multas()->where('estado', 'pendiente')->count() }}</strong>
+          </div>
+          <div class="col-6">
+              <small class="text-muted d-block">Estado General</small>
+              @php
+                  $totalDeudas = $property->debts->where('estado', 'pendiente')->sum('monto_pendiente');
+                  $mesesAdeudados = count($property->obtenerMesesAdeudados());
+              @endphp
+              
+              @if($totalDeudas == 0 && $mesesAdeudados == 0)
+                  <span class="badge badge-success">AL DÍA</span>
+              @elseif($property->estado === 'corte_pendiente' || $property->estado === 'cortado')
+                  <span class="badge badge-danger">{{ strtoupper($property->estado) }}</span>
+              @else
+                  <span class="badge badge-warning">CON DEUDA</span>
               @endif
-            </div>
-          @endif
-        </div>
+          </div>
       </div>
+      
+      @if($property->debts->where('estado', 'pendiente')->count() > 0)
+          <div class="mt-3">
+              <small class="text-muted d-block mb-2">Deudas Pendientes:</small>
+              <div class="list-group list-group-flush">
+                  @foreach($property->debts->where('estado', 'pendiente')->take(3) as $debt)
+                      <div class="list-group-item px-0 py-1 small">
+                          <div class="d-flex justify-content-between">
+                              <span>Deuda {{ \Carbon\Carbon::parse($debt->fecha_emision)->format('M Y') }}</span>
+                              <span class="text-danger">Bs {{ number_format($debt->monto_pendiente, 2) }}</span>
+                          </div>
+                          <small class="text-muted">
+                              Emitida: {{ $debt->fecha_emision->format('d/m/Y') }}
+                              @if($debt->fecha_vencimiento)
+                                  | Vence: {{ $debt->fecha_vencimiento->format('d/m/Y') }}
+                              @endif
+                          </small>
+                      </div>
+                  @endforeach
+              </div>
+              @if($property->debts->where('estado', 'pendiente')->count() > 3)
+                  <small class="text-muted">+{{ $property->debts->where('estado', 'pendiente')->count() - 3 }} más...</small>
+              @endif
+          </div>
+      @else
+          <div class="mt-3 text-center">
+              <small class="text-success">
+                  <i class="fas fa-check-circle"></i> No hay deudas pendientes
+              </small>
+          </div>
+      @endif
+
+      <!-- ✅ NUEVO: Mostrar meses adeudados específicos -->
+      @if(count($property->obtenerMesesAdeudados()) > 0)
+          <div class="mt-3">
+              <small class="text-muted d-block mb-2">Meses Adeudados:</small>
+              <div class="d-flex flex-wrap gap-1">
+                  @foreach($property->obtenerMesesAdeudados() as $mes)
+                      <span class="badge badge-danger small">
+                          {{ \Carbon\Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('M Y') }}
+                      </span>
+                  @endforeach
+              </div>
+          </div>
+      @endif
+  </div>
+</div>
     </div>
   </div>
 @stop

@@ -64,7 +64,7 @@
                             <small class="text-muted" id="propiedadBarrio"></small>
                         </div>
                         <div class="col-md-4">
-                            <strong>Tarifa:</strong> <span id="tarifaMonto" class="text-success"></span>/mes
+                            <strong>Tarifa:</strong> <span id="tarifaMonto" class=""></span>/mes
                             <br>
                             <small class="text-muted" id="tarifaNombre"></small>
                         </div>
@@ -88,13 +88,13 @@
                                 </div>
                                 <div class="col-md-4">
                                     <strong>Vencimiento:</strong> 
-                                    <span class="{{ \Carbon\Carbon::parse($deuda->fecha_vencimiento)->isPast() ? 'text-danger' : 'text-warning' }}">
+                                    <span class="{{ \Carbon\Carbon::parse($deuda->fecha_vencimiento)->isPast() ? '' : 'text-warning' }}">
                                         {{ \Carbon\Carbon::parse($deuda->fecha_vencimiento)->format('d/m/Y') }}
                                     </span>
                                 </div>
                                 <div class="col-md-4">
                                     <strong>Monto:</strong> 
-                                    <span class="text-danger font-weight-bold">
+                                    <span class="" font-weight-bold">
                                         Bs {{ number_format($deuda->monto_pendiente, 2) }}
                                     </span>
                                 </div>
@@ -128,7 +128,7 @@
                 {{-- ✅ CORREGIDO: MESES PENDIENTES DINÁMICOS --}}
                 <div class="alert alert-warning mt-3" id="seccionMesesPendientes" style="display: none;">
                     <h6 class="alert-heading">
-                        <i class="fas fa-calendar-check mr-2"></i>Meses Pendientes de Pago
+                        <i class="fas fa-calendar-check mr-2"></i>Meses para pagar disponibles
                     </h6>
                     <div class="mt-2" id="listaMesesPendientes">
                         {{-- Se llena automáticamente con JavaScript --}}

@@ -429,17 +429,17 @@ private function actualizarDeudaPorPago($propiedadId, $mesPagado)
     }
 
     public function print(Pago $pago)
-    {
-        // ✅ CORREGIDO: Cargar 'propiedad.cliente' en lugar de 'cliente'
-        $pagosDelRecibo = Pago::where('numero_recibo', $pago->numero_recibo)
-                            ->with(['propiedad.cliente', 'registradoPor'])
-                            ->orderBy('mes_pagado', 'asc')
-                            ->get();
-        
-        $pagoPrincipal = $pagosDelRecibo->first();
-        
-        return view('admin.pagos.print', compact('pagoPrincipal', 'pagosDelRecibo'));
-    }
+{
+    // ✅ CORRECTO: Ya está cargando las relaciones necesarias
+    $pagosDelRecibo = Pago::where('numero_recibo', $pago->numero_recibo)
+                        ->with(['propiedad.client', 'registradoPor', 'propiedad.tariff']) // ✅ Añadí tariff aquí
+                        ->orderBy('mes_pagado', 'asc')
+                        ->get();
+    
+    $pagoPrincipal = $pagosDelRecibo->first();
+    
+    return view('admin.pagos.print', compact('pagoPrincipal', 'pagosDelRecibo'));
+}
 
     public function anular(Pago $pago)
     {

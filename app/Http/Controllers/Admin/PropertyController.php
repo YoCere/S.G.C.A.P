@@ -251,4 +251,18 @@ class PropertyController extends Controller
         
         return response()->json($propiedades);
     }
+    // En App\Models\Property - AGREGAR este método
+public function estaAlDia()
+{
+    $deudasPendientes = $this->debts()->where('estado', 'pendiente')->count();
+    $mesesAdeudados = count($this->obtenerMesesAdeudados());
+    
+    return $deudasPendientes === 0 && $mesesAdeudados === 0;
+}
+
+// Y este para obtener el total de deudas pendientes
+public function getTotalDeudasPendientesAttribute()
+{
+    return $this->debts()->where('estado', 'pendiente')->sum('monto_pendiente');
+}
 }

@@ -160,9 +160,9 @@
                 <div>
                     <strong>Período:</strong><br>
                     <span style="font-size: 14px;">
-                        {{ \Carbon\Carbon::createFromFormat('Y-m', $pagosDelRecibo->first()->mes_pagado)->format('M Y') }} 
+                        {{ \Carbon\Carbon::createFromFormat('Y-m', $pagosDelRecibo->first()->mes_pagado)->locale('es')->translatedFormat('M Y') }}
                         - 
-                        {{ \Carbon\Carbon::createFromFormat('Y-m', $pagosDelRecibo->last()->mes_pagado)->format('M Y') }}
+                        {{ \Carbon\Carbon::createFromFormat('Y-m', $pagosDelRecibo->last()->mes_pagado)->locale('es')->translatedFormat('M Y') }}
                     </span>
                 </div>
                 <div>
@@ -177,9 +177,9 @@
         {{-- ✅ INFORMACIÓN DEL CLIENTE COMPACTA --}}
         <div class="cliente-info">
             <div>
-                <strong>Cliente:</strong> {{ $pagoPrincipal->cliente->nombre }}<br>
-                <strong>CI/NIT:</strong> {{ $pagoPrincipal->cliente->ci ?? 'N/A' }}<br>
-                <strong>Código:</strong> {{ $pagoPrincipal->cliente->codigo_cliente ?? 'N/A' }}
+                <strong>Cliente:</strong> {{ $pagoPrincipal->propiedad->client->nombre ?? 'N/A' }}<br>
+                <strong>CI/NIT:</strong> {{ $pagoPrincipal->propiedad->client->ci ?? 'N/A' }}<br>
+                <strong>Código:</strong> {{ $pagoPrincipal->propiedad->client->codigo_cliente ?? 'N/A' }}
             </div>
             <div>
                 <strong>Propiedad:</strong> {{ $pagoPrincipal->propiedad->referencia }}<br>
@@ -201,7 +201,7 @@
                 @foreach($pagosDelRecibo as $pago)
                 <tr>
                     <td>
-                        <strong>{{ \Carbon\Carbon::createFromFormat('Y-m', $pago->mes_pagado)->format('F Y') }}</strong>
+                        <strong>{{ \Carbon\Carbon::createFromFormat('Y-m', $pago->mes_pagado)->locale('es')->translatedFormat('F Y') }}</strong>
                     </td>
                     <td>{{ $pago->fecha_pago->format('d/m/Y') }}</td>
                     <td><strong>Bs {{ number_format($pago->monto, 2) }}</strong></td>

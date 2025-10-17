@@ -15,7 +15,7 @@ return new class extends Migration
             
             $table->string('referencia');
             $table->enum('barrio', [
-                'Centro', 'Aroma', 'Los Valles', 'Caipitandy', 'Primavera', 'Arboleda'
+                'Centro', 'Aroma', 'Los Valles', 'Caipitandy', 'Primavera', 'Arboleda', 'Fatima'
             ])->nullable();
            
             $table->decimal('latitud', 10, 8)->nullable();

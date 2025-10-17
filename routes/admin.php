@@ -9,12 +9,14 @@ use App\Http\Controllers\Admin\DebtController;
 use App\Http\Controllers\Admin\PagoController;
 use App\Http\Controllers\Admin\FineController;
 use App\Http\Controllers\Admin\CorteController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\ReporteController;
 
 Route::middleware(['auth'])
     ->prefix('admin')
     ->group(function () {
-        Route::get('/', [HomeController::class, 'index'])->name('admin.home');
-        Route::resource('clients', ClientController::class)->names('admin.clients');
+        Route::get('/', [HomeController::class, 'index'])->middleware('can:admin.home')->name('admin.home');
+        Route::resource('clients', ClientController::class)->only(['index', 'create', 'edit', 'update', 'show'])->names('admin.clients');
 
         // Tarifas routes
         Route::resource('tariffs', TariffController::class)->names('admin.tariffs');
@@ -78,5 +80,19 @@ Route::middleware(['auth'])
             $controller = app()->make(App\Http\Controllers\Admin\PagoController::class);
             $actualizadas = $controller->sincronizarDeudasConPagos();
             return "Deudas actualizadas: {$actualizadas}";
+        });
+
+        //Users
+        
+         Route::resource('users', UserController::class)->middleware('can.admin.users')->names('admin.users');
+        //Reportes
+        // Agregar después de las rutas de users
+        // En admin.php - Actualizar el grupo de reportes
+        Route::prefix('reportes')->group(function () {
+            Route::get('/', [ReporteController::class, 'index'])->name('admin.reportes.index');
+            Route::get('/morosidad', [ReporteController::class, 'morosidad'])->name('admin.reportes.morosidad');
+            Route::get('/ingresos', [ReporteController::class, 'ingresos'])->name('admin.reportes.ingresos');
+            Route::get('/cortes', [ReporteController::class, 'cortes'])->name('admin.reportes.cortes');
+            Route::get('/propiedades', [ReporteController::class, 'propiedades'])->name('admin.reportes.propiedades');
         });
     });

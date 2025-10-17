@@ -29,7 +29,7 @@ class PropertyRequest extends FormRequest
                 Rule::unique('propiedades', 'referencia')->ignore($propertyId),
             ],
             'direccion'  => 'required|string|max:255',
-            'barrio' => 'nullable|in:Centro,Aroma,Los Valles,Caipitandy,Primavera,Arboleda',
+            'barrio' => 'nullable|in:Centro,Aroma,Los Valles,Caipitandy,Primavera,Arboleda,Fatima',
             'latitud'    => 'nullable|numeric|between:-90,90',
             'longitud'   => 'nullable|numeric|between:-180,180',
             'estado'     => 'required|in:activo,inactivo,cortado',

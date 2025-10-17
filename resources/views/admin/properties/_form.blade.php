@@ -48,6 +48,7 @@
     <option value="Los Valles" @selected(old('barrio', $property->barrio ?? null) == 'Los Valles')>Los Valles</option>
     <option value="Caipitandy" @selected(old('barrio', $property->barrio ?? null) == 'Caipitandy')>Caipitandy</option>
     <option value="Primavera" @selected(old('barrio', $property->barrio ?? null) == 'Primavera')>Primavera</option>
+    <option value="Fatima" @selected(old('barrio', $property->barrio ?? null) == 'Fatima')>Fatima</option>
     <option value="Arboleda" @selected(old('barrio', $property->barrio ?? null) == 'Arboleda')>Arboleda</option>
   </select>
   @error('barrio') <span class="text-danger small">{{ $message }}</span> @enderror

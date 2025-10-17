@@ -322,44 +322,64 @@ return [
         ],
         [
             'text' => 'Dashboard',
-            'url' => 'admin',
-            'icon' => 'fas fa-tachometer-alt fa-fw'
+            'route' => 'admin.home',
+            'icon' => 'fas fa-tachometer-alt fa-fw',
+            'can' => 'admin.home',
         ],
-        ['header' => 'ADMINISTRADOR'],
+        //['header' => 'ADMINISTRADOR'],
+        [
+            'text' => 'Usuarios',
+            'route' => 'admin.users.index',
+            'icon' => 'fas fa-user-tie',
+            'can' => 'admin.users.index',
+        ],
         [
             'text' => 'Clientes',
             'route' => 'admin.clients.index',
             'icon' => 'fas fa-fw fa-users',
+            'can' => 'admin.clients.index',
         ],
         [
             'text' => 'Pagos',
             'route' => 'admin.pagos.index',
             'icon' => 'fas fa-fw fa-money-bill-wave',
+            'can' => 'admin.pagos.index',
         ],
         [
             'text' => 'Tarifas',
             'route' => 'admin.tariffs.index',
             'icon' => 'fa fa-tags',
+            'can' => 'admin.tariffs.index',
         ],
         [
             'text' => 'Propiedades',
             'route' => 'admin.properties.index',
             'icon' => 'fa fa-home',
+            'can' => 'admin.properties.index',
         ],
         [
             'text' => 'Deudas',
             'route' => 'admin.debts.index',
             'icon' => 'fa fa-file-invoice-dollar',
+            'can' => 'admin.debts.index',
         ],
         [
             'text' => 'Cortes',
             'route' => 'admin.cortes.pendientes',
             'icon' => 'fas fa-faucet fa-fw',
+            'can' => 'admin.cortes.pendientes',
         ],
         [
             'text' => 'Multas',
             'route' => 'admin.multas.index',
             'icon' => 'fas fa-gavel fa-fw',
+            'can' => 'admin.multas.index',
+        ],
+        [
+            'text' => 'Reportes',
+            'route' => 'admin.reportes.index',
+            'icon' => 'fas fa-chart-line',
+            'can' => 'admin.reportes.index',
         ],
         
     ],

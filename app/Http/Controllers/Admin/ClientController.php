@@ -2,12 +2,23 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
 use App\Models\Client;
 use Illuminate\Http\Request;
 
+use Spatie\Permission\Models\Role;
+
+
 class ClientController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:admin.clients.index')->only('index');
+        $this->middleware('can:admin.clients.create')->only(['create', 'store']);
+        $this->middleware('can:admin.clients.show')->only('show');
+        $this->middleware('can:admin.clients.edit')->only(['edit', 'update']);
+        $this->middleware('can:admin.clients.destroy')->only('destroy');
+    }
     public function index(Request $request)
     {
         // ✅ CORREGIDO: Cargar la relación properties

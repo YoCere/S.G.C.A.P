@@ -20,13 +20,19 @@ class DatabaseSeeder extends Seeder
     {
         // === 1) Usuarios ===
         $this->command->info('👤 Creando usuarios...');
+        $this->call(RoleSeeder::class);
         
+        // ✅ CORREGIDO: Guardar el usuario admin en una variable
         $admin = User::firstOrCreate(
             ['email' => 'josealfredocerezorios75@gmail.com'],
             ['name' => 'Administrador', 'password' => bcrypt('7516naBJ')]
-        );
+        )->assignRole('Admin');
 
-        $empleados = User::factory(4)->create();
+        $secretaria = User::factory()->create()->assignRole('Secretaria');
+        $personalCorte = User::factory()->create()->assignRole('personal_corte');
+
+        // ✅ CORREGIDO: Crear array de empleados para usar después
+        $empleados = collect([$admin, $secretaria, $personalCorte]);
 
         // === 2) Tarifas base + aleatorias ===
         $this->command->info('💰 Creando tarifas...');
@@ -103,11 +109,9 @@ class DatabaseSeeder extends Seeder
                     Debt::firstOrCreate(
                         ['propiedad_id' => $p->id, 'fecha_emision' => $mes],
                         [
-                            // ❌ ELIMINADO: 'tarifa_id' => $tarifaId,
                             'monto_pendiente' => $precio,
                             'fecha_vencimiento' => $mes->copy()->endOfMonth(), // ✅ CORREGIDO: fin de mes
                             'estado' => $estado,
-                            // ❌ ELIMINADO: 'pagada_adelantada' => false,
                         ]
                     );
                 }
@@ -117,82 +121,83 @@ class DatabaseSeeder extends Seeder
         $tarifaFallback = Tariff::inRandomOrder()->value('id') ?? Tariff::first()->id;
         Property::whereNull('tarifa_id')->update(['tarifa_id' => $tarifaFallback]);
 
-        // === 6) ✅ MULTAS AUTOMÁTICAS Y MANUALES ===
-$this->command->info('⚡ Generando multas...');
+        // === 6) ✅ MULTAS AUTOMÁTICAS Y MANUALES - CORREGIDO ===
+        $this->command->info('⚡ Generando multas...');
 
-// Multas automáticas por reconexión
-Debt::where('estado', 'corte_pendiente')
-    ->inRandomOrder()
-    ->take(10)
-    ->get()
-    ->each(function ($deuda) use ($admin) {
-        $mesesMora = now()->diffInMonths($deuda->fecha_vencimiento);
-        $tipoMulta = $mesesMora >= 12 ? 
-            Fine::TIPO_RECONEXION_12MESES : 
-            Fine::TIPO_RECONEXION_3MESES;
+        // ✅ CORREGIDO: Ahora $admin está definida
+        // Multas automáticas por reconexión
+        Debt::where('estado', 'corte_pendiente')
+            ->inRandomOrder()
+            ->take(10)
+            ->get()
+            ->each(function ($deuda) use ($admin) {
+                $mesesMora = now()->diffInMonths($deuda->fecha_vencimiento);
+                $tipoMulta = $mesesMora >= 12 ? 
+                    Fine::TIPO_RECONEXION_12MESES : 
+                    Fine::TIPO_RECONEXION_3MESES;
 
-        Fine::create([
-            'deuda_id' => $deuda->id,
-            'propiedad_id' => $deuda->propiedad_id,
-            'tipo' => $tipoMulta,
-            'nombre' => Fine::obtenerTiposMulta()[$tipoMulta],
-            'monto' => Fine::obtenerMontosBase()[$tipoMulta],
-            'descripcion' => 'Multa aplicada automáticamente por ' . ($mesesMora >= 12 ? '12' : '3') . ' meses de mora',
-            'fecha_aplicacion' => now(),
-            'estado' => Fine::ESTADO_PENDIENTE,
-            'aplicada_automaticamente' => true,
-            'activa' => true,
-            'creado_por' => $admin->id,
-        ]);
+                Fine::create([
+                    'deuda_id' => $deuda->id,
+                    'propiedad_id' => $deuda->propiedad_id,
+                    'tipo' => $tipoMulta,
+                    'nombre' => Fine::obtenerTiposMulta()[$tipoMulta],
+                    'monto' => Fine::obtenerMontosBase()[$tipoMulta],
+                    'descripcion' => 'Multa aplicada automáticamente por ' . ($mesesMora >= 12 ? '12' : '3') . ' meses de mora',
+                    'fecha_aplicacion' => now(),
+                    'estado' => Fine::ESTADO_PENDIENTE,
+                    'aplicada_automaticamente' => true,
+                    'activa' => true,
+                    'creado_por' => $admin->id,
+                ]);
 
-        $deuda->propiedad->update(['estado' => 'corte_pendiente']);
-    });
+                $deuda->propiedad->update(['estado' => 'corte_pendiente']);
+            });
 
-// Multas manuales por infracciones - CORREGIDO
-$tiposManuales = [
-    Fine::TIPO_CONEXION_CLANDESTINA,
-    Fine::TIPO_MANIPULACION_LLAVES,
-    Fine::TIPO_CONSTRUCCION,
-    Fine::TIPO_OTRO
-];
+        // ✅ CORREGIDO: Multas manuales por infracciones
+        $tiposManuales = [
+            Fine::TIPO_CONEXION_CLANDESTINA,
+            Fine::TIPO_MANIPULACION_LLAVES,
+            Fine::TIPO_CONSTRUCCION,
+            Fine::TIPO_OTRO
+        ];
 
-Property::inRandomOrder()
-    ->take(15)
-    ->get()
-    ->each(function ($propiedad) use ($tiposManuales, $empleados, $admin) {
-        $tipo = Arr::random($tiposManuales);
-        
-        // ✅ CORREGIDO: Obtener una deuda existente de la propiedad para asociar la multa
-        $deudaExistente = $propiedad->debts()->inRandomOrder()->first();
-        
-        if ($deudaExistente) {
-            Fine::create([
-                'deuda_id' => $deudaExistente->id, // ✅ CORREGIDO: Asociar a deuda existente
-                'propiedad_id' => $propiedad->id,
-                'tipo' => $tipo,
-                'nombre' => Fine::obtenerTiposMulta()[$tipo],
-                'monto' => Fine::obtenerMontosBase()[$tipo],
-                'descripcion' => 'Multa aplicada por: ' . fake()->sentence(),
-                'fecha_aplicacion' => now()->subDays(rand(1, 60)),
-                'estado' => Arr::random([Fine::ESTADO_PENDIENTE, Fine::ESTADO_PAGADA]),
-                'aplicada_automaticamente' => false,
-                'activa' => true,
-                'creado_por' => $empleados->random()->id ?? $admin->id,
-            ]);
+        Property::inRandomOrder()
+            ->take(15)
+            ->get()
+            ->each(function ($propiedad) use ($tiposManuales, $empleados) {
+                $tipo = Arr::random($tiposManuales);
+                
+                // ✅ CORREGIDO: Obtener una deuda existente de la propiedad para asociar la multa
+                $deudaExistente = $propiedad->debts()->inRandomOrder()->first();
+                
+                if ($deudaExistente) {
+                    Fine::create([
+                        'deuda_id' => $deudaExistente->id,
+                        'propiedad_id' => $propiedad->id,
+                        'tipo' => $tipo,
+                        'nombre' => Fine::obtenerTiposMulta()[$tipo],
+                        'monto' => Fine::obtenerMontosBase()[$tipo],
+                        'descripcion' => 'Multa aplicada por: ' . fake()->sentence(),
+                        'fecha_aplicacion' => now()->subDays(rand(1, 60)),
+                        'estado' => Arr::random([Fine::ESTADO_PENDIENTE, Fine::ESTADO_PAGADA]),
+                        'aplicada_automaticamente' => false,
+                        'activa' => true,
+                        'creado_por' => $empleados->random()->id,
+                    ]);
 
-            if (in_array($tipo, [Fine::TIPO_CONEXION_CLANDESTINA, Fine::TIPO_MANIPULACION_LLAVES])) {
-                $propiedad->update(['estado' => 'cortado']);
-                $propiedad->debts()
-                    ->where('estado', 'corte_pendiente')
-                    ->update(['estado' => 'cortado']);
-            }
-        }
-    });
+                    if (in_array($tipo, [Fine::TIPO_CONEXION_CLANDESTINA, Fine::TIPO_MANIPULACION_LLAVES])) {
+                        $propiedad->update(['estado' => 'cortado']);
+                        $propiedad->debts()
+                            ->where('estado', 'corte_pendiente')
+                            ->update(['estado' => 'cortado']);
+                    }
+                }
+            });
 
         // === 7) ✅ PAGOS DE EJEMPLO - CORREGIDO ===
         $this->command->info('💳 Generando pagos...');
         
-        $cobradorId = $empleados->random()->id ?? $admin->id;
+        $cobradorId = $empleados->random()->id;
 
         $generarNumeroRecibo = function() {
             static $contador = 1;
@@ -217,7 +222,6 @@ Property::inRandomOrder()
                 foreach ($deudasPendientes as $deuda) {
                     Pago::create([
                         'numero_recibo' => $generarNumeroRecibo(),
-                        // ✅ CORREGIDO: Sin cliente_id redundante
                         'propiedad_id' => $propiedad->id,
                         'monto' => $deuda->monto_pendiente,
                         'mes_pagado' => $deuda->fecha_emision->format('Y-m'),
@@ -253,7 +257,6 @@ Property::inRandomOrder()
                 foreach ($deudasCortadas as $deuda) {
                     Pago::create([
                         'numero_recibo' => $generarNumeroRecibo(),
-                        // ✅ CORREGIDO: Sin cliente_id redundante
                         'propiedad_id' => $propiedad->id,
                         'monto' => $deuda->monto_pendiente,
                         'mes_pagado' => $deuda->fecha_emision->format('Y-m'),
@@ -291,16 +294,14 @@ Property::inRandomOrder()
                 $deuda = Debt::firstOrCreate(
                     ['propiedad_id' => $propiedadEjemplo->id, 'fecha_emision' => $fechaEmision],
                     [
-                        // ✅ CORREGIDO: Sin tarifa_id y sin pagada_adelantada
                         'monto_pendiente' => $propiedadEjemplo->tariff->precio_mensual,
-                        'fecha_vencimiento' => $fechaEmision->copy()->endOfMonth(), // ✅ CORREGIDO: fin de mes
+                        'fecha_vencimiento' => $fechaEmision->copy()->endOfMonth(),
                         'estado' => 'pendiente',
                     ]
                 );
                 
                 Pago::create([
                     'numero_recibo' => $generarNumeroRecibo(),
-                    // ✅ CORREGIDO: Sin cliente_id redundante
                     'propiedad_id' => $propiedadEjemplo->id,
                     'monto' => $propiedadEjemplo->tariff->precio_mensual,
                     'mes_pagado' => $mes,

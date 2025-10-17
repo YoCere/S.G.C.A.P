@@ -39,6 +39,7 @@ class PropertyFactory extends Factory
                'Los Valles', 
                'Caipitandy', 
                'Primavera',
+               'Fatima',
                'Arboleda'];
 
         // Construcción de la referencia

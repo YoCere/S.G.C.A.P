@@ -16,10 +16,25 @@ class UserController extends Controller
         $this->middleware('can:admin.users.create')->only(['create', 'store']);
         $this->middleware('can:admin.users.edit')->only(['edit', 'update']);
         $this->middleware('can:admin.users.show')->only('show');
+        $this->middleware('can:admin.users.destroy')->only('destroy'); // ✅ AGREGADO
     }
+
     public function index(Request $request)
     {
         $query = User::with(['roles']);
+
+        // ✅ FILTRO POR ESTADO
+        if ($request->filled('estado')) {
+            if ($request->estado === 'activos') {
+                $query->where('activo', true);
+            } elseif ($request->estado === 'inactivos') {
+                $query->where('activo', false);
+            }
+            // Si es 'todos' no aplicamos filtro
+        } else {
+            // Por defecto mostrar solo activos
+            $query->where('activo', true);
+        }
 
         // Búsqueda por nombre o email
         if ($request->filled('search')) {
@@ -55,12 +70,12 @@ class UserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'activo' => true, // ✅ NUEVOS USUARIOS ACTIVOS POR DEFECTO
         ]);
 
-        // ✅ CORREGIDO: Usar sync con IDs de roles
         $user->roles()->sync($request->roles);
 
-        return redirect()->route('admin.users.index', $user)->with('info', 'Usuario creado con éxito');
+        return redirect()->route('admin.users.index')->with('info', 'Usuario creado con éxito');
     }
 
     public function show(User $user)
@@ -92,34 +107,43 @@ class UserController extends Controller
             'email' => $request->email,
         ];
 
-        // Actualizar password solo si se proporciona
         if ($request->filled('password')) {
             $userData['password'] = Hash::make($request->password);
         }
 
         $user->update($userData);
-
-        // ✅ CORREGIDO: Mantener sync con IDs
         $user->roles()->sync($request->roles);
 
-        return redirect()->route('admin.users.index', $user)->with('info', 'Usuario actualizado con éxito');
+        return redirect()->route('admin.users.index')->with('info', 'Usuario actualizado con éxito');
     }
 
     public function destroy(User $user)
     {
-        // Validar que no sea el usuario actual
+        // ✅ CAMBIADO: En lugar de eliminar, cambiar estado
         if ($user->id === auth()->id()) {
             return redirect()->back()
-                ->with('error', 'No puedes eliminar tu propio usuario.');
+                ->with('error', 'No puedes desactivar tu propio usuario.');
         }
 
         // Validar que no tenga registros asociados en pagos
         if ($user->pagos()->exists()) {
             return redirect()->back()
-                ->with('error', 'No se puede eliminar el usuario porque tiene pagos registrados.');
+                ->with('error', 'No se puede desactivar el usuario porque tiene pagos registrados.');
         }
 
-        $user->delete();
-        return redirect()->route('admin.users.index')->with('info', 'Usuario eliminado con éxito');
+        // Cambiar estado a inactivo
+        $user->update(['activo' => false]);
+
+        return redirect()->route('admin.users.index')
+            ->with('info', 'Usuario desactivado correctamente.');
+    }
+
+    // ✅ NUEVO MÉTODO PARA ACTIVAR USUARIOS
+    public function activate(User $user)
+    {
+        $user->update(['activo' => true]);
+
+        return redirect()->route('admin.users.index')
+            ->with('info', 'Usuario activado correctamente.');
     }
 }

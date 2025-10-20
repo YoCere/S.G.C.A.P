@@ -121,10 +121,14 @@ Route::middleware(['auth'])
                 ->name('admin.cortes.aplicar-multa');
         });
 
-        // Users
+        // Users - ✅ ACTUALIZADO
         Route::resource('users', UserController::class)
-            ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
+            ->only(['index', 'create', 'store', 'edit', 'update', 'show', 'destroy']) // ✅ AGREGADO 'destroy'
             ->names('admin.users');
+
+        // ✅ NUEVA RUTA PARA ACTIVAR USUARIOS
+        Route::put('/users/{user}/activate', [UserController::class, 'activate'])
+            ->name('admin.users.activate');
 
         // Reportes
         Route::prefix('reportes')->group(function () {

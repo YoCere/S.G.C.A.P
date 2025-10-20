@@ -16,7 +16,7 @@ class UserController extends Controller
         $this->middleware('can:admin.users.create')->only(['create', 'store']);
         $this->middleware('can:admin.users.edit')->only(['edit', 'update']);
         $this->middleware('can:admin.users.show')->only('show');
-        $this->middleware('can:admin.users.destroy')->only('destroy'); // ✅ AGREGADO
+        $this->middleware('can:admin.users.destroy')->only('destroy');
     }
 
     public function index(Request $request)
@@ -70,7 +70,7 @@ class UserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'activo' => true, // ✅ NUEVOS USUARIOS ACTIVOS POR DEFECTO
+            'activo' => true,
         ]);
 
         $user->roles()->sync($request->roles);
@@ -125,14 +125,16 @@ class UserController extends Controller
                 ->with('error', 'No puedes desactivar tu propio usuario.');
         }
 
-        // Validar que no tenga registros asociados en pagos
-        if ($user->pagos()->exists()) {
-            return redirect()->back()
-                ->with('error', 'No se puede desactivar el usuario porque tiene pagos registrados.');
-        }
-
+        // ✅ MODIFICADO: Permitir desactivar aunque tenga pagos, con mensaje apropiado
+        $pagosCount = $user->pagos()->count();
+        
         // Cambiar estado a inactivo
         $user->update(['activo' => false]);
+
+        if ($pagosCount > 0) {
+            return redirect()->route('admin.users.index')
+                ->with('warning', "Usuario desactivado. Tiene {$pagosCount} pago(s) registrados que se mantienen en el sistema para auditoría.");
+        }
 
         return redirect()->route('admin.users.index')
             ->with('info', 'Usuario desactivado correctamente.');

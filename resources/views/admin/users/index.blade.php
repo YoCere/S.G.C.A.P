@@ -28,14 +28,32 @@
 
     <div class="card">
         <div class="card-header">
-            {{-- BOTÓN NUEVO USUARIO --}}
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2">
-                <a class="btn btn-primary btn-sm mb-2 mb-md-0" href="{{ route('admin.users.create') }}">
-                    <i class="fas fa-user-plus mr-1"></i>Nuevo Usuario
-                </a>
+                <div class="d-flex flex-wrap gap-2 mb-2 mb-md-0">
+                    <a class="btn btn-primary btn-sm" href="{{ route('admin.users.create') }}">
+                        <i class="fas fa-user-plus mr-1"></i>Nuevo Usuario
+                    </a>
+                    
+                    {{-- ✅ FILTROS DE ESTADO --}}
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ route('admin.users.index', ['estado' => 'activos']) }}" 
+                           class="btn btn-{{ (!request('estado') && !request('search')) || request('estado') == 'activos' ? 'primary' : 'outline-primary' }}">
+                            Activos
+                        </a>
+                        <a href="{{ route('admin.users.index', ['estado' => 'inactivos']) }}" 
+                           class="btn btn-{{ request('estado') == 'inactivos' ? 'warning' : 'outline-warning' }}">
+                            Inactivos
+                        </a>
+                        <a href="{{ route('admin.users.index', ['estado' => 'todos']) }}" 
+                           class="btn btn-{{ request('estado') == 'todos' ? 'secondary' : 'outline-secondary' }}">
+                            Todos
+                        </a>
+                    </div>
+                </div>
                 
                 {{-- BÚSQUEDA PRINCIPAL --}}
                 <form action="{{ route('admin.users.index') }}" method="GET" class="w-100 w-md-auto">
+                    <input type="hidden" name="estado" value="{{ request('estado') }}">
                     <div class="input-group input-group-sm">
                         <input type="text" name="search" class="form-control" 
                                placeholder="Buscar por nombre o email..." value="{{ request('search') }}">
@@ -43,7 +61,7 @@
                             <button class="btn btn-outline-secondary" type="submit">
                                 <i class="fas fa-search"></i>
                             </button>
-                            @if(request('search'))
+                            @if(request('search') || request('estado'))
                                 <a href="{{ route('admin.users.index') }}" class="btn btn-outline-danger">
                                     <i class="fas fa-times"></i>
                                 </a>
@@ -66,8 +84,9 @@
                                     <th>Usuario</th>
                                     <th>Email</th>
                                     <th>Roles</th>
+                                    <th>Estado</th>
                                     <th width="150" class="text-center">Registro</th>
-                                    <th width="150" class="text-center">Acciones</th>
+                                    <th width="180" class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -77,10 +96,12 @@
                                         <td>
                                             <strong>{{ $user->name }}</strong>
                                             <br>
-                                            <a href="{{ route('admin.users.show', $user) }}" 
-                                               class="small text-info" title="Ver detalles del usuario">
-                                                <i class="fas fa-eye mr-1"></i>Ver detalles
-                                            </a>
+                                            <div class="d-flex align-items-center gap-1 mt-1">
+                                                <a href="{{ route('admin.users.show', $user) }}" 
+                                                   class="small text-info" title="Ver detalles del usuario">
+                                                    <i class="fas fa-eye mr-1"></i>Ver detalles
+                                                </a>
+                                            </div>
                                         </td>
                                         <td>
                                             <code>{{ $user->email }}</code>
@@ -101,6 +122,11 @@
                                                 <span class="badge badge-secondary">Sin roles</span>
                                             @endif
                                         </td>
+                                        <td>
+                                            <span class="badge badge-{{ $user->activo ? 'success' : 'warning' }} badge-pill">
+                                                {{ $user->activo ? 'Activo' : 'Inactivo' }}
+                                            </span>
+                                        </td>
                                         <td class="text-center">
                                             <small class="text-muted">
                                                 {{ $user->created_at->format('d/m/Y') }}
@@ -116,11 +142,26 @@
                                                    title="Editar usuario">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                <button class="btn btn-danger" 
-                                                        onclick="confirmDelete({{ $user->id }}, '{{ $user->name }}', {{ $user->pagos_count ?? 0 }})"
-                                                        title="Eliminar usuario">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
+                                                
+                                                {{-- ✅ BOTÓN DE ESTADO --}}
+                                                @if($user->activo)
+                                                    <button class="btn btn-warning" 
+                                                            onclick="confirmDeactivate({{ $user->id }}, '{{ $user->name }}', {{ $user->pagos_count ?? 0 }})"
+                                                            title="Desactivar usuario">
+                                                        <i class="fas fa-user-slash"></i>
+                                                    </button>
+                                                @else
+                                                    <form action="{{ route('admin.users.activate', $user) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <button class="btn btn-success" 
+                                                                type="submit"
+                                                                title="Activar usuario"
+                                                                onclick="return confirm('¿Está seguro de activar al usuario: {{ $user->name }}?')">
+                                                            <i class="fas fa-user-check"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -164,6 +205,10 @@
                                     @else
                                         <span class="badge badge-secondary">Sin roles</span>
                                     @endif
+                                    
+                                    <span class="badge badge-{{ $user->activo ? 'success' : 'warning' }} ml-1">
+                                        {{ $user->activo ? 'Activo' : 'Inactivo' }}
+                                    </span>
                                 </div>
                                 
                                 <div class="btn-group w-100" role="group">
@@ -175,10 +220,24 @@
                                        href="{{ route('admin.users.edit', $user) }}">
                                         <i class="fas fa-edit mr-1"></i>Editar
                                     </a>
-                                    <button class="btn btn-outline-danger btn-sm flex-fill" 
-                                            onclick="confirmDelete({{ $user->id }}, '{{ $user->name }}', {{ $user->pagos_count ?? 0 }})">
-                                        <i class="fas fa-trash mr-1"></i>Eliminar
-                                    </button>
+                                    
+                                    {{-- ✅ BOTÓN DE ESTADO MÓVIL --}}
+                                    @if($user->activo)
+                                        <button class="btn btn-outline-warning btn-sm flex-fill" 
+                                                onclick="confirmDeactivate({{ $user->id }}, '{{ $user->name }}', {{ $user->pagos_count ?? 0 }})">
+                                            <i class="fas fa-user-slash mr-1"></i>Desactivar
+                                        </button>
+                                    @else
+                                        <form action="{{ route('admin.users.activate', $user) }}" method="POST" class="d-inline flex-fill">
+                                            @csrf
+                                            @method('PUT')
+                                            <button class="btn btn-outline-success btn-sm w-100" 
+                                                    type="submit"
+                                                    onclick="return confirm('¿Activar usuario {{ $user->name }}?')">
+                                                <i class="fas fa-user-check mr-1"></i>Activar
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
@@ -190,11 +249,13 @@
                     <h4 class="text-muted">
                         @if(request('search'))
                             No se encontraron usuarios para "{{ request('search') }}"
+                        @elseif(request('estado') == 'inactivos')
+                            No hay usuarios inactivos
                         @else
                             No hay usuarios registrados
                         @endif
                     </h4>
-                    @if(!request('search'))
+                    @if(!request('search') && !request('estado'))
                         <a href="{{ route('admin.users.create') }}" class="btn btn-primary mt-2">
                             <i class="fas fa-user-plus mr-1"></i>Registrar Primer Usuario
                         </a>
@@ -208,6 +269,13 @@
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
                     <div class="text-muted small mb-2 mb-md-0">
                         Mostrando {{ $users->firstItem() }} - {{ $users->lastItem() }} de {{ $users->total() }} usuarios
+                        @if(request('estado') == 'activos')
+                            <span class="badge badge-success ml-2">Activos</span>
+                        @elseif(request('estado') == 'inactivos')
+                            <span class="badge badge-warning ml-2">Inactivos</span>
+                        @elseif(request('estado') == 'todos')
+                            <span class="badge badge-secondary ml-2">Todos</span>
+                        @endif
                     </div>
                     <div>
                         {{ $users->links() }}
@@ -246,34 +314,44 @@
         .gap-1 > *:last-child { margin-right: 0; }
         .gap-2 > * { margin-right: 0.5rem; }
         .gap-2 > *:last-child { margin-right: 0; }
+        
+        /* Estilos para botones de estado */
+        .btn-group-sm > .btn {
+            padding: 0.25rem 0.5rem;
+        }
     </style>
 @stop
 
 @section('js')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    function confirmDelete(userId, userName, pagosCount) {
+    function confirmDeactivate(userId, userName, pagosCount) {
         let pagosText = '';
+        let iconType = 'warning';
+        
         if (pagosCount > 0) {
-            pagosText = `<br><div class="alert alert-warning text-left small mt-2 mb-0">
-                <i class="fas fa-exclamation-triangle mr-1"></i>
-                <strong>Advertencia:</strong> Este usuario tiene <strong>${pagosCount}</strong> pago(s) registrado(s).
-                No se puede eliminar un usuario con registros de pagos.
+            pagosText = `<br><div class="alert alert-info text-left small mt-2 mb-0">
+                <i class="fas fa-info-circle mr-1"></i>
+                <strong>Información:</strong> Este usuario tiene <strong>${pagosCount}</strong> pago(s) registrado(s).
+                <br><small>El usuario será desactivado pero los pagos se mantendrán para auditoría histórica.</small>
             </div>`;
+            iconType = 'info';
         }
 
         Swal.fire({
-            title: '¿Eliminar Usuario?',
-            html: `¿Está seguro de eliminar al usuario: <strong>"${userName}"</strong>?${pagosText}`,
-            icon: pagosCount > 0 ? 'error' : 'warning',
+            title: '¿Desactivar Usuario?',
+            html: `¿Está seguro de desactivar al usuario: <strong>"${userName}"</strong>?<br>
+                  <small class="text-muted">El usuario perderá acceso al sistema pero sus datos se preservarán.</small>${pagosText}`,
+            icon: iconType,
             showCancelButton: true,
-            confirmButtonColor: '#d33',
+            confirmButtonColor: '#f39c12',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: '<i class="fas fa-trash mr-1"></i>Sí, eliminar',
+            confirmButtonText: '<i class="fas fa-user-slash mr-1"></i>Sí, desactivar',
             cancelButtonText: '<i class="fas fa-times mr-1"></i>Cancelar',
             reverseButtons: true
         }).then((result) => {
-            if (result.isConfirmed && pagosCount === 0) {
+            if (result.isConfirmed) {
+                // ✅ MODIFICADO: Permitir desactivar incluso con pagos
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = `/admin/users/${userId}`;

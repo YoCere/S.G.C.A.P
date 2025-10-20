@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
 use App\Models\Debt;
 use App\Models\Property;
 use Illuminate\Http\Request;
@@ -11,6 +11,15 @@ use Carbon\Carbon;
 
 class DebtController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:admin.debts.index')->only('index');
+        $this->middleware('can:admin.debts.create')->only(['create', 'store']);
+        $this->middleware('can:admin.debts.show')->only('show');
+        $this->middleware('can:admin.debts.destroy')->only('destroy');
+        $this->middleware('can:admin.debts.annul')->only('annul');
+        $this->middleware('can:admin.debts.mark-as-paid')->only('markAsPaid');
+    }
     public function index(Request $request)
     {
         // ✅ CORREGIDO: Cargar tarifa a través de la propiedad, no directamente

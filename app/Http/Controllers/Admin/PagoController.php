@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
 use App\Models\Pago;
 use App\Models\Property;
 use App\Models\Debt; 
@@ -12,56 +12,68 @@ use Carbon\Carbon;
 
 class PagoController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:admin.pagos.index')->only('index');
+        $this->middleware('can:admin.pagos.create')->only(['create', 'store']);
+        $this->middleware('can:admin.pagos.edit')->only(['edit', 'update']);
+        $this->middleware('can:admin.pagos.show')->only('show');
+        $this->middleware('can:admin.pagos.print')->only('print');
+        $this->middleware('can:admin.pagos.anular')->only('anular');
+        $this->middleware('can:admin.pagos.obtenerMesesPendientes')->only('obtenerMesesPendientesApi');
+        $this->middleware('can:admin.pagos.validar-meses')->only('validarMeses');
+        $this->middleware('can:admin.propiedades.deudaspendientes')->only('obtenerDeudasPendientes');
+    }
     public function index(Request $request)
-{
-    // ✅ CORREGIDO: Cambiar 'cliente' por 'propiedad.client'
-    $query = Pago::with(['propiedad.client', 'registradoPor', 'propiedad.tariff']);
+    {
+        // ✅ CORREGIDO: Cambiar 'cliente' por 'propiedad.client'
+        $query = Pago::with(['propiedad.client', 'registradoPor', 'propiedad.tariff']);
 
-    // ✅ CORREGIDO: Búsqueda corregida
-    if ($request->filled('search')) {
-        $search = $request->search;
-        $query->where(function($q) use ($search) {
-            $q->whereHas('propiedad.client', function($q) use ($search) {
-                $q->where('nombre', 'like', "%{$search}%")
-                  ->orWhere('ci', 'like', "%{$search}%")
-                  ->orWhere('codigo_cliente', 'like', "%{$search}%");
-            })->orWhereHas('propiedad', function($q) use ($search) {
-                $q->where('referencia', 'like', "%{$search}%")
-                  ->orWhere('barrio', 'like', "%{$search}%");
+        // ✅ CORREGIDO: Búsqueda corregida
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('propiedad.client', function($q) use ($search) {
+                    $q->where('nombre', 'like', "%{$search}%")
+                    ->orWhere('ci', 'like', "%{$search}%")
+                    ->orWhere('codigo_cliente', 'like', "%{$search}%");
+                })->orWhereHas('propiedad', function($q) use ($search) {
+                    $q->where('referencia', 'like', "%{$search}%")
+                    ->orWhere('barrio', 'like', "%{$search}%");
+                });
             });
-        });
-    }
+        }
 
-    // ✅ CORREGIDO: Filtro por código cliente
-    if ($request->filled('codigo_cliente')) {
-        $query->whereHas('propiedad.client', function($q) use ($request) {
-            $q->where('codigo_cliente', 'like', "%{$request->codigo_cliente}%");
-        });
-    }
+        // ✅ CORREGIDO: Filtro por código cliente
+        if ($request->filled('codigo_cliente')) {
+            $query->whereHas('propiedad.client', function($q) use ($request) {
+                $q->where('codigo_cliente', 'like', "%{$request->codigo_cliente}%");
+            });
+        }
 
-    // Resto de filtros...
-    if ($request->filled('mes')) {
-        $query->where('mes_pagado', $request->mes);
-    }
+        // Resto de filtros...
+        if ($request->filled('mes')) {
+            $query->where('mes_pagado', $request->mes);
+        }
 
-    if ($request->filled('metodo')) {
-        $query->where('metodo', $request->metodo);
-    }
+        if ($request->filled('metodo')) {
+            $query->where('metodo', $request->metodo);
+        }
 
-    if ($request->filled('fecha_desde')) {
-        $query->where('fecha_pago', '>=', $request->fecha_desde);
-    }
-    
-    if ($request->filled('fecha_hasta')) {
-        $query->where('fecha_pago', '<=', $request->fecha_hasta);
-    }
+        if ($request->filled('fecha_desde')) {
+            $query->where('fecha_pago', '>=', $request->fecha_desde);
+        }
+        
+        if ($request->filled('fecha_hasta')) {
+            $query->where('fecha_pago', '<=', $request->fecha_hasta);
+        }
 
-    $pagos = $query->orderBy('fecha_pago', 'desc')
-                ->orderBy('created_at', 'desc')
-                ->paginate(20);
+        $pagos = $query->orderBy('fecha_pago', 'desc')
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(20);
 
-    return view('admin.pagos.index', compact('pagos'));
-}
+        return view('admin.pagos.index', compact('pagos'));
+    }
 
     public function create(Request $request)
     {
@@ -424,7 +436,7 @@ private function actualizarDeudaPorPago($propiedadId, $mesPagado)
     public function show(Pago $pago)
     {
         // ✅ CORREGIDO: Cargar 'propiedad.cliente' en lugar de 'cliente'
-        $pago->load(['propiedad.cliente', 'registradoPor']);
+        $pago->load(['propiedad.client', 'registradoPor']);
         return view('admin.pagos.show', compact('pago'));
     }
 

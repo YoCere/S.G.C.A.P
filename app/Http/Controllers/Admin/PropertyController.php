@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
 use App\Http\Requests\PropertyRequest;
 use App\Models\Property;
 use App\Models\Client;
@@ -14,6 +14,18 @@ use Illuminate\Support\Facades\Log;
 
 class PropertyController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:admin.properties.index')->only('index');
+        $this->middleware('can:admin.properties.create')->only(['create', 'store']);
+        $this->middleware('can:admin.properties.edit')->only(['edit', 'update']);
+        $this->middleware('can:admin.properties.show')->only('show');
+        $this->middleware('can:admin.properties.destroy')->only('destroy');
+        $this->middleware('can:admin.properties.cut')->only('cutService');
+        $this->middleware('can:admin.properties.restore')->only('restoreService');
+        $this->middleware('can:admin.properties.cancel-cut')->only('cancelCutService');
+        $this->middleware('can:admin.propiedades.search')->only('search');
+    }
     public function index(Request $request)
     {
         $query = Property::with(['client', 'tariff']);

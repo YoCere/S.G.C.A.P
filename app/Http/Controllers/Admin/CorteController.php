@@ -2,15 +2,24 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+
 use App\Models\Property;
 use App\Models\Debt;
 use App\Models\Fine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+use Illuminate\Routing\Controller;
+
 class CorteController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:admin.cortes.pendientes')->only('indexCortePendiente');
+        $this->middleware('can:admin.cortes.cortadas')->only('indexCortadas');
+        $this->middleware('can:admin.cortes.marcar-cortado')->only('marcarComoCortado');
+        $this->middleware('can:admin.cortes.aplicar-multa')->only('aplicarMultaReconexion');
+    }
     /**
      * Mostrar propiedades con corte pendiente
      */

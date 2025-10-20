@@ -2,13 +2,22 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class TariffController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:admin.tariffs.index')->only('index');
+        $this->middleware('can:admin.tariffs.create')->only(['create', 'store']);
+        $this->middleware('can:admin.tariffs.edit')->only(['edit', 'update', 'activate', 'deactivate']);
+        $this->middleware('can:admin.tariffs.show')->only('show');
+        $this->middleware('can:admin.tariffs.activate')->only('activate');
+        $this->middleware('can:admin.tariffs.deactivate')->only('deactivate');
+    }
     public function index()
     {
         // Por defecto, Eloquent excluye las soft-deleted

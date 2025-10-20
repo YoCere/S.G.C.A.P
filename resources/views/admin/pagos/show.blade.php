@@ -27,7 +27,7 @@
                         </tr>
                         <tr>
                             <th>Cliente:</th>
-                            <td>{{ $pago->propiedad->cliente->codigo_cliente ?? 'N/A' }}</td>
+                            <td>{{ $pago->propiedad->client->codigo_cliente ?? 'N/A' }}</td>
                         </tr>
                         <tr>
                             <th>CI/NIT:</th>

@@ -15,84 +15,140 @@ use App\Http\Controllers\Admin\ReporteController;
 Route::middleware(['auth'])
     ->prefix('admin')
     ->group(function () {
-        Route::get('/', [HomeController::class, 'index'])->middleware('can:admin.home')->name('admin.home');
-        Route::resource('clients', ClientController::class)->only(['index', 'create', 'edit', 'update', 'show'])->names('admin.clients');
+        // Dashboard
+        Route::get('/', [HomeController::class, 'index'])
+            ->middleware('can:admin.home')
+            ->name('admin.home');
 
-        // Tarifas routes
-        Route::resource('tariffs', TariffController::class)->names('admin.tariffs');
-        Route::put('/tariffs/{tariff}/deactivate', [TariffController::class, 'deactivate'])->name('admin.tariffs.deactivate');
-        Route::put('/tariffs/{tariff}/activate', [TariffController::class, 'activate'])->name('admin.tariffs.activate');
+        // Clients
+        Route::resource('clients', ClientController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
+            ->names('admin.clients');
+
+        // Tarifas
+        Route::resource('tariffs', TariffController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
+            ->names('admin.tariffs');
+        Route::put('/tariffs/{tariff}/deactivate', [TariffController::class, 'deactivate'])
+            ->middleware('can:admin.tariffs.deactivate')
+            ->name('admin.tariffs.deactivate');
+        Route::put('/tariffs/{tariff}/activate', [TariffController::class, 'activate'])
+            ->middleware('can:admin.tariffs.activate')
+            ->name('admin.tariffs.activate');
         
-        // Properties con rutas adicionales para corte/restauración
+        // Properties
         Route::resource('properties', PropertyController::class)
             ->parameters(['properties' => 'property'])
+            ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
             ->names('admin.properties');
-        Route::put('/properties/{property}/cut', [PropertyController::class, 'cutService'])->name('admin.properties.cut');
-        Route::put('/properties/{property}/restore', [PropertyController::class, 'restoreService'])->name('admin.properties.restore');
-        Route::put('/properties/{property}/cancel-cut', [PropertyController::class, 'cancelCutService'])->name('admin.properties.cancel-cut');
-        
-        // Búsqueda de propiedades
-        Route::get('/propiedades/buscar', [PropertyController::class, 'search'])->name('admin.propiedades.search');
-        
-        Route::get('/properties/{propiedad}/deudaspendientes', [PagoController::class, 'obtenerDeudasPendientes'])
-        ->name('admin.propiedades.deudaspendientes');
+        Route::put('/properties/{property}/cut', [PropertyController::class, 'cutService'])
+            ->middleware('can:admin.properties.cut')
+            ->name('admin.properties.cut');
+        Route::put('/properties/{property}/restore', [PropertyController::class, 'restoreService'])
+            ->middleware('can:admin.properties.restore')
+            ->name('admin.properties.restore');
+        Route::put('/properties/{property}/cancel-cut', [PropertyController::class, 'cancelCutService'])
+            ->middleware('can:admin.properties.cancel-cut')
+            ->name('admin.properties.cancel-cut');
+        Route::get('/propiedades/buscar', [PropertyController::class, 'search'])
+            ->middleware('can:admin.propiedades.search')
+            ->name('admin.propiedades.search');
         
         // Deudas
         Route::resource('debts', DebtController::class)
             ->parameters(['debts' => 'debt'])
-            ->names('admin.debts')
-            ->except(['edit', 'update']);
-            
-        Route::post('/debts/{debt}/annul', [DebtController::class, 'annul'])->name('admin.debts.annul');
-        Route::post('/debts/{debt}/mark-as-paid', [DebtController::class, 'markAsPaid'])->name('admin.debts.mark-as-paid');
+            ->only(['index', 'create', 'store', 'show', 'destroy'])
+            ->names('admin.debts');
+        Route::post('/debts/{debt}/annul', [DebtController::class, 'annul'])
+            ->middleware('can:admin.debts.annul')
+            ->name('admin.debts.annul');
+        Route::post('/debts/{debt}/mark-as-paid', [DebtController::class, 'markAsPaid'])
+            ->middleware('can:admin.debts.mark-as-paid')
+            ->name('admin.debts.mark-as-paid');
 
-        // Pagos - ✅ RUTAS REORGANIZADAS Y CORREGIDAS
-        Route::resource('pagos', PagoController::class)->names('admin.pagos');
-        Route::get('/pagos/{pago}/print', [PagoController::class, 'print'])->name('admin.pagos.print');
-        Route::put('/pagos/{pago}/anular', [PagoController::class, 'anular'])->name('admin.pagos.anular');
-        
-        // ✅ RUTAS PARA MESES PENDIENTES - CORREGIDAS Y SIN DUPLICADOS
+        // Pagos
+        Route::resource('pagos', PagoController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
+            ->names('admin.pagos');
+        Route::get('/pagos/{pago}/print', [PagoController::class, 'print'])
+            ->middleware('can:admin.pagos.print')
+            ->name('admin.pagos.print');
+        Route::put('/pagos/{pago}/anular', [PagoController::class, 'anular'])
+            ->middleware('can:admin.pagos.anular')
+            ->name('admin.pagos.anular');
         Route::get('/pagos/obtener-meses-pendientes/{propiedad}', [PagoController::class, 'obtenerMesesPendientesApi'])
+            ->middleware('can:admin.pagos.obtenerMesesPendientes')
             ->name('admin.pagos.obtenerMesesPendientes');
-            
         Route::get('/pagos/validar-meses', [PagoController::class, 'validarMeses'])
+            ->middleware('can:admin.pagos.validar-meses')
             ->name('admin.pagos.validar-meses');
+        Route::get('/properties/{propiedad}/deudaspendientes', [PagoController::class, 'obtenerDeudasPendientes'])
+            ->middleware('can:admin.propiedades.deudaspendientes')
+            ->name('admin.propiedades.deudaspendientes');
 
-        // ✅ NUEVO: CRUD COMPLETO DE MULTAS
-        Route::resource('multas', FineController::class)->names('admin.multas');
-        
-        // ✅ NUEVO: ACCIONES ADICIONALES PARA MULTAS
+        // Multas
+        Route::resource('multas', FineController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
+            ->names('admin.multas');
         Route::prefix('multas')->group(function () {
-            Route::post('/{multa}/marcar-pagada', [FineController::class, 'marcarPagada'])->name('admin.multas.marcar-pagada');
-            Route::post('/{multa}/anular', [FineController::class, 'anular'])->name('admin.multas.anular');
-            Route::post('/{multa}/restaurar', [FineController::class, 'restaurar'])->name('admin.multas.restaurar');
-            Route::get('/obtener-monto-base', [FineController::class, 'obtenerMontoBase'])->name('admin.multas.obtener-monto-base');
+            Route::post('/{multa}/marcar-pagada', [FineController::class, 'marcarPagada'])
+                ->middleware('can:admin.multas.marcar-pagada')
+                ->name('admin.multas.marcar-pagada');
+            Route::post('/{multa}/anular', [FineController::class, 'anular'])
+                ->middleware('can:admin.multas.anular')
+                ->name('admin.multas.anular');
+            Route::post('/{multa}/restaurar', [FineController::class, 'restaurar'])
+                ->middleware('can:admin.multas.restaurar')
+                ->name('admin.multas.restaurar');
+            Route::get('/obtener-monto-base', [FineController::class, 'obtenerMontoBase'])
+                ->middleware('can:admin.multas.obtener-monto-base')
+                ->name('admin.multas.obtener-monto-base');
         });
         
-        // ✅ NUEVO: RUTAS PARA GESTIÓN DE CORTES
+        // Cortes
         Route::prefix('cortes')->group(function () {
-            Route::get('/pendientes', [CorteController::class, 'indexCortePendiente'])->name('admin.cortes.pendientes');
-            Route::get('/cortadas', [CorteController::class, 'indexCortadas'])->name('admin.cortes.cortadas');
-            Route::post('/marcar-cortado/{propiedad}', [CorteController::class, 'marcarComoCortado'])->name('admin.cortes.marcar-cortado');
-            Route::post('/aplicar-multa/{deuda}', [CorteController::class, 'aplicarMultaReconexion'])->name('admin.cortes.aplicar-multa');
+            Route::get('/pendientes', [CorteController::class, 'indexCortePendiente'])
+                ->middleware('can:admin.cortes.pendientes')
+                ->name('admin.cortes.pendientes');
+            Route::get('/cortadas', [CorteController::class, 'indexCortadas'])
+                ->middleware('can:admin.cortes.cortadas')
+                ->name('admin.cortes.cortadas');
+            Route::post('/marcar-cortado/{propiedad}', [CorteController::class, 'marcarComoCortado'])
+                ->middleware('can:admin.cortes.marcar-cortado')
+                ->name('admin.cortes.marcar-cortado');
+            Route::post('/aplicar-multa/{deuda}', [CorteController::class, 'aplicarMultaReconexion'])
+                ->middleware('can:admin.cortes.aplicar-multa')
+                ->name('admin.cortes.aplicar-multa');
         });
+
+        // Users
+        Route::resource('users', UserController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
+            ->names('admin.users');
+
+        // Reportes
+        Route::prefix('reportes')->group(function () {
+            Route::get('/', [ReporteController::class, 'index'])
+                ->middleware('can:admin.reportes.index')
+                ->name('admin.reportes.index');
+            Route::get('/morosidad', [ReporteController::class, 'morosidad'])
+                ->middleware('can:admin.reportes.morosidad')
+                ->name('admin.reportes.morosidad');
+            Route::get('/ingresos', [ReporteController::class, 'ingresos'])
+                ->middleware('can:admin.reportes.ingresos')
+                ->name('admin.reportes.ingresos');
+            Route::get('/cortes', [ReporteController::class, 'cortes'])
+                ->middleware('can:admin.reportes.cortes')
+                ->name('admin.reportes.cortes');
+            Route::get('/propiedades', [ReporteController::class, 'propiedades'])
+                ->middleware('can:admin.reportes.propiedades')
+                ->name('admin.reportes.propiedades');
+        });
+
+        // Utilidades
         Route::get('/sincronizar-deudas', function() {
             $controller = app()->make(App\Http\Controllers\Admin\PagoController::class);
             $actualizadas = $controller->sincronizarDeudasConPagos();
             return "Deudas actualizadas: {$actualizadas}";
-        });
-
-        //Users
-        
-         Route::resource('users', UserController::class)->middleware('can.admin.users')->names('admin.users');
-        //Reportes
-        // Agregar después de las rutas de users
-        // En admin.php - Actualizar el grupo de reportes
-        Route::prefix('reportes')->group(function () {
-            Route::get('/', [ReporteController::class, 'index'])->name('admin.reportes.index');
-            Route::get('/morosidad', [ReporteController::class, 'morosidad'])->name('admin.reportes.morosidad');
-            Route::get('/ingresos', [ReporteController::class, 'ingresos'])->name('admin.reportes.ingresos');
-            Route::get('/cortes', [ReporteController::class, 'cortes'])->name('admin.reportes.cortes');
-            Route::get('/propiedades', [ReporteController::class, 'propiedades'])->name('admin.reportes.propiedades');
-        });
+        })->middleware('can:admin.sincronizar-deudas');
     });

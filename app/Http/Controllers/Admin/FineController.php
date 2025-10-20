@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
 use App\Models\Fine;
 use App\Models\Property;
 use App\Models\Debt;
@@ -11,6 +11,17 @@ use Illuminate\Support\Facades\DB;
 
 class FineController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:admin.multas.index')->only('index');
+        $this->middleware('can:admin.multas.create')->only(['create', 'store']);
+        $this->middleware('can:admin.multas.edit')->only(['edit', 'update']);
+        $this->middleware('can:admin.multas.show')->only('show');
+        $this->middleware('can:admin.multas.marcar-pagada')->only('marcarPagada');
+        $this->middleware('can:admin.multas.anular')->only('anular');
+        $this->middleware('can:admin.multas.restaurar')->only('restaurar');
+        $this->middleware('can:admin.multas.obtener-monto-base')->only('obtenerMontoBase');
+    }
     public function index(Request $request)
     {
         $query = Fine::with(['propiedad.client', 'deuda', 'usuario']);

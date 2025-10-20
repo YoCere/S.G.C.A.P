@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
 use App\Models\Client;
 use App\Models\Property;
 use App\Models\Debt;
@@ -12,6 +12,14 @@ use Carbon\Carbon;
 
 class ReporteController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:admin.reportes.index')->only('index');
+        $this->middleware('can:admin.reportes.morosidad')->only('morosidad');
+        $this->middleware('can:admin.reportes.ingresos')->only('ingresos');
+        $this->middleware('can:admin.reportes.cortes')->only('cortes');
+        $this->middleware('can:admin.reportes.propiedades')->only('propiedades');
+    }
     public function index()
     {
         $estadisticas = $this->obtenerEstadisticasReportes();

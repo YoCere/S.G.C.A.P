@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Routing\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -10,6 +10,13 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:admin.users.index')->only('index');
+        $this->middleware('can:admin.users.create')->only(['create', 'store']);
+        $this->middleware('can:admin.users.edit')->only(['edit', 'update']);
+        $this->middleware('can:admin.users.show')->only('show');
+    }
     public function index(Request $request)
     {
         $query = User::with(['roles']);

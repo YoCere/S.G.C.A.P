@@ -30,9 +30,10 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'name', // Agrega este atributo
+        'name',
         'email',
         'password',
+        'activo', // ✅ AGREGADO
     ];
 
     /**
@@ -43,6 +44,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_recovery_codes',
+        'two_factor_secret',
     ];
 
     /**
@@ -52,5 +55,60 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'activo' => 'boolean', // ✅ AGREGADO
     ];
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'profile_photo_url',
+    ];
+
+    // ✅ SCOPES PARA FILTRAR USUARIOS
+    public function scopeActivos($query)
+    {
+        return $query->where('activo', true);
+    }
+
+    public function scopeInactivos($query)
+    {
+        return $query->where('activo', false);
+    }
+
+    // ✅ RELACIÓN CON PAGOS (SI EXISTE)
+    public function pagos()
+    {
+        return $this->hasMany(\App\Models\Pago::class, 'registrado_por');
+    }
+
+    // ✅ MÉTODO PARA VERIFICAR SI PUEDE SER DESACTIVADO
+    public function puedeDesactivar()
+    {
+        // No permitir auto-desactivación
+        if ($this->id === auth()->id()) {
+            return false;
+        }
+
+        // Verificar si tiene registros de pagos
+        if ($this->pagos()->exists()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    // ✅ MÉTODO PARA OBTENER ESTADO LEGIBLE
+    public function getEstadoAttribute()
+    {
+        return $this->activo ? 'Activo' : 'Inactivo';
+    }
+
+    // ✅ MÉTODO PARA OBTENER COLOR DEL BADGE
+    public function getEstadoColorAttribute()
+    {
+        return $this->activo ? 'success' : 'warning';
+    }
 }

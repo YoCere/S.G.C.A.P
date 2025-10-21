@@ -353,11 +353,6 @@
                           </form>
                         @endif
 
-                        {{-- Eliminar --}}
-                        <button class="btn btn-danger btn-sm" type="button" 
-                                onclick="confirmDelete({{ $p->id }}, '{{ $p->referencia }}')" title="Eliminar">
-                          <i class="fas fa-trash"></i>
-                        </button>
                       </div>
                     </td>
                   </tr>

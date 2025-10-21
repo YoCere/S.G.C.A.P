@@ -6,9 +6,6 @@ use Illuminate\Routing\Controller;
 use App\Models\Client;
 use Illuminate\Http\Request;
 
-use Spatie\Permission\Models\Role;
-
-
 class ClientController extends Controller
 {
     public function __construct()
@@ -19,10 +16,24 @@ class ClientController extends Controller
         $this->middleware('can:admin.clients.edit')->only(['edit', 'update']);
         $this->middleware('can:admin.clients.destroy')->only('destroy');
     }
+
     public function index(Request $request)
     {
         // ✅ CORREGIDO: Cargar la relación properties
         $query = Client::with(['properties']);
+
+        // ✅ FILTRO POR ESTADO
+        if ($request->filled('estado')) {
+            if ($request->estado === 'activos') {
+                $query->activos();
+            } elseif ($request->estado === 'inactivos') {
+                $query->inactivos();
+            }
+            // Si es 'todos' no aplicamos filtro
+        } else {
+            // Por defecto mostrar solo activos
+            $query->activos();
+        }
 
         // ✅ ACTUALIZADO: BÚSQUEDA INCLUYE CÓDIGO CLIENTE
         if ($request->filled('search')) {
@@ -31,7 +42,7 @@ class ClientController extends Controller
                 $q->where('nombre', 'like', "%{$search}%")
                   ->orWhere('ci', 'like', "%{$search}%")
                   ->orWhere('telefono', 'like', "%{$search}%")
-                  ->orWhere('codigo_cliente', 'like', "%{$search}%"); // ✅ NUEVO
+                  ->orWhere('codigo_cliente', 'like', "%{$search}%");
             });
         }
 
@@ -102,13 +113,27 @@ class ClientController extends Controller
 
     public function destroy(Client $client)
     {
-        // ✅ VALIDAR que no tenga propiedades antes de eliminar
-        if ($client->properties()->exists()) {
-            return redirect()->back()
-                ->with('error', 'No se puede eliminar el cliente porque tiene propiedades asociadas.');
+        // ✅ CAMBIADO: En lugar de eliminar, cambiar estado a inactivo
+        $propertiesCount = $client->properties()->count();
+        
+        // Cambiar estado a inactivo
+        $client->update(['estado_cuenta' => Client::ESTADO_INACTIVO]);
+
+        if ($propertiesCount > 0) {
+            return redirect()->route('admin.clients.index')
+                ->with('warning', "Cliente marcado como inactivo. Tiene {$propertiesCount} propiedad(es) asociadas que se mantienen en el sistema.");
         }
 
-        $client->delete();
-        return redirect()->route('admin.clients.index')->with('info', 'Cliente eliminado con éxito');
+        return redirect()->route('admin.clients.index')
+            ->with('info', 'Cliente marcado como inactivo correctamente.');
+    }
+
+    // ✅ NUEVO MÉTODO PARA ACTIVAR CLIENTES
+    public function activate(Client $client)
+    {
+        $client->update(['estado_cuenta' => Client::ESTADO_ACTIVO]);
+
+        return redirect()->route('admin.clients.index')
+            ->with('info', 'Cliente activado correctamente.');
     }
 }

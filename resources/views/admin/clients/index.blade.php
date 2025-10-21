@@ -26,16 +26,43 @@
         </div>
     @endif
 
+    @if (session('warning'))
+        <div class="alert alert-warning alert-dismissible fade show">
+            <strong>{{ session('warning') }}</strong>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-header">
-            {{-- BOTÓN NUEVO CLIENTE --}}
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2">
-                <a class="btn btn-primary btn-sm mb-2 mb-md-0" href="{{ route('admin.clients.create') }}">
-                    <i class="fas fa-plus-circle mr-1"></i>Nuevo Cliente
-                </a>
+                <div class="d-flex flex-wrap gap-2 mb-2 mb-md-0">
+                    <a class="btn btn-primary btn-sm" href="{{ route('admin.clients.create') }}">
+                        <i class="fas fa-plus-circle mr-1"></i>Nuevo Cliente
+                    </a>
+                    
+                    {{-- ✅ FILTROS DE ESTADO --}}
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ route('admin.clients.index', ['estado' => 'activos']) }}" 
+                           class="btn btn-{{ (!request('estado') && !request('search') && !request('codigo_cliente')) || request('estado') == 'activos' ? 'primary' : 'outline-primary' }}">
+                            Activos
+                        </a>
+                        <a href="{{ route('admin.clients.index', ['estado' => 'inactivos']) }}" 
+                           class="btn btn-{{ request('estado') == 'inactivos' ? 'warning' : 'outline-warning' }}">
+                            Inactivos
+                        </a>
+                        <a href="{{ route('admin.clients.index', ['estado' => 'todos']) }}" 
+                           class="btn btn-{{ request('estado') == 'todos' ? 'secondary' : 'outline-secondary' }}">
+                            Todos
+                        </a>
+                    </div>
+                </div>
                 
                 {{-- BÚSQUEDA PRINCIPAL --}}
                 <form action="{{ route('admin.clients.index') }}" method="GET" class="w-100 w-md-auto">
+                    <input type="hidden" name="estado" value="{{ request('estado') }}">
                     <div class="input-group input-group-sm">
                         <input type="text" name="search" class="form-control" 
                                placeholder="Buscar por nombre, CI o código..." value="{{ request('search') }}">
@@ -43,7 +70,7 @@
                             <button class="btn btn-outline-secondary" type="submit">
                                 <i class="fas fa-search"></i>
                             </button>
-                            @if(request('search') || request('codigo_cliente'))
+                            @if(request('search') || request('codigo_cliente') || request('estado'))
                                 <a href="{{ route('admin.clients.index') }}" class="btn btn-outline-danger">
                                     <i class="fas fa-times"></i>
                                 </a>
@@ -55,6 +82,7 @@
             
             {{-- FILTRO POR CÓDIGO --}}
             <form action="{{ route('admin.clients.index') }}" method="GET" class="mt-2">
+                <input type="hidden" name="estado" value="{{ request('estado') }}">
                 <div class="form-row align-items-center">
                     <div class="col-auto">
                         <label for="codigo_cliente" class="col-form-label col-form-label-sm">Filtrar por código:</label>
@@ -69,7 +97,7 @@
                             <i class="fas fa-filter mr-1"></i>Filtrar
                         </button>
                         @if(request('codigo_cliente'))
-                            <a href="{{ route('admin.clients.index') }}" class="btn btn-sm btn-outline-secondary ml-1">
+                            <a href="{{ route('admin.clients.index', ['estado' => request('estado')]) }}" class="btn btn-sm btn-outline-secondary ml-1">
                                 <i class="fas fa-times mr-1"></i>Limpiar
                             </a>
                         @endif
@@ -90,9 +118,10 @@
                                     <th width="120">Código</th>
                                     <th>Nombre</th>
                                     <th>CI/NIT</th>
+                                    <th>Estado</th>
                                     <th>Teléfono</th>
                                     <th width="120" class="text-center">Propiedades</th>
-                                    <th width="150" class="text-center">Acciones</th>
+                                    <th width="180" class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -118,6 +147,11 @@
                                             @else
                                                 <span class="text-muted small">No registrado</span>
                                             @endif
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ $client->estado_color }} badge-pill">
+                                                {{ $client->estado_legible }}
+                                            </span>
                                         </td>
                                         <td>
                                             @if($client->telefono)
@@ -147,11 +181,26 @@
                                                    title="Editar cliente">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                <button class="btn btn-danger" 
-                                                        onclick="confirmDelete({{ $client->id }}, '{{ $client->nombre }}', {{ $client->properties->count() }})"
-                                                        title="Eliminar cliente">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
+                                                
+                                                {{-- ✅ BOTÓN DE ESTADO --}}
+                                                @if($client->estaActivo())
+                                                    <button class="btn btn-warning" 
+                                                            onclick="confirmDeactivate({{ $client->id }}, '{{ $client->nombre }}', {{ $client->properties->count() }})"
+                                                            title="Marcar como inactivo">
+                                                        <i class="fas fa-user-slash"></i>
+                                                    </button>
+                                                @else
+                                                    <form action="{{ route('admin.clients.activate', $client) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <button class="btn btn-success" 
+                                                                type="submit"
+                                                                title="Activar cliente"
+                                                                onclick="return confirm('¿Está seguro de activar al cliente: {{ $client->nombre }}?')">
+                                                            <i class="fas fa-user-check"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -176,6 +225,9 @@
                                             @if($client->ci)
                                                 <small class="text-muted">CI: {{ $client->ci }}</small>
                                             @endif
+                                            <span class="badge badge-{{ $client->estado_color }}">
+                                                {{ $client->estado_legible }}
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="text-right">
@@ -204,10 +256,24 @@
                                        href="{{ route('admin.clients.edit', $client) }}">
                                         <i class="fas fa-edit mr-1"></i>Editar
                                     </a>
-                                    <button class="btn btn-outline-danger btn-sm flex-fill" 
-                                            onclick="confirmDelete({{ $client->id }}, '{{ $client->nombre }}', {{ $client->properties->count() }})">
-                                        <i class="fas fa-trash mr-1"></i>Eliminar
-                                    </button>
+                                    
+                                    {{-- ✅ BOTÓN DE ESTADO MÓVIL --}}
+                                    @if($client->estaActivo())
+                                        <button class="btn btn-outline-warning btn-sm flex-fill" 
+                                                onclick="confirmDeactivate({{ $client->id }}, '{{ $client->nombre }}', {{ $client->properties->count() }})">
+                                            <i class="fas fa-user-slash mr-1"></i>Inactivar
+                                        </button>
+                                    @else
+                                        <form action="{{ route('admin.clients.activate', $client) }}" method="POST" class="d-inline flex-fill">
+                                            @csrf
+                                            @method('PUT')
+                                            <button class="btn btn-outline-success btn-sm w-100" 
+                                                    type="submit"
+                                                    onclick="return confirm('¿Activar cliente {{ $client->nombre }}?')">
+                                                <i class="fas fa-user-check mr-1"></i>Activar
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
@@ -219,11 +285,13 @@
                     <h4 class="text-muted">
                         @if(request('search') || request('codigo_cliente'))
                             No se encontraron clientes para "{{ request('search') ?: request('codigo_cliente') }}"
+                        @elseif(request('estado') == 'inactivos')
+                            No hay clientes inactivos
                         @else
                             No hay clientes registrados
                         @endif
                     </h4>
-                    @if(!request('search') && !request('codigo_cliente'))
+                    @if(!request('search') && !request('codigo_cliente') && !request('estado'))
                         <a href="{{ route('admin.clients.create') }}" class="btn btn-primary mt-2">
                             <i class="fas fa-plus-circle mr-1"></i>Registrar Primer Cliente
                         </a>
@@ -237,6 +305,13 @@
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
                     <div class="text-muted small mb-2 mb-md-0">
                         Mostrando {{ $clients->firstItem() }} - {{ $clients->lastItem() }} de {{ $clients->total() }} clientes
+                        @if(request('estado') == 'activos')
+                            <span class="badge badge-success ml-2">Activos</span>
+                        @elseif(request('estado') == 'inactivos')
+                            <span class="badge badge-warning ml-2">Inactivos</span>
+                        @elseif(request('estado') == 'todos')
+                            <span class="badge badge-secondary ml-2">Todos</span>
+                        @endif
                     </div>
                     <div>
                         {{ $clients->links() }}
@@ -275,34 +350,44 @@
         .gap-1 > *:last-child { margin-right: 0; }
         .gap-2 > * { margin-right: 0.5rem; }
         .gap-2 > *:last-child { margin-right: 0; }
+        
+        /* Estilos para botones de estado */
+        .btn-group-sm > .btn {
+            padding: 0.25rem 0.5rem;
+        }
     </style>
 @stop
 
 @section('js')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    function confirmDelete(clientId, clientName, propertiesCount) {
+    function confirmDeactivate(clientId, clientName, propertiesCount) {
         let propertiesText = '';
+        let iconType = 'warning';
+        
         if (propertiesCount > 0) {
-            propertiesText = `<br><div class="alert alert-warning text-left small mt-2 mb-0">
-                <i class="fas fa-exclamation-triangle mr-1"></i>
-                <strong>Advertencia:</strong> Este cliente tiene <strong>${propertiesCount}</strong> propiedad(es) asociada(s).
-                Debe eliminar primero las propiedades para poder eliminar el cliente.
+            propertiesText = `<br><div class="alert alert-info text-left small mt-2 mb-0">
+                <i class="fas fa-info-circle mr-1"></i>
+                <strong>Información:</strong> Este cliente tiene <strong>${propertiesCount}</strong> propiedad(es) asociada(s).
+                <br><small>El cliente será marcado como inactivo pero las propiedades se mantendrán en el sistema.</small>
             </div>`;
+            iconType = 'info';
         }
 
         Swal.fire({
-            title: '¿Eliminar Cliente?',
-            html: `¿Está seguro de eliminar al cliente: <strong>"${clientName}"</strong>?${propertiesText}`,
-            icon: propertiesCount > 0 ? 'error' : 'warning',
+            title: '¿Marcar Cliente como Inactivo?',
+            html: `¿Está seguro de marcar como inactivo al cliente: <strong>"${clientName}"</strong>?<br>
+                  <small class="text-muted">El cliente no podrá realizar nuevas operaciones pero sus datos se preservarán.</small>${propertiesText}`,
+            icon: iconType,
             showCancelButton: true,
-            confirmButtonColor: '#d33',
+            confirmButtonColor: '#f39c12',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: '<i class="fas fa-trash mr-1"></i>Sí, eliminar',
+            confirmButtonText: '<i class="fas fa-user-slash mr-1"></i>Sí, inactivar',
             cancelButtonText: '<i class="fas fa-times mr-1"></i>Cancelar',
             reverseButtons: true
         }).then((result) => {
-            if (result.isConfirmed && propertiesCount === 0) {
+            if (result.isConfirmed) {
+                // ✅ MODIFICADO: Permitir inactivar incluso con propiedades
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = `/admin/clients/${clientId}`;

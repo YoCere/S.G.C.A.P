@@ -28,6 +28,10 @@ class Client extends Model
         'updated_at' => 'datetime',
     ];
 
+    // ✅ CONSTANTES PARA ESTADOS
+    const ESTADO_ACTIVO = 'activo';
+    const ESTADO_INACTIVO = 'inactivo';
+
     protected static function boot()
     {
         parent::boot();
@@ -35,6 +39,10 @@ class Client extends Model
         static::creating(function ($client) {
             if (!$client->codigo_cliente) {
                 $client->codigo_cliente = self::generarCodigoAleatorioUnico();
+            }
+            // ✅ Establecer estado activo por defecto
+            if (!$client->estado_cuenta) {
+                $client->estado_cuenta = self::ESTADO_ACTIVO;
             }
         });
     }
@@ -109,5 +117,43 @@ class Client extends Model
     public function scopePorCodigo($query, $codigo)
     {
         return $query->where('codigo_cliente', 'like', "%{$codigo}%");
+    }
+
+    // ✅ SCOPES PARA FILTRAR POR ESTADO
+    public function scopeActivos($query)
+    {
+        return $query->where('estado_cuenta', self::ESTADO_ACTIVO);
+    }
+
+    public function scopeInactivos($query)
+    {
+        return $query->where('estado_cuenta', self::ESTADO_INACTIVO);
+    }
+
+    // ✅ MÉTODO PARA VERIFICAR SI ESTÁ ACTIVO
+    public function estaActivo()
+    {
+        return $this->estado_cuenta === self::ESTADO_ACTIVO;
+    }
+
+    // ✅ MÉTODO PARA VERIFICAR SI PUEDE SER INACTIVADO
+    public function puedeInactivar()
+    {
+        // No puede inactivarse si tiene propiedades activas
+        return !$this->properties()
+            ->whereIn('estado', ['activo', 'corte_pendiente'])
+            ->exists();
+    }
+
+    // ✅ MÉTODO PARA OBTENER ESTADO LEGIBLE
+    public function getEstadoLegibleAttribute()
+    {
+        return $this->estado_cuenta === self::ESTADO_ACTIVO ? 'Activo' : 'Inactivo';
+    }
+
+    // ✅ MÉTODO PARA OBTENER COLOR DEL BADGE
+    public function getEstadoColorAttribute()
+    {
+        return $this->estado_cuenta === self::ESTADO_ACTIVO ? 'success' : 'warning';
     }
 }

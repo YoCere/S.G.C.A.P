@@ -20,10 +20,14 @@ Route::middleware(['auth'])
             ->middleware('can:admin.home')
             ->name('admin.home');
 
-        // Clients
+        // Clients - ✅ ACTUALIZADO
         Route::resource('clients', ClientController::class)
-            ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
-            ->names('admin.clients');
+        ->only(['index', 'create', 'store', 'edit', 'update', 'show', 'destroy']) // ✅ AGREGADO 'destroy'
+        ->names('admin.clients');
+
+        // ✅ NUEVA RUTA PARA ACTIVAR CLIENTES
+        Route::put('/clients/{client}/activate', [ClientController::class, 'activate'])
+        ->name('admin.clients.activate');
 
         // Tarifas
         Route::resource('tariffs', TariffController::class)

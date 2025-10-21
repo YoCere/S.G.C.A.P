@@ -10,6 +10,25 @@ class Property extends Model
 {
     use HasFactory;
 
+    // 🆕 CONSTANTES DE ESTADO
+    const ESTADO_PENDIENTE_CONEXION = 'pendiente_conexion';
+    const ESTADO_ACTIVO = 'activo';
+    const ESTADO_INACTIVO = 'inactivo';
+    const ESTADO_CORTE_PENDIENTE = 'corte_pendiente';
+    const ESTADO_CORTADO = 'cortado';
+
+    // 🆕 MÉTODO PARA OBTENER TODOS LOS ESTADOS
+    public static function getEstados()
+    {
+        return [
+            self::ESTADO_PENDIENTE_CONEXION,
+            self::ESTADO_ACTIVO,
+            self::ESTADO_INACTIVO,
+            self::ESTADO_CORTE_PENDIENTE,
+            self::ESTADO_CORTADO,
+        ];
+    }
+
     protected $table = 'propiedades';
 
     protected $fillable = [
@@ -91,8 +110,15 @@ public function obtenerMesesAdeudados()
     // Scopes útiles
     public function scopeActivas($q)
     {
-        return $q->where('estado', 'activo');
+        return $q->where('estado', self::ESTADO_ACTIVO);
     }
+
+    // 🆕 SCOPE PARA PROPIEDADES PENDIENTES DE CONEXIÓN
+    public function scopePendientesConexion($q)
+    {
+        return $q->where('estado', self::ESTADO_PENDIENTE_CONEXION);
+    }
+
     public function getClienteNombreAttribute()
     {
         return $this->cliente ? $this->cliente->nombre : 'Cliente No Asignado';
@@ -108,4 +134,3 @@ public function obtenerMesesAdeudados()
         return $this->multas()->where('estado', Fine::ESTADO_PENDIENTE);
     }
 }
-    

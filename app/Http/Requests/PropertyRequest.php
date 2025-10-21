@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\Property;
 
 class PropertyRequest extends FormRequest
 {
@@ -28,11 +29,12 @@ class PropertyRequest extends FormRequest
                 'max:255',
                 Rule::unique('propiedades', 'referencia')->ignore($propertyId),
             ],
-            'direccion'  => 'required|string|max:255',
+            // ❌ ELIMINADO: 'direccion' => 'required|string|max:255', (no existe en el formulario)
             'barrio' => 'nullable|in:Centro,Aroma,Los Valles,Caipitandy,Primavera,Arboleda,Fatima',
             'latitud'    => 'nullable|numeric|between:-90,90',
             'longitud'   => 'nullable|numeric|between:-180,180',
-            'estado'     => 'required|in:activo,inactivo,cortado',
+            // 🆕 ACTUALIZADO: Incluir nuevo estado
+            'estado'     => 'required|in:pendiente_conexion,activo,inactivo,cortado,corte_pendiente',
         ];
     }
 
@@ -45,7 +47,7 @@ class PropertyRequest extends FormRequest
             'tarifa_id.exists' => 'La tarifa seleccionada no existe',
             'referencia.required' => 'La referencia es obligatoria',
             'referencia.unique' => 'Esta referencia ya está en uso',
-            'direccion.required' => 'La dirección es obligatoria',
+            // ❌ ELIMINADO: 'direccion.required' => 'La dirección es obligatoria',
             'barrio.in' => 'El barrio seleccionado no es válido',
             'estado.required' => 'El estado es obligatorio',
             'estado.in' => 'El estado seleccionado no es válido',
@@ -57,7 +59,7 @@ class PropertyRequest extends FormRequest
         return [
             'cliente_id' => 'cliente',
             'tarifa_id'  => 'tarifa',
-            'direccion'  => 'dirección',
+            // ❌ ELIMINADO: 'direccion' => 'dirección',
         ];
     }
 }

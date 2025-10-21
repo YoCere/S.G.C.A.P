@@ -106,15 +106,85 @@
   </div>
 </div>
 
+{{-- 🆕 CAMPO DE ESTADO CON LÓGICA MEJORADA --}}
 <div class="form-group">
   <label>Estado</label>
-  <select name="estado" class="form-control" required>
-    @foreach (['activo','inactivo','corte_pendiente','cortado'] as $op)
-      <option value="{{ $op }}" @selected(old('estado', $property->estado ?? 'activo') == $op)>
-        {{ ucfirst(str_replace('_', ' ', $op)) }}
-      </option>
-    @endforeach
-  </select>
+  
+  {{-- CREACIÓN: Mostrar como campo oculto con información --}}
+  @if(!isset($property) || !$property->id)
+    <div class="alert alert-info py-2">
+      <small class="d-flex align-items-center">
+        <i class="fas fa-info-circle mr-2"></i> 
+        Estado: <strong>Pendiente de Conexión</strong> - El operador realizará la instalación física
+      </small>
+    </div>
+    <input type="hidden" name="estado" value="pendiente_conexion">
+  
+  {{-- EDICIÓN: Mostrar select con estados permitidos según rol --}}
+  @else
+    <select name="estado" class="form-control" required>
+      @php
+        $currentEstado = old('estado', $property->estado ?? 'pendiente_conexion');
+        $user = auth()->user();
+      @endphp
+      
+      {{-- Admin: Todos los estados --}}
+      @if($user->hasRole('admin'))
+        @foreach (['pendiente_conexion', 'activo', 'inactivo', 'corte_pendiente', 'cortado'] as $op)
+          <option value="{{ $op }}" @selected($currentEstado == $op)>
+            {{ ucfirst(str_replace('_', ' ', $op)) }}
+          </option>
+        @endforeach
+      
+      {{-- Secretaria: Puede activar desde pendiente_conexion --}}
+      @elseif($user->hasRole('secretaria'))
+        @if($property->estado == 'pendiente_conexion')
+          <option value="pendiente_conexion" @selected($currentEstado == 'pendiente_conexion')>
+            Pendiente de Conexión
+          </option>
+          <option value="activo" @selected($currentEstado == 'activo')>
+            Activo
+          </option>
+        @else
+          @foreach (['activo', 'inactivo', 'corte_pendiente'] as $op)
+            <option value="{{ $op }}" @selected($currentEstado == $op)>
+              {{ ucfirst(str_replace('_', ' ', $op)) }}
+            </option>
+          @endforeach
+        @endif
+      
+      {{-- Operador: Solo puede marcar como cortado desde pendiente_conexion --}}
+      @elseif($user->hasRole('operador'))
+        @if($property->estado == 'pendiente_conexion')
+          <option value="pendiente_conexion" @selected($currentEstado == 'pendiente_conexion')>
+            Pendiente de Conexión
+          </option>
+          <option value="cortado" @selected($currentEstado == 'cortado')>
+            Cortado (Instalación Completada)
+          </option>
+        @else
+          <option value="{{ $property->estado }}" selected>
+            {{ ucfirst(str_replace('_', ' ', $property->estado)) }}
+          </option>
+        @endif
+      
+      {{-- Por defecto: Solo estado actual --}}
+      @else
+        <option value="{{ $property->estado }}" selected>
+          {{ ucfirst(str_replace('_', ' ', $property->estado)) }}
+        </option>
+      @endif
+    </select>
+    
+    {{-- Información adicional para operador --}}
+    @if(auth()->user()->hasRole('operador') && $property->estado == 'pendiente_conexion')
+      <small class="form-text text-muted">
+        <i class="fas fa-tools mr-1"></i> 
+        Marque como "Cortado" después de completar la instalación física
+      </small>
+    @endif
+  @endif
+  
   @error('estado') <span class="text-danger small">{{ $message }}</span> @enderror
 </div>
 

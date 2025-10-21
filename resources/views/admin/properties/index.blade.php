@@ -60,12 +60,13 @@
             </div>
           </div>
 
-          <!-- Filtro por Estado -->
+          <!-- 🆕 ACTUALIZADO: Filtro por Estado incluye pendiente_conexion -->
           <div class="col-12 col-sm-6 col-md-3">
             <div class="form-group mb-2">
               <label for="estado" class="small font-weight-bold">Estado</label>
               <select name="estado" id="estado" class="form-control form-control-sm">
                 <option value="">Todos</option>
+                <option value="pendiente_conexion" {{ request('estado') == 'pendiente_conexion' ? 'selected' : '' }}>Pendiente Conexión</option>
                 <option value="activo" {{ request('estado') == 'activo' ? 'selected' : '' }}>Activo</option>
                 <option value="corte_pendiente" {{ request('estado') == 'corte_pendiente' ? 'selected' : '' }}>Corte Pendiente</option>
                 <option value="cortado" {{ request('estado') == 'cortado' ? 'selected' : '' }}>Cortado</option>
@@ -129,7 +130,7 @@
               </button>
               <a href="{{ route('admin.properties.index') }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-undo mr-1"></i> Limpiar
-              </button>
+              </a>
               
               @if(request()->anyFilled(['search', 'codigo_cliente', 'estado', 'barrio', 'tarifa_id', 'orden']))
                 <span class="badge badge-success align-self-center">
@@ -143,63 +144,63 @@
     </div>
   </div>
 
-  <!-- ESTADÍSTICAS RÁPIDAS RESPONSIVAS -->
-  <div class="row mx-0 mb-4">
-    <div class="col-6 col-sm-4 col-md-2 mb-3">
-      <div class="info-box bg-light shadow-sm border">
-        <span class="info-box-icon bg-info"><i class="fas fa-home"></i></span>
-        <div class="info-box-content">
-          <span class="info-box-text small">Total</span>
-          <span class="info-box-number">{{ $totalPropiedades }}</span>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-2 mb-3">
-      <div class="info-box bg-light shadow-sm border">
-        <span class="info-box-icon bg-success"><i class="fas fa-check-circle"></i></span>
-        <div class="info-box-content">
-          <span class="info-box-text small">Activas</span>
-          <span class="info-box-number">{{ $estadisticas['activas'] ?? 0 }}</span>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-2 mb-3">
-      <div class="info-box bg-light shadow-sm border">
-        <span class="info-box-icon bg-warning"><i class="fas fa-clock"></i></span>
-        <div class="info-box-content">
-          <span class="info-box-text small">Corte Pendiente</span>
-          <span class="info-box-number">{{ $estadisticas['corte_pendiente'] ?? 0 }}</span>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-2 mb-3">
-      <div class="info-box bg-light shadow-sm border">
-        <span class="info-box-icon bg-danger"><i class="fas fa-ban"></i></span>
-        <div class="info-box-content">
-          <span class="info-box-text small">Cortadas</span>
-          <span class="info-box-number">{{ $estadisticas['cortadas'] ?? 0 }}</span>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-2 mb-3">
-      <div class="info-box bg-light shadow-sm border">
-        <span class="info-box-icon bg-secondary"><i class="fas fa-map-marker-alt"></i></span>
-        <div class="info-box-content">
-          <span class="info-box-text small">Con Ubicación</span>
-          <span class="info-box-number">{{ $estadisticas['con_ubicacion'] ?? 0 }}</span>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-2 mb-3">
-      <div class="info-box bg-light shadow-sm border">
-        <span class="info-box-icon bg-primary"><i class="fas fa-users"></i></span>
-        <div class="info-box-content">
-          <span class="info-box-text small">Clientes Activos</span>
-          <span class="info-box-number">{{ $estadisticas['clientes_activos'] ?? 0 }}</span>
-        </div>
+ <!-- 🆕 ACTUALIZADO: Estadísticas incluyen pendientes_conexion -->
+<div class="row mx-0 mb-4">
+  <div class="col-6 col-sm-4 col-md-2 mb-3">
+    <div class="info-box bg-light shadow-sm border">
+      <span class="info-box-icon bg-info"><i class="fas fa-home"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text small">Total</span>
+        <span class="info-box-number">{{ $totalPropiedades }}</span>
       </div>
     </div>
   </div>
+  <div class="col-6 col-sm-4 col-md-2 mb-3">
+    <div class="info-box bg-light shadow-sm border">
+      <span class="info-box-icon bg-primary"><i class="fas fa-clock"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text small">Pend. Conexión</span>
+        <span class="info-box-number">{{ $estadisticas['pendientes_conexion'] ?? 0 }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2 mb-3">
+    <div class="info-box bg-light shadow-sm border">
+      <span class="info-box-icon bg-success"><i class="fas fa-check-circle"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text small">Activas</span>
+        <span class="info-box-number">{{ $estadisticas['activas'] ?? 0 }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2 mb-3">
+    <div class="info-box bg-light shadow-sm border">
+      <span class="info-box-icon bg-warning"><i class="fas fa-clock"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text small">Corte Pendiente</span>
+        <span class="info-box-number">{{ $estadisticas['corte_pendiente'] ?? 0 }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2 mb-3">
+    <div class="info-box bg-light shadow-sm border">
+      <span class="info-box-icon bg-danger"><i class="fas fa-ban"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text small">Cortadas</span>
+        <span class="info-box-number">{{ $estadisticas['cortadas'] ?? 0 }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-4 col-md-2 mb-3">
+    <div class="info-box bg-light shadow-sm border">
+      <span class="info-box-icon bg-secondary"><i class="fas fa-map-marker-alt"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text small">Con Ubicación</span>
+        <span class="info-box-number">{{ $estadisticas['con_ubicacion'] ?? 0 }}</span>
+      </div>
+    </div>
+  </div>
+</div>
 
   <!-- BOTONES PRINCIPALES -->
   <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
@@ -280,7 +281,9 @@
                       <strong class="text-success">Bs {{ number_format($p->tariff->precio_mensual ?? 0, 2) }}</strong>
                     </td>
                     <td>
-                      @if($p->estado === 'activo')
+                      @if($p->estado === 'pendiente_conexion')
+                        <span class="badge badge-primary">Pendiente Conexión</span>
+                      @elseif($p->estado === 'activo')
                         <span class="badge badge-success">Activo</span>
                       @elseif($p->estado === 'corte_pendiente')
                         <span class="badge badge-warning">Corte Pendiente</span>
@@ -319,38 +322,84 @@
                           <i class="fas fa-edit"></i>
                         </a>
 
-                        {{-- Cortar/Reconectar/Cancelar Servicio --}}
+                        {{-- 🆕 ACTUALIZADO: Botones según estado y rol --}}
+                        @php
+                            $user = auth()->user();
+                            $isAdmin = $user->hasRole('Admin');
+                            $isSecretaria = $user->hasRole('Secretaria');
+                            $isOperador = $user->hasRole('Operador');
+                        @endphp
+
+                        {{-- PROPIEDADES ACTIVAS --}}
                         @if($p->estado === 'activo')
-                          <form action="{{ route('admin.properties.cut', $p) }}" method="POST" class="d-inline">
-                            @csrf @method('PUT')
-                            <button class="btn btn-warning btn-sm" type="button" 
-                                    onclick="confirmCutService({{ $p->id }}, '{{ $p->referencia }}')" title="Solicitar corte">
-                              <i class="fas fa-clock"></i>
-                            </button>
-                          </form>
+                          {{-- Secretaria y Admin pueden solicitar corte --}}
+                          @if($isAdmin || $isSecretaria)
+                            <form action="{{ route('admin.properties.cut', $p) }}" method="POST" class="d-inline">
+                              @csrf @method('PUT')
+                              <button class="btn btn-warning btn-sm" type="button" 
+                                      onclick="confirmCutService({{ $p->id }}, '{{ $p->referencia }}')" title="Solicitar corte">
+                                <i class="fas fa-clock"></i>
+                              </button>
+                            </form>
+                          @endif
+                        {{-- PROPIEDADES PENDIENTES DE CONEXIÓN --}}
+                        @elseif($p->estado === 'pendiente_conexion')
+                          {{-- Operador y Admin pueden marcar como instalación completada --}}
+                          @if($isAdmin || $isOperador)
+                            <form action="{{ route('admin.cortes.marcar-cortado', $p) }}" method="POST" class="d-inline">
+                              @csrf
+                              <button class="btn btn-danger btn-sm" type="button" 
+                                      onclick="confirmMarkAsCut({{ $p->id }}, '{{ $p->referencia }}')" title="Marcar instalación completada">
+                                <i class="fas fa-check-circle"></i>
+                              </button>
+                            </form>
+                          @endif
+                        {{-- CORTES PENDIENTES --}}
                         @elseif($p->estado === 'corte_pendiente')
-                          <form action="{{ route('admin.cortes.marcar-cortado', $p) }}" method="POST" class="d-inline">
-                            @csrf
-                            <button class="btn btn-danger btn-sm" type="button" 
-                                    onclick="confirmMarkAsCut({{ $p->id }}, '{{ $p->referencia }}')" title="Marcar como cortado">
-                              <i class="fas fa-ban"></i>
-                            </button>
-                          </form>
-                          <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
-                            @csrf @method('PUT')
-                            <button class="btn btn-secondary btn-sm" type="button" 
-                                    onclick="confirmCancelCut({{ $p->id }}, '{{ $p->referencia }}')" title="Cancelar corte">
-                              <i class="fas fa-times"></i>
-                            </button>
-                          </form>
+                          {{-- Operador y Admin pueden ejecutar corte físico --}}
+                          @if($isAdmin || $isOperador)
+                            <form action="{{ route('admin.cortes.marcar-cortado', $p) }}" method="POST" class="d-inline">
+                              @csrf
+                              <button class="btn btn-danger btn-sm" type="button" 
+                                      onclick="confirmMarkAsCut({{ $p->id }}, '{{ $p->referencia }}')" title="Ejecutar corte físico">
+                                <i class="fas fa-ban"></i>
+                              </button>
+                            </form>
+                          @endif
+                          
+                          {{-- Secretaria y Admin pueden cancelar corte pendiente --}}
+                          @if($isAdmin || $isSecretaria)
+                            <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
+                              @csrf @method('PUT')
+                              <button class="btn btn-secondary btn-sm" type="button" 
+                                      onclick="confirmCancelCut({{ $p->id }}, '{{ $p->referencia }}')" title="Cancelar corte">
+                                <i class="fas fa-times"></i>
+                              </button>
+                            </form>
+                          @endif
+                        {{-- PROPIEDADES CORTADAS --}}
                         @elseif($p->estado === 'cortado')
-                          <form action="{{ route('admin.properties.restore', $p) }}" method="POST" class="d-inline">
-                            @csrf @method('PUT')
-                            <button class="btn btn-success btn-sm" type="button"
-                                    onclick="confirmRestoreService({{ $p->id }}, '{{ $p->referencia }}')" title="Reconectar servicio">
-                              <i class="fas fa-plug"></i>
-                            </button>
-                          </form>
+                          {{-- Secretaria y Admin pueden solicitar reconexión --}}
+                          @if($isAdmin || $isSecretaria)
+                            <form action="{{ route('admin.properties.request-reconnection', $p) }}" method="POST" class="d-inline">
+                              @csrf @method('PUT')
+                              <button class="btn btn-success btn-sm" type="button"
+                                      onclick="confirmRequestReconnection({{ $p->id }}, '{{ $p->referencia }}')" title="Solicitar reconexión">
+                                <i class="fas fa-plug"></i>
+                              </button>
+                            </form>
+                          @endif
+                          
+                          {{-- Admin puede reconectar directamente --}}
+                          @if($isAdmin)
+                            <form action="{{ route('admin.properties.restore', $p) }}" method="POST" class="d-inline">
+                              @csrf @method('PUT')
+                              <button class="btn btn-success btn-sm" type="button"
+                                      onclick="confirmRestoreService({{ $p->id }}, '{{ $p->referencia }}')" title="Reconectar servicio (Admin)">
+                                <i class="fas fa-bolt"></i>
+                              </button>
+                            </form>
+                          @endif
                         @endif
 
                       </div>
@@ -396,7 +445,7 @@
     </div>
   </div>
 
-  <!-- VISTA MÓVIL -->
+  <!-- VISTA MÓVIL - ACTUALIZADA CON NUEVOS BOTONES -->
   <div class="d-block d-md-none">
     @if($properties->count())
       <div class="list-group">
@@ -405,7 +454,9 @@
             <div class="d-flex w-100 justify-content-between align-items-start mb-2">
               <h6 class="mb-1 font-weight-bold">{{ $p->referencia }}</h6>
               <div>
-                @if($p->estado === 'activo')
+                @if($p->estado === 'pendiente_conexion')
+                  <span class="badge badge-primary small">Pendiente Conexión</span>
+                @elseif($p->estado === 'activo')
                   <span class="badge badge-success small">Activo</span>
                 @elseif($p->estado === 'corte_pendiente')
                   <span class="badge badge-warning small">Corte Pendiente</span>
@@ -468,37 +519,78 @@
                 <i class="fas fa-edit"></i>
               </a>
 
+              {{-- 🆕 ACTUALIZADO: Botones móviles según estado y rol --}}
+              @php
+                  $user = auth()->user();
+                  $isAdmin = $user->hasRole('Admin');
+                  $isSecretaria = $user->hasRole('Secretaria');
+                  $isOperador = $user->hasRole('Operador');
+              @endphp
+
+              {{-- PROPIEDADES ACTIVAS --}}
               @if($p->estado === 'activo')
-                <form action="{{ route('admin.properties.cut', $p) }}" method="POST" class="d-inline">
-                  @csrf @method('PUT')
-                  <button class="btn btn-warning btn-sm" type="button" 
-                          onclick="confirmCutService({{ $p->id }}, '{{ $p->referencia }}')">
-                    <i class="fas fa-clock"></i>
-                  </button>
-                </form>
+                @if($isAdmin || $isSecretaria)
+                  <form action="{{ route('admin.properties.cut', $p) }}" method="POST" class="d-inline">
+                    @csrf @method('PUT')
+                    <button class="btn btn-warning btn-sm" type="button" 
+                            onclick="confirmCutService({{ $p->id }}, '{{ $p->referencia }}')">
+                      <i class="fas fa-clock"></i>
+                    </button>
+                  </form>
+                @endif
+              {{-- PROPIEDADES PENDIENTES DE CONEXIÓN --}}
+              @elseif($p->estado === 'pendiente_conexion')
+                @if($isAdmin || $isOperador)
+                  <form action="{{ route('admin.cortes.marcar-cortado', $p) }}" method="POST" class="d-inline">
+                    @csrf
+                    <button class="btn btn-danger btn-sm" type="button" 
+                            onclick="confirmMarkAsCut({{ $p->id }}, '{{ $p->referencia }}')">
+                      <i class="fas fa-check-circle"></i>
+                    </button>
+                  </form>
+                @endif
+              {{-- CORTES PENDIENTES --}}
               @elseif($p->estado === 'corte_pendiente')
-                <form action="{{ route('admin.cortes.marcar-cortado', $p) }}" method="POST" class="d-inline">
-                  @csrf
-                  <button class="btn btn-danger btn-sm" type="button" 
-                          onclick="confirmMarkAsCut({{ $p->id }}, '{{ $p->referencia }}')">
-                    <i class="fas fa-ban"></i>
-                  </button>
-                </form>
-                <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
-                  @csrf @method('PUT')
-                  <button class="btn btn-secondary btn-sm" type="button" 
-                          onclick="confirmCancelCut({{ $p->id }}, '{{ $p->referencia }}')">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </form>
+                @if($isAdmin || $isOperador)
+                  <form action="{{ route('admin.cortes.marcar-cortado', $p) }}" method="POST" class="d-inline">
+                    @csrf
+                    <button class="btn btn-danger btn-sm" type="button" 
+                            onclick="confirmMarkAsCut({{ $p->id }}, '{{ $p->referencia }}')">
+                      <i class="fas fa-ban"></i>
+                    </button>
+                  </form>
+                @endif
+                
+                @if($isAdmin || $isSecretaria)
+                  <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
+                    @csrf @method('PUT')
+                    <button class="btn btn-secondary btn-sm" type="button" 
+                            onclick="confirmCancelCut({{ $p->id }}, '{{ $p->referencia }}')">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </form>
+                @endif
+              {{-- PROPIEDADES CORTADAS --}}
               @elseif($p->estado === 'cortado')
-                <form action="{{ route('admin.properties.restore', $p) }}" method="POST" class="d-inline">
-                  @csrf @method('PUT')
-                  <button class="btn btn-success btn-sm" type="button"
-                          onclick="confirmRestoreService({{ $p->id }}, '{{ $p->referencia }}')">
-                    <i class="fas fa-plug"></i>
-                  </button>
-                </form>
+                @if($isAdmin || $isSecretaria)
+                  <form action="{{ route('admin.properties.request-reconnection', $p) }}" method="POST" class="d-inline">
+                    @csrf @method('PUT')
+                    <button class="btn btn-success btn-sm" type="button"
+                            onclick="confirmRequestReconnection({{ $p->id }}, '{{ $p->referencia }}')">
+                      <i class="fas fa-plug"></i>
+                    </button>
+                  </form>
+                @endif
+                
+                @if($isAdmin)
+                  <form action="{{ route('admin.properties.restore', $p) }}" method="POST" class="d-inline">
+                    @csrf @method('PUT')
+                    <button class="btn btn-success btn-sm" type="button"
+                            onclick="confirmRestoreService({{ $p->id }}, '{{ $p->referencia }}')">
+                      <i class="fas fa-bolt"></i>
+                    </button>
+                  </form>
+                @endif
               @endif
 
               <button class="btn btn-danger btn-sm" type="button" 
@@ -694,7 +786,7 @@
       }
     });
 
-    // Funciones de confirmación (mantienen la misma lógica)
+    // Funciones de confirmación
     function confirmDelete(propertyId, propertyRef) {
       Swal.fire({
         title: '¿Está seguro?',
@@ -808,6 +900,30 @@
           const form = document.createElement('form');
           form.method = 'POST';
           form.action = `/admin/properties/${propertyId}/restore`;
+          form.innerHTML = `@csrf @method('PUT')`;
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+    }
+
+    function confirmRequestReconnection(propertyId, propertyRef) {
+      Swal.fire({
+        title: '¿Solicitar Reconexión?',
+        html: `¿Solicitar reconexión de servicio para: <strong>"${propertyRef}"</strong>?<br>
+               <small class="text-warning">La propiedad quedará en estado "Corte Pendiente" para que el operador realice la reconexión física.</small>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, solicitar reconexión',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `/admin/properties/${propertyId}/request-reconnection`;
           form.innerHTML = `@csrf @method('PUT')`;
           document.body.appendChild(form);
           form.submit();

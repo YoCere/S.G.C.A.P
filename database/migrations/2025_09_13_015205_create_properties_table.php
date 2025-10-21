@@ -21,8 +21,8 @@ return new class extends Migration
             $table->decimal('latitud', 10, 8)->nullable();
             $table->decimal('longitud', 11, 8)->nullable();
 
-            // ✅ CORREGIDO: Estados coherentes - solo estados de propiedad
-            $table->enum('estado', ['activo', 'inactivo', 'cortado', 'corte_pendiente'])->default('activo')->index();
+            // 🆕 ACTUALIZADO: Agregar nuevo estado 'pendiente_conexion' y cambiar default
+            $table->enum('estado', ['pendiente_conexion', 'activo', 'inactivo', 'cortado', 'corte_pendiente'])->default('pendiente_conexion')->index();
             
             $table->timestamps();
             

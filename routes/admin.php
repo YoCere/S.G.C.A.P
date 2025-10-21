@@ -54,6 +54,10 @@ Route::middleware(['auth'])
         Route::put('/properties/{property}/cancel-cut', [PropertyController::class, 'cancelCutService'])
             ->middleware('can:admin.properties.cancel-cut')
             ->name('admin.properties.cancel-cut');
+        // 🆕 NUEVA RUTA PARA SOLICITAR RECONEXIÓN
+        Route::put('/properties/{property}/request-reconnection', [PropertyController::class, 'requestReconnection'])
+            ->middleware('can:admin.properties.request-reconnection')
+            ->name('admin.properties.request-reconnection');
         Route::get('/propiedades/buscar', [PropertyController::class, 'search'])
             ->middleware('can:admin.propiedades.search')
             ->name('admin.propiedades.search');

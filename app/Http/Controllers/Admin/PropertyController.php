@@ -24,8 +24,10 @@ class PropertyController extends Controller
         $this->middleware('can:admin.properties.cut')->only('cutService');
         $this->middleware('can:admin.properties.restore')->only('restoreService');
         $this->middleware('can:admin.properties.cancel-cut')->only('cancelCutService');
+        $this->middleware('can:admin.properties.request-reconnection')->only('requestReconnection');
         $this->middleware('can:admin.propiedades.search')->only('search');
     }
+    
     public function index(Request $request)
     {
         $query = Property::with(['client', 'tariff']);
@@ -96,11 +98,12 @@ class PropertyController extends Controller
 
         $properties = $query->paginate(20);
 
-        // Estadísticas para las tarjetas
+        // 🆕 ACTUALIZADO: Estadísticas incluyen pendientes_conexion
         $estadisticas = [
-            'activas' => Property::where('estado', 'activo')->count(),
-            'corte_pendiente' => Property::where('estado', 'corte_pendiente')->count(),
-            'cortadas' => Property::where('estado', 'cortado')->count(),
+            'pendientes_conexion' => Property::where('estado', Property::ESTADO_PENDIENTE_CONEXION)->count(),
+            'activas' => Property::where('estado', Property::ESTADO_ACTIVO)->count(),
+            'corte_pendiente' => Property::where('estado', Property::ESTADO_CORTE_PENDIENTE)->count(),
+            'cortadas' => Property::where('estado', Property::ESTADO_CORTADO)->count(),
             'con_ubicacion' => Property::whereNotNull('latitud')->whereNotNull('longitud')->count(),
             'clientes_activos' => Client::where('estado_cuenta', 'activo')->count(),
         ];
@@ -127,9 +130,14 @@ class PropertyController extends Controller
     public function store(PropertyRequest $request)
     {
         try {
-            Property::create($request->validated());
+            // 🆕 ESTABLECER ESTADO POR DEFECTO: pendiente_conexion
+            $data = $request->validated();
+            $data['estado'] = Property::ESTADO_PENDIENTE_CONEXION;
+            
+            Property::create($data);
+            
             return redirect()->route('admin.properties.index')
-                ->with('info', 'Propiedad creada con éxito');
+                ->with('info', 'Propiedad creada con éxito - Estado: Pendiente de Conexión');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Error al crear la propiedad: ' . $e->getMessage())
@@ -185,7 +193,7 @@ class PropertyController extends Controller
     {
         try {
             // ✅ SOLO cambiar el estado de la propiedad (NO las deudas)
-            $property->update(['estado' => 'corte_pendiente']);
+            $property->update(['estado' => Property::ESTADO_CORTE_PENDIENTE]);
 
             return redirect()->route('admin.properties.index')
                 ->with('success', 'Propiedad marcada para corte pendiente. El equipo físico procederá con el corte.');
@@ -199,14 +207,14 @@ class PropertyController extends Controller
     public function cancelCutService(Property $property)
     {
         // Solo permitir si está en corte_pendiente
-        if ($property->estado !== 'corte_pendiente') {
+        if ($property->estado !== Property::ESTADO_CORTE_PENDIENTE) {
             return redirect()->back()
                 ->with('error', 'Solo se puede cancelar cortes pendientes');
         }
 
         try {
             // ✅ SOLO cambiar el estado de la propiedad (NO las deudas)
-            $property->update(['estado' => 'activo']);
+            $property->update(['estado' => Property::ESTADO_ACTIVO]);
 
             return redirect()->route('admin.properties.index')
                 ->with('success', 'Corte pendiente cancelado. Propiedad reactivada.');
@@ -220,7 +228,8 @@ class PropertyController extends Controller
     public function restoreService(Property $property)
     {
         try {
-            $property->update(['estado' => 'activo']);
+            // 🆕 CAMBIADO: Ahora va a estado 'activo' directamente (para admin)
+            $property->update(['estado' => Property::ESTADO_ACTIVO]);
             
             return redirect()->back()
                 ->with('info', 'Servicio restaurado para: ' . $property->referencia);
@@ -231,19 +240,40 @@ class PropertyController extends Controller
         }
     }
 
+    // 🆕 NUEVO MÉTODO: Solicitar reconexión (para secretaria)
+    public function requestReconnection(Property $property)
+    {
+        // Solo permitir si está cortado
+        if ($property->estado !== Property::ESTADO_CORTADO) {
+            return redirect()->back()
+                ->with('error', 'Solo se puede solicitar reconexión para propiedades cortadas');
+        }
+
+        try {
+            $property->update(['estado' => Property::ESTADO_CORTE_PENDIENTE]);
+
+            return redirect()->route('admin.properties.index')
+                ->with('success', 'Reconexión solicitada. El equipo físico procederá con la reconexión.');
+                
+        } catch (\Exception $e) {
+            \Log::error("Error en requestReconnection: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al solicitar reconexión: ' . $e->getMessage());
+        }
+    }
+
     public function search(Request $request)
     {
         $query = $request->get('q');
         
         $propiedades = Property::with(['client', 'tariff'])
-            ->where('estado', 'activo')
+            ->where('estado', Property::ESTADO_ACTIVO)
             ->where(function($q) use ($query) {
                 $q->where('referencia', 'like', "%{$query}%")
                   ->orWhere('barrio', 'like', "%{$query}%")
                   ->orWhereHas('client', function($q) use ($query) {
                       $q->where('nombre', 'like', "%{$query}%")
                         ->orWhere('ci', 'like', "%{$query}%")
-                        ->orWhere('codigo_cliente', 'like', "%{$query}%");
+                        .orWhere('codigo_cliente', 'like', "%{$query}%");
                   });
             })
             ->limit(10)

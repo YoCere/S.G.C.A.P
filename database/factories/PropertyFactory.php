@@ -54,7 +54,7 @@ class PropertyFactory extends Factory
             'barrio'     => $this->faker->randomElement($barrios), // ✅ NUEVO
             'latitud'    => $lat,
             'longitud'   => $lng,
-            'estado'     => $this->faker->randomElement(['activo', 'inactivo']),
+            'estado'     => $this->faker->randomElement(['activo', 'inactivo','cortado','corte_pendiente','pendiente_conexion']),
         ];
     }
 }

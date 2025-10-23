@@ -26,6 +26,18 @@
         </div>
     @endif
 
+    {{-- ✅ NUEVA ADVERTENCIA PARA ROLES DEL SISTEMA --}}
+    @if(isset($role) && in_array($role->name, ['Admin', 'Secretaria', 'Operador']))
+        <div class="alert alert-warning alert-dismissible fade show">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <strong>Advertencia:</strong> Estás editando un rol del sistema. 
+            Los cambios pueden afectar funcionalidades críticas.
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
@@ -76,7 +88,7 @@
                                                           class="d-inline"
                                                           onsubmit="return confirm('¿Estás seguro de desactivar este rol?');">
                                                         @csrf
-                                                        @method('PUT') {{-- ✅ CAMBIADO: PUT en lugar de DELETE --}}
+                                                        @method('PUT')
                                                         <button type="submit" class="btn btn-danger" title="Desactivar Rol">
                                                             <i class="fas fa-ban"></i>
                                                         </button>
@@ -94,9 +106,30 @@
                                                     </form>
                                                 @endif
                                             @else
-                                                <button class="btn btn-secondary" disabled title="Rol del sistema">
-                                                    <i class="fas fa-lock"></i>
-                                                </button>
+                                                {{-- ✅ CAMBIO IMPORTANTE: Ya no deshabilitar el botón de edición --}}
+                                                @if($role->activo)
+                                                    <form action="{{ route('admin.roles.desactivate', $role) }}" 
+                                                          method="POST" 
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('¿Estás seguro de desactivar este rol del sistema?');">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <button type="submit" class="btn btn-danger" title="Desactivar Rol del Sistema">
+                                                            <i class="fas fa-ban"></i>
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <form action="{{ route('admin.roles.activate', $role) }}" 
+                                                          method="POST" 
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('¿Estás seguro de activar este rol del sistema?');">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <button type="submit" class="btn btn-success" title="Activar Rol del Sistema">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             @endif
                                         @endcan
                                     </div>

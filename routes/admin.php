@@ -42,7 +42,12 @@ Route::middleware(['auth'])
 
         // Roles 
         Route::resource('roles', RoleController::class)->names('admin.roles');
-
+        // Rutas para activar/desactivar roles
+        Route::put('/roles/{role}/desactivate', [RoleController::class, 'desactivate'])
+        ->name('admin.roles.desactivate');
+        Route::put('/roles/{role}/activate', [RoleController::class, 'activate'])
+        ->name('admin.roles.activate');
+        
         // Tarifas
         Route::resource('tariffs', TariffController::class)
             ->only(['index', 'create', 'store', 'edit', 'update', 'show'])

@@ -12,6 +12,15 @@
 @stop
 
 @section('content')
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show">
+            {{ session('error') }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-body">
             <form action="{{ route('admin.roles.update', $role) }}" method="POST">
@@ -19,7 +28,7 @@
                 @method('PUT')
                 
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <div class="form-group">
                             <label for="name">Nombre del Rol *</label>
                             <input type="text" 
@@ -27,23 +36,9 @@
                                    id="name"
                                    class="form-control @error('name') is-invalid @enderror"
                                    value="{{ old('name', $role->name) }}"
-                                   placeholder="Ej: Supervisor, Auditor, etc."
+                                   placeholder="Ingrese el nombre del rol"
                                    required>
                             @error('name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="description">Descripción</label>
-                            <textarea name="description" 
-                                      id="description"
-                                      class="form-control @error('description') is-invalid @enderror"
-                                      rows="1"
-                                      placeholder="Breve descripción del rol">{{ old('description', $role->description) }}</textarea>
-                            @error('description')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -51,7 +46,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Permisos *</label>
+                    <label class="h5">Permisos asignados *</label>
                     @error('permissions')
                         <div class="alert alert-danger">{{ $message }}</div>
                     @enderror
@@ -61,36 +56,27 @@
                             <div class="col-md-6 mb-4">
                                 <div class="card">
                                     <div class="card-header bg-light">
-                                        <h6 class="mb-0">
-                                            <strong>{{ ucfirst($module) }}</strong>
-                                            <small class="text-muted">({{ $modulePermissions->count() }} permisos)</small>
+                                        <h6 class="mb-0 text-uppercase">
+                                            <i class="fas fa-folder mr-2"></i>{{ $module }}
                                         </h6>
                                     </div>
-                                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                                    <div class="card-body">
                                         @foreach($modulePermissions as $permission)
                                             <div class="form-check mb-2">
                                                 <input type="checkbox" 
                                                        name="permissions[]" 
                                                        value="{{ $permission->id }}"
-                                                       class="form-check-input permission-checkbox"
+                                                       class="form-check-input"
                                                        id="permission_{{ $permission->id }}"
                                                        {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
                                                 <label class="form-check-label" for="permission_{{ $permission->id }}">
-                                                    <small>{{ $permission->name }}</small>
+                                                    <strong>{{ $permission->name }}</strong>
+                                                    @if($permission->description)
+                                                        <br><small class="text-muted">{{ $permission->description }}</small>
+                                                    @endif
                                                 </label>
                                             </div>
                                         @endforeach
-                                    </div>
-                                    <div class="card-footer py-2">
-                                        <div class="form-check">
-                                            <input type="checkbox" 
-                                                   class="form-check-input select-all-module"
-                                                   data-module="{{ $module }}"
-                                                   {{ count(array_intersect($modulePermissions->pluck('id')->toArray(), $rolePermissions)) == $modulePermissions->count() ? 'checked' : '' }}>
-                                            <label class="form-check-label">
-                                                <small>Seleccionar todo</small>
-                                            </label>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -113,11 +99,11 @@
 
 @section('css')
     <style>
-        .card-header h6 {
-            font-size: 0.9rem;
+        .card-header {
+            padding: 0.75rem 1.25rem;
         }
-        .form-check-label small {
-            font-size: 0.8rem;
+        .form-check-label {
+            font-size: 0.9rem;
         }
     </style>
 @stop
@@ -125,22 +111,13 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            // Seleccionar todos los permisos de un módulo
-            $('.select-all-module').on('change', function() {
+            // Auto-dismiss alerts after 5 seconds
+            $('.alert').delay(5000).fadeOut(300);
+            
+            // Select all permissions for a module
+            $('.select-module').on('change', function() {
                 const module = $(this).data('module');
-                const isChecked = $(this).is(':checked');
-                
-                $(this).closest('.card').find('.permission-checkbox').prop('checked', isChecked);
-            });
-
-            // Verificar si todos los permisos de un módulo están seleccionados
-            $('.permission-checkbox').on('change', function() {
-                const card = $(this).closest('.card');
-                const totalCheckboxes = card.find('.permission-checkbox').length;
-                const checkedCheckboxes = card.find('.permission-checkbox:checked').length;
-                
-                const selectAllCheckbox = card.find('.select-all-module');
-                selectAllCheckbox.prop('checked', totalCheckboxes === checkedCheckboxes);
+                $(`input[name="permissions[]"][data-module="${module}"]`).prop('checked', this.checked);
             });
         });
     </script>

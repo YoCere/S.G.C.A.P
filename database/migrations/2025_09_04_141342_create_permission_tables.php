@@ -24,6 +24,7 @@ return new class extends Migration
             // $table->engine('InnoDB');
             $table->bigIncrements('id'); // permission id
             $table->string('name');       // For MyISAM use string('name', 225); // (or 166 for InnoDB with Redundant/Compact row format)
+            $table->string('description')->nullable(); // ✅ AGREGADO: Descripción para permisos
             $table->string('guard_name'); // For MyISAM use string('guard_name', 25);
             $table->timestamps();
 
@@ -38,6 +39,7 @@ return new class extends Migration
                 $table->index($columnNames['team_foreign_key'], 'roles_team_foreign_key_index');
             }
             $table->string('name');       // For MyISAM use string('name', 225); // (or 166 for InnoDB with Redundant/Compact row format)
+            $table->boolean('activo')->default(true); // ✅ AGREGADO: Para desactivar roles
             $table->string('guard_name'); // For MyISAM use string('guard_name', 25);
             $table->timestamps();
             if ($teams || config('permission.testing')) {
@@ -47,6 +49,7 @@ return new class extends Migration
             }
         });
 
+        // ... el resto del código se mantiene igual ...
         Schema::create($tableNames['model_has_permissions'], static function (Blueprint $table) use ($tableNames, $columnNames, $pivotPermission, $teams) {
             $table->unsignedBigInteger($pivotPermission);
 

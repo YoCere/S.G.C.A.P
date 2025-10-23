@@ -1,13 +1,13 @@
 @extends('adminlte::page')
 
-@section('title', 'Cortes Pendientes - SGCAF')
+@section('title', 'Trabajos Pendientes - SGCAF')
 
 @section('content_header')
     <h1 class="h5 font-weight-bold mb-0">
-        <i class="fas fa-clock text-warning mr-2"></i>
-        Cortes Pendientes
+        <i class="fas fa-tools text-primary mr-2"></i>
+        Trabajos Pendientes
     </h1>
-    <small class="text-muted">Propiedades marcadas para corte - Esperando acción del equipo físico</small>
+    <small class="text-muted">Conexiones nuevas, cortes y reconexiones - Esperando acción del equipo operativo</small>
 @stop
 
 @section('content')
@@ -30,14 +30,14 @@
     @endif
 
     <div class="card shadow-sm">
-        <div class="card-header bg-warning">
+        <div class="card-header bg-primary">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
                 <h3 class="card-title h6 mb-2 mb-md-0 text-white">
                     <i class="fas fa-list mr-1"></i>
-                    Lista de Cortes Pendientes
+                    Lista de Trabajos Pendientes
                 </h3>
                 <span class="badge badge-light">
-                    {{ $propiedades->total() }} propiedades
+                    {{ $propiedades->total() }} trabajos
                 </span>
             </div>
         </div>
@@ -47,11 +47,11 @@
             <div class="p-3 border-bottom">
                 <form action="{{ route('admin.cortes.pendientes') }}" method="GET">
                     <div class="row g-2">
-                        <div class="col-12 col-sm-6 col-md-4">
+                        <div class="col-12 col-sm-6 col-md-3">
                             <input type="text" name="search" class="form-control form-control-sm" 
                                    placeholder="Buscar propiedad, cliente..." value="{{ request('search') }}">
                         </div>
-                        <div class="col-12 col-sm-6 col-md-3">
+                        <div class="col-12 col-sm-6 col-md-2">
                             <input type="text" name="codigo_cliente" class="form-control form-control-sm" 
                                    placeholder="Código cliente" value="{{ request('codigo_cliente') }}">
                         </div>
@@ -66,11 +66,18 @@
                             </select>
                         </div>
                         <div class="col-12 col-sm-6 col-md-2">
+                            <select name="tipo_trabajo" class="form-control form-control-sm">
+                                <option value="">Todos los trabajos</option>
+                                <option value="conexion" {{ request('tipo_trabajo') == 'conexion' ? 'selected' : '' }}>Conexiones Nuevas</option>
+                                <option value="corte" {{ request('tipo_trabajo') == 'corte' ? 'selected' : '' }}>Cortes Pendientes</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-2">
                             <div class="input-group input-group-sm">
-                                <button class="btn btn-warning" type="submit">
+                                <button class="btn btn-primary" type="submit">
                                     <i class="fas fa-search mr-1"></i> Buscar
                                 </button>
-                                @if(request()->anyFilled(['search', 'barrio', 'codigo_cliente']))
+                                @if(request()->anyFilled(['search', 'barrio', 'codigo_cliente', 'tipo_trabajo']))
                                     <a href="{{ route('admin.cortes.pendientes') }}" class="btn btn-outline-danger">
                                         <i class="fas fa-times"></i>
                                     </a>
@@ -91,14 +98,32 @@
                                     <th width="100">Código</th>
                                     <th>Cliente / Propiedad</th>
                                     <th width="120">Barrio</th>
+                                    <th width="120">Tipo</th>
                                     <th width="120">Deudas</th>
-                                    <th width="120">Monto Total</th>
+                                    <th width="120">Monto</th>
                                     <th width="200" class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($propiedades as $propiedad)
-                                    <tr class="table-warning">
+                                    @php
+                                        // 🆕 DETERMINAR TIPO DE TRABAJO Y ESTILOS
+                                        if ($propiedad->estado === 'pendiente_conexion') {
+                                            $tipo_trabajo = 'conexion';
+                                            $badge_color = 'success';
+                                            $badge_text = 'CONEXIÓN NUEVA';
+                                            $row_class = 'table-success';
+                                            $border_class = 'border-success';
+                                        } else {
+                                            $tipo_trabajo = 'corte';
+                                            $badge_color = 'warning';
+                                            $badge_text = 'CORTE PENDIENTE';
+                                            $row_class = 'table-warning';
+                                            $border_class = 'border-warning';
+                                        }
+                                    @endphp
+                                    
+                                    <tr class="{{ $row_class }}">
                                         <td>
                                             <span class="badge badge-primary">
                                                 {{ $propiedad->client->codigo_cliente }}
@@ -121,14 +146,27 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <span class="badge badge-danger">
-                                                {{ $propiedad->debts->count() }} deuda(s)
+                                            <span class="badge badge-{{ $badge_color }}">
+                                                {{ $badge_text }}
                                             </span>
                                         </td>
                                         <td>
-                                            <strong class="text-danger">
-                                                Bs {{ number_format($propiedad->debts->sum('monto_pendiente'), 2) }}
-                                            </strong>
+                                            @if($tipo_trabajo === 'corte')
+                                                <span class="badge badge-danger">
+                                                    {{ $propiedad->debts->count() }} deuda(s)
+                                                </span>
+                                            @else
+                                                <span class="badge badge-secondary">-</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($tipo_trabajo === 'corte' && $propiedad->debts->count() > 0)
+                                                <strong class="text-danger">
+                                                    Bs {{ number_format($propiedad->debts->sum('monto_pendiente'), 2) }}
+                                                </strong>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
@@ -142,6 +180,7 @@
                                                             data-ref="{{ $propiedad->referencia }}"
                                                             data-id="{{ $propiedad->id }}"
                                                             data-codigo="{{ $propiedad->client->codigo_cliente }}"
+                                                            data-tipo="{{ $tipo_trabajo }}"
                                                             title="Ver ubicación en mapa">
                                                         <i class="fas fa-map-marker-alt"></i>
                                                     </button>
@@ -152,27 +191,20 @@
                                                     </button>
                                                 @endif
 
-                                                <!-- MARCAR COMO CORTADO -->
+                                                <!-- 🆕 BOTÓN EJECUTAR TRABAJO -->
                                                 <form action="{{ route('admin.cortes.marcar-cortado', $propiedad->id) }}" 
                                                       method="POST" class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="btn btn-success"
-                                                            title="Marcar como cortado físicamente"
-                                                            onclick="return confirm('¿Confirmar corte físico de esta propiedad? Se aplicará multa automáticamente.')">
-                                                        <i class="fas fa-bolt mr-1"></i> Cortar
+                                                            title="{{ $tipo_trabajo === 'conexion' ? 'Marcar instalación completada y activar servicio' : 'Ejecutar corte físico' }}"
+                                                            onclick="return confirm('{{ $tipo_trabajo === 'conexion' ? '¿Confirmar que completó la instalación y dejó el servicio funcionando?' : '¿Confirmar corte físico? Se aplicará multa automáticamente.' }}')">
+                                                        <i class="fas fa-{{ $tipo_trabajo === 'conexion' ? 'faucet' : 'bolt' }} mr-1"></i>
+                                                        {{ $tipo_trabajo === 'conexion' ? 'Activar' : 'Cortar' }}
                                                     </button>
                                                 </form>
 
-                                                <!-- CANCELAR CORTE -->
-                                                <form action="{{ route('admin.properties.cancel-cut', $propiedad->id) }}" 
-                                                      method="POST" class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-secondary"
-                                                            title="Cancelar corte pendiente"
-                                                            onclick="return confirm('¿Cancelar corte pendiente?')">
-                                                        <i class="fas fa-undo mr-1"></i> Cancelar
-                                                    </button>
-                                                </form>
+                                                <!-- CANCELAR TRABAJO (solo para cortes) -->
+                                                
                                             </div>
                                         </td>
                                     </tr>
@@ -186,7 +218,21 @@
                 <div class="d-block d-md-none">
                     <div class="list-group list-group-flush">
                         @foreach($propiedades as $propiedad)
-                            <div class="list-group-item border-warning border-left-3">
+                            @php
+                                if ($propiedad->estado === 'pendiente_conexion') {
+                                    $tipo_trabajo = 'conexion';
+                                    $badge_color = 'success';
+                                    $badge_text = 'CONEXIÓN NUEVA';
+                                    $border_class = 'border-left-3-success';
+                                } else {
+                                    $tipo_trabajo = 'corte';
+                                    $badge_color = 'warning';
+                                    $badge_text = 'CORTE PENDIENTE';
+                                    $border_class = 'border-left-3-warning';
+                                }
+                            @endphp
+                            
+                            <div class="list-group-item {{ $border_class }}">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div>
                                         <h6 class="mb-1 font-weight-bold">{{ $propiedad->referencia }}</h6>
@@ -194,16 +240,18 @@
                                             <span class="badge badge-primary">
                                                 {{ $propiedad->client->codigo_cliente }}
                                             </span>
-                                            <span class="badge badge-warning">Corte Pendiente</span>
+                                            <span class="badge badge-{{ $badge_color }}">{{ $badge_text }}</span>
                                             @if($propiedad->barrio)
                                                 <span class="badge badge-info">{{ $propiedad->barrio }}</span>
                                             @endif
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <span class="badge badge-danger">
-                                            {{ $propiedad->debts->count() }} deudas
-                                        </span>
+                                        @if($tipo_trabajo === 'corte')
+                                            <span class="badge badge-danger">
+                                                {{ $propiedad->debts->count() }} deudas
+                                            </span>
+                                        @endif
                                     </div>
                                 </div>
                                 
@@ -217,10 +265,12 @@
                                 </div>
                                 
                                 <div class="mb-2">
-                                    <div class="small text-danger">
-                                        <strong>Monto Total:</strong> 
-                                        Bs {{ number_format($propiedad->debts->sum('monto_pendiente'), 2) }}
-                                    </div>
+                                    @if($tipo_trabajo === 'corte' && $propiedad->debts->count() > 0)
+                                        <div class="small text-danger">
+                                            <strong>Monto Total:</strong> 
+                                            Bs {{ number_format($propiedad->debts->sum('monto_pendiente'), 2) }}
+                                        </div>
+                                    @endif
                                 </div>
                                 
                                 <div class="btn-group w-100" role="group">
@@ -235,6 +285,7 @@
                                                 data-id="{{ $propiedad->id }}"
                                                 data-codigo="{{ $propiedad->client->codigo_cliente }}"
                                                 data-cliente="{{ $propiedad->client->nombre }}"
+                                                data-tipo="{{ $tipo_trabajo }}"
                                                 title="Ver ubicación">
                                             <i class="fas fa-map-marker-alt mr-1"></i> Mapa
                                         </button>
@@ -248,18 +299,19 @@
                                           method="POST" class="d-inline flex-fill">
                                         @csrf
                                         <button type="submit" class="btn btn-success btn-sm w-100"
-                                                onclick="return confirm('¿Confirmar corte físico?')">
-                                            <i class="fas fa-bolt mr-1"></i> Cortar
+                                                onclick="return confirm('{{ $tipo_trabajo === 'conexion' ? '¿Confirmar instalación completada y servicio funcionando?' : '¿Confirmar corte físico?' }}')">
+                                            <i class="fas fa-{{ $tipo_trabajo === 'conexion' ? 'faucet' : 'bolt' }} mr-1"></i>
+                                            {{ $tipo_trabajo === 'conexion' ? 'Activar' : 'Cortar' }}
                                         </button>
                                     </form>
-                                    <form action="{{ route('admin.properties.cancel-cut', $propiedad->id) }}" 
-                                          method="POST" class="d-inline flex-fill">
-                                        @csrf
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm w-100"
-                                                onclick="return confirm('¿Cancelar corte?')">
-                                            <i class="fas fa-undo mr-1"></i> Cancelar
-                                        </button>
-                                    </form>
+                                    
+                                    @if($tipo_trabajo === 'corte')
+                                        <form action="{{ route('admin.properties.cancel-cut', $propiedad->id) }}" 
+                                              method="POST" class="d-inline flex-fill">
+                                            @csrf
+                                            
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
@@ -269,8 +321,8 @@
                 <div class="text-center py-5">
                     <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
                     <h4 class="text-success">¡Excelente!</h4>
-                    <p class="text-muted">No hay propiedades con corte pendiente en este momento.</p>
-                    <small class="text-muted">Todas las propiedades están al día o ya fueron cortadas.</small>
+                    <p class="text-muted">No hay trabajos pendientes en este momento.</p>
+                    <small class="text-muted">Todas las conexiones, cortes y reconexiones están completadas.</small>
                 </div>
             @endif
         </div>
@@ -280,7 +332,7 @@
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
                     <div class="text-muted small mb-2 mb-md-0">
                         Mostrando {{ $propiedades->firstItem() }} - {{ $propiedades->lastItem() }} 
-                        de {{ $propiedades->total() }} propiedades
+                        de {{ $propiedades->total() }} trabajos
                     </div>
                     {{ $propiedades->appends(request()->query())->links() }}
                 </div>
@@ -288,14 +340,14 @@
         @endif
     </div>
 
-    <!-- Modal Mapa (igual al de properties) -->
+    <!-- Modal Mapa -->
     <div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
                         <i class="fas fa-map-marker-alt mr-2"></i>
-                        Ubicación para Corte
+                        Ubicación del Trabajo
                     </h5>
                     <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
                         <span aria-hidden="true">&times;</span>
@@ -317,12 +369,13 @@
 
     <!-- Información Importante -->
     <div class="alert alert-info mt-3">
-        <h6><i class="fas fa-info-circle mr-2"></i>Información para el Equipo de Corte</h6>
+        <h6><i class="fas fa-info-circle mr-2"></i>Información para el Equipo Operativo</h6>
         <ul class="mb-0 small">
-            <li>Use el botón <span class="badge badge-info"><i class="fas fa-map-marker-alt"></i></span> para ver la ubicación exacta</li>
-            <li>Al marcar como "Cortado", se aplicará automáticamente una multa de reconexión</li>
-            <li>Puede cancelar el corte si el cliente realiza el pago correspondiente</li>
-            <li>Confirme el corte físico solo cuando haya realizado la acción</li>
+            <li><span class="badge badge-success">CONEXIÓN NUEVA</span> - Realizar instalación inicial y dejar servicio funcionando</li>
+            <li><span class="badge badge-warning">CORTE PENDIENTE</span> - Ejecutar corte físico por mora</li>
+            <li>Use el botón <span class="badge badge-info"><i class="fas fa-map-marker-alt"></i></span> para ver ubicaciones</li>
+            <li>En cortes por mora, se aplica multa automáticamente al confirmar</li>
+            <li>Confirme cada trabajo solo cuando lo haya realizado físicamente</li>
         </ul>
     </div>
 @stop
@@ -332,7 +385,16 @@
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         .border-left-3 {
-            border-left: 3px solid #ffc107 !important;
+            border-left: 3px solid !important;
+        }
+        .border-left-3-success {
+            border-left-color: #28a745 !important;
+        }
+        .border-left-3-warning {
+            border-left-color: #ffc107 !important;
+        }
+        .table-success {
+            background-color: #d4edda !important;
         }
         .table-warning {
             background-color: #fff3cd !important;
@@ -378,6 +440,7 @@
                 const id = button.data('id');
                 const codigo = button.data('codigo');
                 const cliente = button.data('cliente') || 'Cliente no registrado';
+                const tipo = button.data('tipo') || 'corte';
         
                 // Actualizar información
                 $('#mapCoordinates').text(`Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
@@ -408,12 +471,21 @@
                     attribution: '&copy; OpenStreetMap'
                 }).addTo(leafletMap);
         
+                // 🆕 DIFERENCIAR ICONO Y MENSAJE SEGÚN TIPO
+                let icono = '🔴';
+                let mensaje = 'CORTE PENDIENTE';
+                
+                if (tipo === 'conexion') {
+                    icono = '🟢';
+                    mensaje = 'CONEXIÓN NUEVA';
+                }
+
                 // Centrar y agregar marcador
                 leafletMap.setView([lat, lng], 16);
                 leafletMarker = L.marker([lat, lng]).addTo(leafletMap)
                     .bindPopup(`
                         <div class="text-center" style="min-width: 200px;">
-                            <strong class="text-danger">🔴 CORTE PENDIENTE</strong><br>
+                            <strong class="${tipo === 'conexion' ? 'text-success' : 'text-danger'}">${icono} ${mensaje}</strong><br>
                             <strong>${ref}</strong><br>
                             <small class="text-muted">${cliente}</small><br>
                             <span class="badge badge-primary">Código: ${codigo || 'N/A'}</span>

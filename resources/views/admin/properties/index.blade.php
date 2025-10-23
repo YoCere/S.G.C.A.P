@@ -572,7 +572,7 @@
                 @endif
               {{-- PROPIEDADES CORTADAS --}}
               @elseif($p->estado === 'cortado')
-                @if($isAdmin || $isSecretaria)
+                @if($isAdmin || $isOperador)
                   <form action="{{ route('admin.properties.request-reconnection', $p) }}" method="POST" class="d-inline">
                     @csrf @method('PUT')
                     <button class="btn btn-success btn-sm" type="button"

@@ -334,6 +334,12 @@ return [
             'can' => 'admin.users.index',
         ],
         [
+            'text' => 'Lista de roles',
+            'route' => 'admin.roles.index',
+            'icon' => 'fas fa-user-shield',
+            //'can' => 'admin.users.index',
+        ],
+        [
             'text' => 'Clientes',
             'route' => 'admin.clients.index',
             'icon' => 'fas fa-fw fa-users',
@@ -364,7 +370,7 @@ return [
             'can' => 'admin.debts.index',
         ],
         [
-            'text' => 'Cortes',
+            'text' => 'Cortes-conexiones',
             'route' => 'admin.cortes.pendientes',
             'icon' => 'fas fa-faucet fa-fw',
             'can' => 'admin.cortes.pendientes',

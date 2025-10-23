@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
         )->assignRole('Admin');
 
         $secretaria = User::factory()->create()->assignRole('Secretaria');
-        $personalCorte = User::factory()->create()->assignRole('personal_corte');
+        $personalCorte = User::factory()->create()->assignRole('Operador');
 
         // ✅ CORREGIDO: Crear array de empleados para usar después
         $empleados = collect([$admin, $secretaria, $personalCorte]);

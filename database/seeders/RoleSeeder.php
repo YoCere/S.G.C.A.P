@@ -14,10 +14,10 @@ class RoleSeeder extends Seeder
         // Crear roles
         $admin = Role::create(['name' => 'Admin']);
         $secretaria = Role::create(['name' => 'Secretaria']);
-        $personal_corte = Role::create(['name' => 'personal_corte']);
+        $operador = Role::create(['name' => 'Operador']); // 🆕 CAMBIADO: personal_corte → Operador
 
         // ==================== PERMISOS GENERALES ====================
-        Permission::create(['name' => 'admin.home'])->syncRoles([$admin, $secretaria, $personal_corte]);
+        Permission::create(['name' => 'admin.home'])->syncRoles([$admin, $secretaria, $operador]);
 
         // ==================== PERMISOS DE USUARIOS ====================
         Permission::create(['name' => 'admin.users.index'])->syncRoles([$admin]);
@@ -46,16 +46,18 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'admin.tariffs.activate'])->syncRoles([$admin, $secretaria]);
 
         // ==================== PERMISOS DE PROPIEDADES ====================
-        Permission::create(['name' => 'admin.properties.index'])->syncRoles([$admin, $secretaria, $personal_corte]);
+        Permission::create(['name' => 'admin.properties.index'])->syncRoles([$admin, $secretaria]); // 🆕 CAMBIADO
         Permission::create(['name' => 'admin.properties.create'])->syncRoles([$admin, $secretaria]);
-        Permission::create(['name' => 'admin.properties.show'])->syncRoles([$admin, $secretaria, $personal_corte]);
+        Permission::create(['name' => 'admin.properties.show'])->syncRoles([$admin, $secretaria ]); // 🆕 CAMBIADO
         Permission::create(['name' => 'admin.properties.edit'])->syncRoles([$admin, $secretaria]);
         Permission::create(['name' => 'admin.properties.update'])->syncRoles([$admin, $secretaria]);
         Permission::create(['name' => 'admin.properties.destroy'])->syncRoles([$admin]);
         Permission::create(['name' => 'admin.properties.cut'])->syncRoles([$admin, $secretaria]);
-        Permission::create(['name' => 'admin.properties.restore'])->syncRoles([$admin, $secretaria]);
+        Permission::create(['name' => 'admin.properties.restore'])->syncRoles([$admin]); // 🆕 SOLO ADMIN puede reconectar directamente
         Permission::create(['name' => 'admin.properties.cancel-cut'])->syncRoles([$admin, $secretaria]);
-        Permission::create(['name' => 'admin.propiedades.search'])->syncRoles([$admin, $secretaria, $personal_corte]);
+        // 🆕 NUEVO PERMISO: Solicitar reconexión
+        Permission::create(['name' => 'admin.properties.request-reconnection'])->syncRoles([$admin, $secretaria]);
+        Permission::create(['name' => 'admin.propiedades.search'])->syncRoles([$admin, $secretaria]); // 🆕 CAMBIADO
 
         // ==================== PERMISOS DE PAGOS ====================
         Permission::create(['name' => 'admin.pagos.index'])->syncRoles([$admin, $secretaria]);
@@ -91,10 +93,10 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'admin.multas.obtener-monto-base'])->syncRoles([$admin, $secretaria]);
 
         // ==================== PERMISOS DE CORTES ====================
-        Permission::create(['name' => 'admin.cortes.pendientes'])->syncRoles([$admin, $personal_corte, $secretaria]);
-        Permission::create(['name' => 'admin.cortes.cortadas'])->syncRoles([$admin, $personal_corte, $secretaria]);
-        Permission::create(['name' => 'admin.cortes.marcar-cortado'])->syncRoles([$admin, $personal_corte]);
-        Permission::create(['name' => 'admin.cortes.aplicar-multa'])->syncRoles([$admin, $personal_corte]);
+        Permission::create(['name' => 'admin.cortes.pendientes'])->syncRoles([$admin, $operador, $secretaria]); // 🆕 CAMBIADO
+        Permission::create(['name' => 'admin.cortes.cortadas'])->syncRoles([$admin, $operador, $secretaria]); // 🆕 CAMBIADO
+        Permission::create(['name' => 'admin.cortes.marcar-cortado'])->syncRoles([$admin, $operador]); // 🆕 CAMBIADO
+        Permission::create(['name' => 'admin.cortes.aplicar-multa'])->syncRoles([$admin, $operador]); // 🆕 CAMBIADO
 
         // ==================== PERMISOS DE REPORTES ====================
         Permission::create(['name' => 'admin.reportes.index'])->syncRoles([$admin, $secretaria]);

@@ -329,21 +329,25 @@ class RoleSeeder extends Seeder
             'name' => 'admin.reportes.index',
             'description' => 'Acceder a módulo de reportes'
         ])->syncRoles([$admin, $secretaria]);
+
         Permission::create([
-            'name' => 'admin.reportes.morosidad',
-            'description' => 'Generar reportes de morosidad'
+            'name' => 'admin.reportes.morosidad', 
+            'description' => 'Generar reporte de morosidad'
         ])->syncRoles([$admin, $secretaria]);
+
         Permission::create([
-            'name' => 'admin.reportes.ingresos',
-            'description' => 'Generar reportes de ingresos'
+            'name' => 'admin.reportes.clientes',
+            'description' => 'Generar reporte de clientes'
         ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.reportes.cortes',
-            'description' => 'Generar reportes de cortes'
-        ])->syncRoles([$admin, $secretaria]);
+
         Permission::create([
             'name' => 'admin.reportes.propiedades',
-            'description' => 'Generar reportes de propiedades'
+            'description' => 'Generar reporte de propiedades'
+        ])->syncRoles([$admin, $secretaria]);
+
+        Permission::create([
+            'name' => 'admin.reportes.trabajos',
+            'description' => 'Generar reporte de trabajos pendientes'
         ])->syncRoles([$admin, $secretaria]);
 
         // ==================== PERMISOS DE UTILIDADES ====================

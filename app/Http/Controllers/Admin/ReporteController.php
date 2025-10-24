@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Routing\Controller;
 use App\Models\Client;
 use App\Models\Property;
 use App\Models\Debt;
 use App\Models\Pago;
+use App\Models\Fine;
+use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ReporteController extends Controller
 {
@@ -16,136 +18,206 @@ class ReporteController extends Controller
     {
         $this->middleware('can:admin.reportes.index')->only('index');
         $this->middleware('can:admin.reportes.morosidad')->only('morosidad');
-        $this->middleware('can:admin.reportes.ingresos')->only('ingresos');
-        $this->middleware('can:admin.reportes.cortes')->only('cortes');
         $this->middleware('can:admin.reportes.propiedades')->only('propiedades');
     }
+
+    /**
+     * Página principal de reportes - Menú
+     */
     public function index()
     {
-        $estadisticas = $this->obtenerEstadisticasReportes();
-        return view('admin.reportes.index', compact('estadisticas'));
+        return view('admin.reportes.index');
     }
 
+    /**
+     * Lista simple de deudores - Compacta para impresión
+     */
     public function morosidad(Request $request)
     {
-        // Filtros
-        $filtroEstado = $request->get('estado', 'todos');
-        $filtroMeses = $request->get('meses', 1);
-        
-        // ✅ CORREGIDO: Consulta optimizada
-        $query = Property::with([
-            'client', 
-            'tariff', 
-            'debts' => function($q) {
-                $q->where('monto_pendiente', '>', 0)
-                  ->whereIn('estado', ['pendiente', 'vencida', 'corte_pendiente', 'cortado'])
-                  ->orderBy('fecha_emision', 'asc'); // Ordenar por fecha más antigua
-            }
-        ])
-        ->whereHas('debts', function($q) {
-            $q->where('monto_pendiente', '>', 0)
-              ->whereIn('estado', ['pendiente', 'vencida', 'corte_pendiente', 'cortado']);
+        $filtroBarrio = $request->get('barrio');
+        $filtroMeses = $request->get('meses_mora', 3);
+
+        $query = Property::with(['client', 'debts' => function($query) {
+            $query->pendientes();
+        }])
+        ->whereHas('debts', function($query) {
+            $query->pendientes();
         });
 
-        // Aplicar filtros
-        if ($filtroEstado !== 'todos') {
+        // Filtros
+        if ($filtroBarrio) {
+            $query->where('barrio', 'like', "%{$filtroBarrio}%");
+        }
+
+        $propiedades = $query->get()
+            ->map(function($property) {
+                $mesesAdeudados = $property->obtenerMesesAdeudados();
+                $mesesMora = count($mesesAdeudados);
+                $deudaTotal = $property->total_deudas_pendientes;
+
+                return [
+                    'codigo_cliente' => $property->client->codigo_cliente ?? 'N/A',
+                    'cliente' => $property->client->nombre ?? 'Cliente no asignado',
+                    'propiedad' => $property->referencia,
+                    'barrio' => $property->barrio,
+                    'deuda_total' => $deudaTotal,
+                    'meses_mora' => $mesesMora,
+                    'estado_servicio' => $property->estado,
+                    'ultimo_mes_pagado' => $this->obtenerUltimoMesPagado($property->id)
+                ];
+            })
+            ->filter(function($item) use ($filtroMeses) {
+                return $item['meses_mora'] >= $filtroMeses;
+            })
+            ->sortByDesc('deuda_total')
+            ->values();
+
+        $barrios = Property::select('barrio')->distinct()->pluck('barrio');
+
+        return view('admin.reportes.morosidad', compact('propiedades', 'barrios', 'filtroBarrio', 'filtroMeses'));
+    }
+
+    /**
+     * Lista simple de clientes - Compacta para impresión
+     */
+    public function clientes(Request $request)
+    {
+        $filtroBarrio = $request->get('barrio');
+        $filtroEstado = $request->get('estado');
+
+        $query = Client::with(['properties']);
+
+        if ($filtroEstado) {
+            $query->where('estado_cuenta', $filtroEstado);
+        }
+
+        $clientes = $query->get()
+            ->map(function($client) use ($filtroBarrio) {
+                $propiedades = $client->properties;
+                
+                if ($filtroBarrio) {
+                    $propiedades = $propiedades->where('barrio', 'like', "%{$filtroBarrio}%");
+                }
+
+                return [
+                    'codigo' => $client->codigo_cliente,
+                    'nombre' => $client->nombre,
+                    'ci' => $client->ci,
+                    'telefono' => $client->telefono,
+                    'barrio_principal' => $propiedades->first()->barrio ?? 'N/A',
+                    'estado_cliente' => $client->estado_cuenta,
+                    'total_propiedades' => $propiedades->count(),
+                    'fecha_registro' => $client->fecha_registro_formateada
+                ];
+            })
+            ->sortBy('nombre')
+            ->values();
+
+        $barrios = Property::select('barrio')->distinct()->pluck('barrio');
+
+        return view('admin.reportes.clientes', compact('clientes', 'barrios', 'filtroBarrio', 'filtroEstado'));
+    }
+
+    /**
+     * Lista simple de propiedades - Compacta para impresión
+     */
+    public function propiedades(Request $request)
+    {
+        $filtroBarrio = $request->get('barrio');
+        $filtroEstado = $request->get('estado');
+
+        $query = Property::with(['client']);
+
+        if ($filtroBarrio) {
+            $query->where('barrio', 'like', "%{$filtroBarrio}%");
+        }
+
+        if ($filtroEstado) {
             $query->where('estado', $filtroEstado);
         }
 
-        $propiedades = $query->get()->map(function($propiedad) {
-            $deudasPendientes = $propiedad->debts->where('monto_pendiente', '>', 0);
-            
-            return [
-                'propiedad' => $propiedad,
-                'cliente' => $propiedad->client,
-                'deudas' => $deudasPendientes,
-                'total_deuda' => $deudasPendientes->sum('monto_pendiente'),
-                'meses_mora' => $this->calcularMesesMora($deudasPendientes),
-                'estado_actual' => $propiedad->estado,
-                'ultimo_mes_pagado' => $this->obtenerUltimoMesPagado($propiedad->id),
-                'fecha_mas_antigua' => $deudasPendientes->isNotEmpty() ? 
-                    $deudasPendientes->min('fecha_emision') : null,
-                'cantidad_deudas' => $deudasPendientes->count(),
-            ];
-        })->filter(function($item) use ($filtroMeses) {
-            // Filtrar por meses en mora
-            return $item['meses_mora'] >= $filtroMeses;
-        })->sortByDesc('meses_mora');
+        $propiedades = $query->get()
+            ->map(function($property) {
+                return [
+                    'codigo_propiedad' => $property->id,
+                    'direccion' => $property->referencia,
+                    'barrio' => $property->barrio,
+                    'cliente' => $property->client->nombre ?? 'Cliente no asignado',
+                    'codigo_cliente' => $property->client->codigo_cliente ?? 'N/A',
+                    'estado_servicio' => $property->estado,
+                    'trabajo_pendiente' => $property->texto_trabajo_pendiente,
+                    'tiene_deuda' => $property->total_deudas_pendientes > 0 ? 'Sí' : 'No'
+                ];
+            })
+            ->sortBy('barrio')
+            ->values();
 
-        $estadisticas = [
-            'total_clientes_moros' => $propiedades->unique('cliente.id')->count(),
-            'total_propiedades_moras' => $propiedades->count(),
-            'deuda_total' => $propiedades->sum('total_deuda'),
-            'promedio_meses_mora' => $propiedades->avg('meses_mora') ?: 0,
+        $barrios = Property::select('barrio')->distinct()->pluck('barrio');
+        $estados = Property::getEstados();
+
+        return view('admin.reportes.propiedades', compact('propiedades', 'barrios', 'estados', 'filtroBarrio', 'filtroEstado'));
+    }
+
+    /**
+     * Lista simple de trabajos pendientes - Compacta para impresión
+     */
+    public function trabajosPendientes(Request $request)
+    {
+        $filtroBarrio = $request->get('barrio');
+        $filtroTipo = $request->get('tipo_trabajo');
+
+        $query = Property::with(['client'])
+            ->whereNotNull('tipo_trabajo_pendiente');
+
+        if ($filtroBarrio) {
+            $query->where('barrio', 'like', "%{$filtroBarrio}%");
+        }
+
+        if ($filtroTipo) {
+            $query->where('tipo_trabajo_pendiente', $filtroTipo);
+        }
+
+        $trabajos = $query->get()
+            ->map(function($property) {
+                return [
+                    'codigo_cliente' => $property->client->codigo_cliente ?? 'N/A',
+                    'cliente' => $property->client->nombre ?? 'Cliente no asignado',
+                    'direccion' => $property->referencia,
+                    'barrio' => $property->barrio,
+                    'tipo_trabajo' => $property->texto_trabajo_pendiente,
+                    'estado_actual' => $property->estado,
+                    'fecha_solicitud' => $property->created_at->format('d/m/Y'),
+                    'dias_pendiente' => $property->created_at->diffInDays(now())
+                ];
+            })
+            ->sortBy('dias_pendiente')
+            ->values();
+
+        $barrios = Property::select('barrio')->distinct()->pluck('barrio');
+        $tiposTrabajo = [
+            'conexion_nueva' => 'Conexión Nueva',
+            'corte_mora' => 'Corte por Mora', 
+            'reconexion' => 'Reconexión'
         ];
 
-        return view('admin.reportes.morosidad', compact('propiedades', 'estadisticas', 'filtroEstado', 'filtroMeses'));
+        return view('admin.reportes.trabajos-pendientes', compact('trabajos', 'barrios', 'tiposTrabajo', 'filtroBarrio', 'filtroTipo'));
     }
 
-    private function calcularMesesMora($deudas)
-    {
-        if ($deudas->isEmpty()) return 0;
-
-        // ✅ CORREGIDO: Calcular correctamente los meses en mora
-        $fechaMasAntigua = $deudas->min('fecha_emision');
-        
-        if (!$fechaMasAntigua) return 0;
-
-        // Calcular diferencia en meses desde la deuda más antigua
-        $mesesMora = now()->diffInMonths($fechaMasAntigua);
-        
-        // Asegurar que sea al menos 1 mes si hay deudas pendientes
-        return max(1, $mesesMora);
-    }
-
+    /**
+     * Método auxiliar para obtener último mes pagado
+     */
     private function obtenerUltimoMesPagado($propiedadId)
     {
         $ultimoPago = Pago::where('propiedad_id', $propiedadId)
             ->orderBy('mes_pagado', 'desc')
             ->first();
 
-        return $ultimoPago ? $ultimoPago->mes_pagado : 'Sin pagos';
-    }
+        if ($ultimoPago) {
+            return Carbon::createFromFormat('Y-m', $ultimoPago->mes_pagado)
+                ->locale('es')
+                ->translatedFormat('M Y');
+        }
 
-    private function obtenerEstadisticasReportes()
-    {
-        return [
-            'total_clientes' => Client::count(),
-            'total_propiedades' => Property::count(),
-            'propiedades_morosas' => Property::whereHas('debts', function($q) {
-                $q->where('monto_pendiente', '>', 0)
-                  ->whereIn('estado', ['pendiente', 'vencida', 'corte_pendiente', 'cortado']);
-            })->count(),
-            'deuda_total' => Debt::where('monto_pendiente', '>', 0)
-                ->whereIn('estado', ['pendiente', 'vencida', 'corte_pendiente', 'cortado'])
-                ->sum('monto_pendiente'),
-            'ingresos_mes_actual' => Pago::whereYear('fecha_pago', now()->year)
-                ->whereMonth('fecha_pago', now()->month)
-                ->sum('monto'),
-            'cortes_pendientes' => Property::where('estado', 'corte_pendiente')->count(),
-            'propiedades_cortadas' => Property::where('estado', 'cortado')->count(),
-        ];
-    }
-
-    // Métodos para PDF (próximamente)
-    public function morosidadPdf(Request $request)
-    {
-        // Para implementar exportación a PDF
-        return response()->json(['message' => 'PDF en desarrollo']);
-    }
-
-    public function ingresos(Request $request)
-    {
-        return view('admin.reportes.ingresos');
-    }
-
-    public function cortes(Request $request)
-    {
-        return view('admin.reportes.cortes');
-    }
-
-    public function propiedades(Request $request)
-    {
-        return view('admin.reportes.propiedades');
+        return 'Sin pagos';
     }
 }

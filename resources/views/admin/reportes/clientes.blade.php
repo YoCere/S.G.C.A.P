@@ -1,10 +1,10 @@
 @extends('adminlte::page')
 
-@section('title', 'Reporte de Morosidad - SGCAF')
+@section('title', 'Reporte de Clientes - SGCAF')
 
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
-        <h1>🔴 Reporte de Morosidad</h1>
+        <h1>👥 Reporte de Clientes</h1>
         <div>
             <button onclick="window.print()" class="btn btn-secondary btn-sm no-print">
                 <i class="fas fa-print mr-1"></i> Imprimir/PDF
@@ -14,7 +14,7 @@
             </a>
         </div>
     </div>
-    <p class="text-muted">Lista de clientes con deudas pendientes - {{ now()->format('d/m/Y H:i') }}</p>
+    <p class="text-muted">Listado completo de clientes - {{ now()->format('d/m/Y H:i') }}</p>
 @stop
 
 @section('content')
@@ -24,8 +24,8 @@
             <h3 class="card-title">🔍 Filtros de Búsqueda</h3>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.reportes.morosidad') }}" class="row">
-                <div class="col-md-6">
+            <form method="GET" action="{{ route('admin.reportes.clientes') }}" class="row">
+                <div class="col-md-5">
                     <div class="form-group">
                         <label for="barrio">Barrio:</label>
                         <select name="barrio" id="barrio" class="form-control form-control-sm">
@@ -38,24 +38,22 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <div class="form-group">
-                        <label for="meses_mora">Mínimo meses de mora:</label>
-                        <select name="meses_mora" id="meses_mora" class="form-control form-control-sm">
-                            <option value="1" {{ $filtroMeses == 1 ? 'selected' : '' }}>1+ mes</option>
-                            <option value="2" {{ $filtroMeses == 2 ? 'selected' : '' }}>2+ meses</option>
-                            <option value="3" {{ $filtroMeses == 3 ? 'selected' : '' }}>3+ meses</option>
-                            <option value="6" {{ $filtroMeses == 6 ? 'selected' : '' }}>6+ meses</option>
-                            <option value="12" {{ $filtroMeses == 12 ? 'selected' : '' }}>12+ meses</option>
+                        <label for="estado">Estado Cliente:</label>
+                        <select name="estado" id="estado" class="form-control form-control-sm">
+                            <option value="">Todos los estados</option>
+                            <option value="activo" {{ $filtroEstado == 'activo' ? 'selected' : '' }}>Activo</option>
+                            <option value="inactivo" {{ $filtroEstado == 'inactivo' ? 'selected' : '' }}>Inactivo</option>
                         </select>
                     </div>
                 </div>
-                <div class="col-12">
-                    <div class="form-group mb-0">
-                        <button type="submit" class="btn btn-primary btn-sm mr-2">
-                            <i class="fas fa-filter mr-1"></i> Aplicar Filtros
+                <div class="col-md-2 d-flex align-items-end">
+                    <div class="form-group w-100">
+                        <button type="submit" class="btn btn-primary btn-sm w-100 mb-1">
+                            <i class="fas fa-filter mr-1"></i> Filtrar
                         </button>
-                        <a href="{{ route('admin.reportes.morosidad') }}" class="btn btn-default btn-sm">
+                        <a href="{{ route('admin.reportes.clientes') }}" class="btn btn-default btn-sm w-100">
                             <i class="fas fa-redo mr-1"></i> Limpiar
                         </a>
                     </div>
@@ -67,131 +65,113 @@
     <!-- Resumen -->
     <div class="row mb-4">
         <div class="col-md-3 col-6">
-            <div class="small-box bg-danger">
+            <div class="small-box bg-success">
                 <div class="inner">
-                    <h3>{{ $propiedades->count() }}</h3>
-                    <p>Clientes Morosos</p>
+                    <h3>{{ $clientes->count() }}</h3>
+                    <p>Total Clientes</p>
                 </div>
                 <div class="icon">
-                    <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="small-box bg-primary">
+                <div class="inner">
+                    <h3>{{ $clientes->where('estado_cliente', 'activo')->count() }}</h3>
+                    <p>Clientes Activos</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-user-check"></i>
                 </div>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="small-box bg-warning">
                 <div class="inner">
-                    <h3>Bs {{ number_format($propiedades->sum('deuda_total'), 2) }}</h3>
-                    <p>Deuda Total</p>
+                    <h3>{{ $clientes->where('estado_cliente', 'inactivo')->count() }}</h3>
+                    <p>Clientes Inactivos</p>
                 </div>
                 <div class="icon">
-                    <i class="fas fa-money-bill-wave"></i>
+                    <i class="fas fa-user-times"></i>
                 </div>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="small-box bg-info">
                 <div class="inner">
-                    <h3>{{ number_format($propiedades->avg('meses_mora'), 1) }}</h3>
-                    <p>Promedio Meses</p>
+                    <h3>{{ $clientes->sum('total_propiedades') }}</h3>
+                    <p>Total Propiedades</p>
                 </div>
                 <div class="icon">
-                    <i class="fas fa-calendar-alt"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="small-box bg-secondary">
-                <div class="inner">
-                    <h3>Bs {{ number_format($propiedades->max('deuda_total') ?? 0, 2) }}</h3>
-                    <p>Deuda Máxima</p>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="fas fa-home"></i>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Lista de Morosos -->
+    <!-- Lista de Clientes -->
     <div class="card">
         <div class="card-header">
             <h3 class="card-title">
-                📋 Lista de Clientes Morosos 
-                <small class="text-muted">({{ $propiedades->count() }} registros)</small>
+                📋 Lista de Clientes
+                <small class="text-muted">({{ $clientes->count() }} registros)</small>
             </h3>
         </div>
         <div class="card-body p-0">
-            @if($propiedades->count() > 0)
+            @if($clientes->count() > 0)
             <div class="table-responsive">
                 <table class="table table-sm table-hover table-print mb-0">
                     <thead class="thead-dark">
                         <tr>
                             <th width="12%">Código</th>
-                            <th width="28%">Cliente</th>
-                            <th width="25%">Dirección</th>
-                            <th width="10%" class="text-center">Barrio</th>
-                            <th width="12%" class="text-right">Deuda</th>
-                            <th width="8%" class="text-center">Meses</th>
-                            <th width="15%" class="text-center">Estado</th>
+                            <th width="25%">Nombre Cliente</th>
+                            <th width="15%">CI</th>
+                            <th width="15%">Teléfono</th>
+                            <th width="13%" class="text-center">Barrio</th>
+                            <th width="10%" class="text-center">Propiedades</th>
+                            <th width="10%" class="text-center">Estado</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($propiedades as $item)
+                        @foreach($clientes as $cliente)
                         <tr>
                             <td>
-                                <strong class="text-danger">{{ $item['codigo_cliente'] }}</strong>
+                                <strong class="text-primary">{{ $cliente['codigo'] }}</strong>
                             </td>
                             <td>
-                                <div class="font-weight-bold">{{ $item['cliente'] }}</div>
+                                <div class="font-weight-bold">{{ $cliente['nombre'] }}</div>
+                                <small class="text-muted">{{ $cliente['fecha_registro'] }}</small>
                             </td>
                             <td>
-                                <div class="text-primary">{{ $item['propiedad'] }}</div>
+                                <span class="text-muted">{{ $cliente['ci'] ?: 'No registrado' }}</span>
+                            </td>
+                            <td>
+                                <span class="text-muted">{{ $cliente['telefono'] ?: 'No registrado' }}</span>
                             </td>
                             <td class="text-center">
-                                <span class="text-muted">{{ $item['barrio'] }}</span>
-                            </td>
-                            <td class="text-right">
-                                <span class="font-weight-bold text-danger">
-                                    Bs {{ number_format($item['deuda_total'], 2) }}
-                                </span>
+                                <span class="text-muted">{{ $cliente['barrio_principal'] }}</span>
                             </td>
                             <td class="text-center">
-                                @if($item['meses_mora'] >= 12)
-                                    <span class="badge badge-danger">{{ $item['meses_mora'] }}</span>
-                                @elseif($item['meses_mora'] >= 6)
-                                    <span class="badge badge-warning">{{ $item['meses_mora'] }}</span>
-                                @else
-                                    <span class="badge badge-secondary">{{ $item['meses_mora'] }}</span>
-                                @endif
+                                <span class="badge badge-info">{{ $cliente['total_propiedades'] }}</span>
                             </td>
                             <td class="text-center">
-                                @if($item['estado_servicio'] == 'cortado')
-                                    <span class="badge badge-danger">CORTADO</span>
-                                @elseif($item['estado_servicio'] == 'corte_pendiente')
-                                    <span class="badge badge-warning">PENDIENTE</span>
-                                @else
+                                @if($cliente['estado_cliente'] == 'activo')
                                     <span class="badge badge-success">ACTIVO</span>
+                                @else
+                                    <span class="badge badge-warning">INACTIVO</span>
                                 @endif
                             </td>
                         </tr>
                         @endforeach
                     </tbody>
-                    <tfoot>
-                        <tr class="bg-light">
-                            <td colspan="4" class="text-right font-weight-bold">TOTAL GENERAL:</td>
-                            <td class="text-right font-weight-bold text-danger">
-                                Bs {{ number_format($propiedades->sum('deuda_total'), 2) }}
-                            </td>
-                            <td colspan="2"></td>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
             @else
             <div class="text-center py-5">
-                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                <h4>¡No hay morosidad!</h4>
-                <p class="text-muted">No se encontraron clientes con deudas pendientes según los filtros aplicados.</p>
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h4>No se encontraron clientes</h4>
+                <p class="text-muted">No hay clientes que coincidan con los filtros aplicados.</p>
             </div>
             @endif
         </div>
@@ -205,21 +185,19 @@
                     <h6>📊 Información del Reporte:</h6>
                     <ul class="list-unstyled">
                         <li><strong>Fecha generación:</strong> {{ now()->format('d/m/Y H:i') }}</li>
-                        <li><strong>Total registros:</strong> {{ $propiedades->count() }}</li>
-                        <li><strong>Deuda total:</strong> Bs {{ number_format($propiedades->sum('deuda_total'), 2) }}</li>
+                        <li><strong>Total clientes:</strong> {{ $clientes->count() }}</li>
+                        <li><strong>Clientes activos:</strong> {{ $clientes->where('estado_cliente', 'activo')->count() }}</li>
+                        <li><strong>Clientes inactivos:</strong> {{ $clientes->where('estado_cliente', 'inactivo')->count() }}</li>
                         <li><strong>Filtro barrio:</strong> {{ $filtroBarrio ?: 'Todos' }}</li>
-                        <li><strong>Mínimo meses mora:</strong> {{ $filtroMeses }}+ meses</li>
+                        <li><strong>Filtro estado:</strong> {{ $filtroEstado ?: 'Todos' }}</li>
                     </ul>
                 </div>
                 <div class="col-md-6">
                     <h6>🎯 Leyenda de Estados:</h6>
                     <div class="d-flex flex-wrap gap-2">
                         <span class="badge badge-success">ACTIVO</span>
-                        <span class="badge badge-warning">PENDIENTE</span>
-                        <span class="badge badge-danger">CORTADO</span>
-                        <span class="badge badge-danger">12+ meses</span>
-                        <span class="badge badge-warning">6+ meses</span>
-                        <span class="badge badge-secondary">1-5 meses</span>
+                        <span class="badge badge-warning">INACTIVO</span>
+                        <span class="badge badge-info">PROPIEDADES</span>
                     </div>
                 </div>
             </div>

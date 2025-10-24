@@ -3,11 +3,22 @@
 @section('title', 'Trabajos Pendientes - SGCAF')
 
 @section('content_header')
-    <h1 class="h5 font-weight-bold mb-0">
-        <i class="fas fa-tools text-primary mr-2"></i>
-        Trabajos Pendientes
-    </h1>
-    <small class="text-muted">Conexiones nuevas, cortes y reconexiones - Esperando acción del equipo operativo</small>
+    <div class="d-flex justify-content-between align-items-start flex-column flex-md-row">
+        <div>
+            <h1 class="h5 font-weight-bold mb-0">
+                <i class="fas fa-tools text-primary mr-2"></i>
+                Trabajos Pendientes
+            </h1>
+            <small class="text-muted">Conexiones nuevas, cortes y reconexiones - Esperando acción del equipo operativo</small>
+        </div>
+        <div class="mt-2 mt-md-0">
+            <a href="{{ route('admin.cortes.cortadas') }}" class="btn btn-danger btn-sm">
+                <i class="fas fa-ban mr-1"></i>
+                Ver Propiedades Cortadas
+                <span class="badge badge-light ml-1">{{ $totalCortadas ?? 0 }}</span>
+            </a>
+        </div>
+    </div>
 @stop
 
 @section('content')

@@ -149,23 +149,27 @@ Route::middleware(['auth'])
         });
 
         
-        // Reportes
+       // Reportes
         Route::prefix('reportes')->group(function () {
             Route::get('/', [ReporteController::class, 'index'])
                 ->middleware('can:admin.reportes.index')
                 ->name('admin.reportes.index');
+            
             Route::get('/morosidad', [ReporteController::class, 'morosidad'])
                 ->middleware('can:admin.reportes.morosidad')
                 ->name('admin.reportes.morosidad');
-            Route::get('/ingresos', [ReporteController::class, 'ingresos'])
-                ->middleware('can:admin.reportes.ingresos')
-                ->name('admin.reportes.ingresos');
-            Route::get('/cortes', [ReporteController::class, 'cortes'])
-                ->middleware('can:admin.reportes.cortes')
-                ->name('admin.reportes.cortes');
+            
+            Route::get('/clientes', [ReporteController::class, 'clientes'])
+                ->middleware('can:admin.reportes.clientes')
+                ->name('admin.reportes.clientes');
+            
             Route::get('/propiedades', [ReporteController::class, 'propiedades'])
                 ->middleware('can:admin.reportes.propiedades')
                 ->name('admin.reportes.propiedades');
+            
+            Route::get('/trabajos-pendientes', [ReporteController::class, 'trabajosPendientes'])
+                ->middleware('can:admin.reportes.trabajos')
+                ->name('admin.reportes.trabajos-pendientes');
         });
 
         // Utilidades

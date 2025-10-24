@@ -69,8 +69,13 @@ class CorteController extends Controller
         ")->orderBy('created_at', 'desc')->paginate(20);
 
         $barrios = Property::distinct()->pluck('barrio')->filter();
+        $propiedades = $query->paginate(15);
+        $barrios = Property::select('barrio')->distinct()->pluck('barrio');
+        
+        // 🆕 AGREGAR CONTADOR DE CORTADAS
+        $totalCortadas = Property::where('estado', Property::ESTADO_CORTADO)->count();
 
-        return view('admin.cortes.pendientes', compact('propiedades', 'barrios'));
+        return view('admin.cortes.pendientes', compact('propiedades', 'barrios', 'totalCortadas'));
     }
 
     /**

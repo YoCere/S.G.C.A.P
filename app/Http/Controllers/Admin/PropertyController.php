@@ -133,6 +133,7 @@ class PropertyController extends Controller
             // 🆕 ESTABLECER ESTADO POR DEFECTO: pendiente_conexion
             $data = $request->validated();
             $data['estado'] = Property::ESTADO_PENDIENTE_CONEXION;
+            $data['tipo_trabajo_pendiente'] = Property::TRABAJO_CONEXION_NUEVA; // 🆕 NUEVO
             
             Property::create($data);
             
@@ -189,47 +190,64 @@ class PropertyController extends Controller
         }
     }
 
+    // 🆕 ACTUALIZADO: Solicitar corte por mora
     public function cutService(Property $property)
     {
         try {
-            // ✅ SOLO cambiar el estado de la propiedad (NO las deudas)
-            $property->update(['estado' => Property::ESTADO_CORTE_PENDIENTE]);
+            // 🆕 ASIGNAR TRABAJO PENDIENTE: CORTE POR MORA
+            $property->asignarTrabajoPendiente(Property::TRABAJO_CORTE_MORA);
 
             return redirect()->route('admin.properties.index')
-                ->with('success', 'Propiedad marcada para corte pendiente. El equipo físico procederá con el corte.');
+                ->with('success', 'Corte por mora solicitado. El equipo físico procederá con el corte.');
                 
         } catch (\Exception $e) {
             \Log::error("Error en cutService: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Error al marcar corte: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al solicitar corte: ' . $e->getMessage());
         }
     }
 
+    // 🆕 ACTUALIZADO: Cancelar trabajo pendiente
     public function cancelCutService(Property $property)
     {
         // Solo permitir si está en corte_pendiente
         if ($property->estado !== Property::ESTADO_CORTE_PENDIENTE) {
             return redirect()->back()
-                ->with('error', 'Solo se puede cancelar cortes pendientes');
+                ->with('error', 'Solo se puede cancelar trabajos pendientes');
         }
 
         try {
-            // ✅ SOLO cambiar el estado de la propiedad (NO las deudas)
-            $property->update(['estado' => Property::ESTADO_ACTIVO]);
+            // 🆕 DETERMINAR ESTADO ANTERIOR SEGÚN EL TIPO DE TRABAJO
+            $tipoTrabajo = $property->tipo_trabajo_pendiente;
+            $nuevoEstado = Property::ESTADO_ACTIVO; // Por defecto
+            
+            if ($tipoTrabajo === Property::TRABAJO_RECONEXION) {
+                $nuevoEstado = Property::ESTADO_CORTADO; // Si era reconexión, volver a cortado
+            }
+
+            // 🆕 LIMPIAR TRABAJO PENDIENTE Y ACTUALIZAR ESTADO
+            $property->update([
+                'estado' => $nuevoEstado,
+                'tipo_trabajo_pendiente' => null
+            ]);
 
             return redirect()->route('admin.properties.index')
-                ->with('success', 'Corte pendiente cancelado. Propiedad reactivada.');
+                ->with('success', 'Trabajo pendiente cancelado correctamente.');
                 
         } catch (\Exception $e) {
             \Log::error("Error en cancelCutService: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Error al cancelar corte: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al cancelar trabajo: ' . $e->getMessage());
         }
     }
 
+    // 🆕 ACTUALIZADO: Restaurar servicio directamente (solo admin)
     public function restoreService(Property $property)
     {
         try {
-            // 🆕 CAMBIADO: Ahora va a estado 'activo' directamente (para admin)
-            $property->update(['estado' => Property::ESTADO_ACTIVO]);
+            // 🆕 IR DIRECTAMENTE A ACTIVO Y LIMPIAR TRABAJO PENDIENTE
+            $property->update([
+                'estado' => Property::ESTADO_ACTIVO,
+                'tipo_trabajo_pendiente' => null
+            ]);
             
             return redirect()->back()
                 ->with('info', 'Servicio restaurado para: ' . $property->referencia);
@@ -240,7 +258,7 @@ class PropertyController extends Controller
         }
     }
 
-    // 🆕 NUEVO MÉTODO: Solicitar reconexión (para secretaria)
+    // 🆕 ACTUALIZADO: Solicitar reconexión (para secretaria)
     public function requestReconnection(Property $property)
     {
         // Solo permitir si está cortado
@@ -250,7 +268,8 @@ class PropertyController extends Controller
         }
 
         try {
-            $property->update(['estado' => Property::ESTADO_CORTE_PENDIENTE]);
+            // 🆕 ASIGNAR TRABAJO PENDIENTE: RECONEXIÓN
+            $property->asignarTrabajoPendiente(Property::TRABAJO_RECONEXION);
 
             return redirect()->route('admin.properties.index')
                 ->with('success', 'Reconexión solicitada. El equipo físico procederá con la reconexión.');
@@ -273,7 +292,7 @@ class PropertyController extends Controller
                   ->orWhereHas('client', function($q) use ($query) {
                       $q->where('nombre', 'like', "%{$query}%")
                         ->orWhere('ci', 'like', "%{$query}%")
-                        .orWhere('codigo_cliente', 'like', "%{$query}%");
+                        ->orWhere('codigo_cliente', 'like', "%{$query}%");
                   });
             })
             ->limit(10)

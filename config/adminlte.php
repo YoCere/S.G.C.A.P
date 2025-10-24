@@ -337,7 +337,7 @@ return [
             'text' => 'Lista de roles',
             'route' => 'admin.roles.index',
             'icon' => 'fas fa-user-shield',
-            //'can' => 'admin.users.index',
+            'can' => 'admin.roles.index',
         ],
         [
             'text' => 'Clientes',

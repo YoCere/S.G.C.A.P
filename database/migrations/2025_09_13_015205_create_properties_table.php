@@ -23,7 +23,11 @@ return new class extends Migration
 
             // 🆕 ACTUALIZADO: Agregar nuevo estado 'pendiente_conexion' y cambiar default
             $table->enum('estado', ['pendiente_conexion', 'activo', 'inactivo', 'cortado', 'corte_pendiente'])->default('pendiente_conexion')->index();
-            
+            $table->enum('tipo_trabajo_pendiente', [
+                'conexion_nueva', 
+                'corte_mora', 
+                'reconexion'
+            ])->nullable();
             $table->timestamps();
             
             // ✅ AGREGADO: Índice compuesto para búsquedas

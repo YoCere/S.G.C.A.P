@@ -20,12 +20,12 @@ class CorteController extends Controller
     }
 
     /**
-     * 🆕 ACTUALIZADO: Mostrar TODOS los trabajos pendientes (conexiones, cortes y reconexiones)
+     * 🆕 ACTUALIZADO: Mostrar TODOS los trabajos pendientes usando el nuevo campo
      */
     public function indexCortePendiente(Request $request)
     {
-        // 🆕 INCLUIR ambos estados: pendiente_conexion Y corte_pendiente
-        $query = Property::whereIn('estado', ['pendiente_conexion', 'corte_pendiente'])
+        // 🆕 FILTRAR SOLO PROPIEDADES CON TRABAJO PENDIENTE
+        $query = Property::whereNotNull('tipo_trabajo_pendiente')
             ->with(['client', 'debts' => function($q) {
                 $q->whereIn('estado', ['pendiente', 'corte_pendiente']);
             }]);
@@ -54,20 +54,17 @@ class CorteController extends Controller
             $query->where('barrio', $request->barrio);
         }
 
-        // 🆕 FILTRO POR TIPO DE TRABAJO
+        // 🆕 ACTUALIZADO: FILTRO POR TIPO DE TRABAJO USANDO EL NUEVO CAMPO
         if ($request->filled('tipo_trabajo')) {
-            if ($request->tipo_trabajo === 'conexion') {
-                $query->where('estado', 'pendiente_conexion');
-            } elseif ($request->tipo_trabajo === 'corte') {
-                $query->where('estado', 'corte_pendiente');
-            }
+            $query->where('tipo_trabajo_pendiente', $request->tipo_trabajo);
         }
 
         $propiedades = $query->orderByRaw("
             CASE 
-                WHEN estado = 'pendiente_conexion' THEN 1
-                WHEN estado = 'corte_pendiente' THEN 2
-                ELSE 3
+                WHEN tipo_trabajo_pendiente = 'conexion_nueva' THEN 1
+                WHEN tipo_trabajo_pendiente = 'corte_mora' THEN 2
+                WHEN tipo_trabajo_pendiente = 'reconexion' THEN 3
+                ELSE 4
             END
         ")->orderBy('created_at', 'desc')->paginate(20);
 
@@ -82,6 +79,7 @@ class CorteController extends Controller
     public function indexCortadas(Request $request)
     {
         $query = Property::where('estado', 'cortado')
+            ->whereNull('tipo_trabajo_pendiente') // 🆕 Solo propiedades realmente cortadas
             ->with(['client', 'debts' => function($q) {
                 $q->where('estado', 'cortado');
             }, 'multas' => function($q) {
@@ -120,48 +118,67 @@ class CorteController extends Controller
     }
 
     /**
-     * 🆕 ACTUALIZADO: Marcar propiedad como trabajada (instalación completada o corte ejecutado)
+     * 🆕 ACTUALIZADO COMPLETAMENTE: Procesar trabajo pendiente SIN CICLO INFINITO
      */
     public function marcarComoCortado($propiedadId)
     {
-        DB::transaction(function () use ($propiedadId) {
-            $propiedad = Property::findOrFail($propiedadId);
-            
-            // 🆕 VERIFICAR QUE LA PROPIEDAD ESTÉ EN ESTADO PENDIENTE (conexión o corte)
-            if (!in_array($propiedad->estado, ['pendiente_conexion', 'corte_pendiente'])) {
-                return redirect()->back()
-                    ->with('error', 'Solo se pueden procesar propiedades con trabajos pendientes');
-            }
-
-            // 🆕 LÓGICA DIFERENTE SEGÚN EL ESTADO ACTUAL
-            if ($propiedad->estado === 'pendiente_conexion') {
-                // 🆕 CAMBIO CRÍTICO: INSTALACIÓN NUEVA - Ir directamente a 'activo' (servicio funcionando)
-                $propiedad->update(['estado' => 'activo']);
+        try {
+            DB::transaction(function () use ($propiedadId) {
+                $propiedad = Property::findOrFail($propiedadId);
                 
-                return redirect()->route('admin.cortes.pendientes')
-                    ->with('success', '✅ Instalación completada y servicio activado correctamente');
-
-            } elseif ($propiedad->estado === 'corte_pendiente') {
-                // CORTE O RECONEXIÓN: Lógica original con multas
-                
-                // Actualizar deudas relacionadas
-                $propiedad->debts()
-                    ->where('estado', 'corte_pendiente')
-                    ->update(['estado' => 'cortado']);
-                
-                // Actualizar estado de la propiedad
-                $propiedad->update(['estado' => 'cortado']);
-
-                // Aplicar multa de reconexión automáticamente (solo para cortes por mora)
-                $this->aplicarMultaReconexionAutomatica($propiedad);
-
-                return redirect()->route('admin.cortes.pendientes')
-                    ->with('success', 'Corte físico ejecutado y multa aplicada automáticamente');
-            }
-        });
-
-        return redirect()->route('admin.cortes.pendientes')
-            ->with('error', 'Acción no válida');
+                // 🆕 VERIFICAR QUE TENGA TRABAJO PENDIENTE
+                if (is_null($propiedad->tipo_trabajo_pendiente)) {
+                    throw new \Exception('La propiedad no tiene trabajo pendiente');
+                }
+    
+                // 🆕 OBTENER EL TIPO DE TRABAJO DIRECTAMENTE DEL CAMPO
+                $tipoTrabajo = $propiedad->tipo_trabajo_pendiente;
+    
+                // 🆕 LÓGICA DIFERENTE PARA CADA TIPO DE TRABAJO
+                switch ($tipoTrabajo) {
+                    case Property::TRABAJO_CONEXION_NUEVA:
+                        // CONEXIÓN NUEVA: Ir directamente a ACTIVO
+                        $propiedad->update(['estado' => Property::ESTADO_ACTIVO]);
+                        $mensaje = '✅ Instalación completada y servicio activado correctamente';
+                        break;
+    
+                    case Property::TRABAJO_CORTE_MORA:
+                        // CORTE POR MORA: Ir a CORTADO y aplicar multa
+                        $propiedad->update(['estado' => Property::ESTADO_CORTADO]);
+                        
+                        // Actualizar deudas relacionadas
+                        $propiedad->debts()
+                            ->where('estado', 'corte_pendiente')
+                            ->update(['estado' => 'cortado']);
+                        
+                        // Aplicar multa automáticamente
+                        $this->aplicarMultaReconexionAutomatica($propiedad);
+                        $mensaje = '✅ Corte físico ejecutado y multa aplicada automáticamente';
+                        break;
+    
+                    case Property::TRABAJO_RECONEXION:
+                        // RECONEXIÓN: Ir directamente a ACTIVO (sin multa)
+                        $propiedad->update(['estado' => Property::ESTADO_ACTIVO]);
+                        $mensaje = '✅ Reconexión completada y servicio activado correctamente';
+                        break;
+    
+                    default:
+                        throw new \Exception('Tipo de trabajo no reconocido: ' . $tipoTrabajo);
+                }
+    
+                // 🆕 LIMPIAR EL TRABAJO PENDIENTE (IMPORTANTE: EVITA CICLO INFINITO)
+                $propiedad->update(['tipo_trabajo_pendiente' => null]);
+            });
+    
+            // 🆕 SI LLEGA AQUÍ, LA TRANSACCIÓN FUE EXITOSA
+            return redirect()->route('admin.cortes.pendientes')
+                ->with('success', 'Trabajo procesado correctamente');
+    
+        } catch (\Exception $e) {
+            // 🆕 SI HAY ERROR, MOSTRAR MENSAJE DE ERROR
+            return redirect()->route('admin.cortes.pendientes')
+                ->with('error', 'Error al procesar el trabajo: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -287,6 +304,12 @@ class CorteController extends Controller
                     ->with('error', 'Solo se pueden restaurar propiedades cortadas');
             }
 
+            // Verificar que no tenga trabajo pendiente
+            if (!is_null($propiedad->tipo_trabajo_pendiente)) {
+                return redirect()->back()
+                    ->with('error', 'No se puede restaurar el servicio mientras existan trabajos pendientes');
+            }
+
             // Verificar que no tenga deudas pendientes
             $deudasPendientes = $propiedad->debts()
                 ->where('estado', 'cortado')
@@ -320,14 +343,16 @@ class CorteController extends Controller
      */
     public function obtenerEstadisticas()
     {
-        $conexionesPendientes = Property::where('estado', 'pendiente_conexion')->count();
-        $cortesPendientes = Property::where('estado', 'corte_pendiente')->count();
-        $cortesRealizados = Property::where('estado', 'cortado')->count();
+        $conexionesPendientes = Property::where('tipo_trabajo_pendiente', 'conexion_nueva')->count();
+        $cortesPendientes = Property::where('tipo_trabajo_pendiente', 'corte_mora')->count();
+        $reconexionesPendientes = Property::where('tipo_trabajo_pendiente', 'reconexion')->count();
+        $cortesRealizados = Property::where('estado', 'cortado')->whereNull('tipo_trabajo_pendiente')->count();
         $multasPendientes = Fine::where('estado', 'pendiente')->count();
 
         return response()->json([
             'conexiones_pendientes' => $conexionesPendientes,
             'cortes_pendientes' => $cortesPendientes,
+            'reconexiones_pendientes' => $reconexionesPendientes,
             'cortes_realizados' => $cortesRealizados,
             'multas_pendientes' => $multasPendientes,
         ]);
@@ -338,15 +363,16 @@ class CorteController extends Controller
      */
     public function generarReporteCortesPendientes()
     {
-        $propiedades = Property::whereIn('estado', ['pendiente_conexion', 'corte_pendiente'])
+        $propiedades = Property::whereNotNull('tipo_trabajo_pendiente')
             ->with(['client', 'debts' => function($q) {
                 $q->whereIn('estado', ['pendiente', 'corte_pendiente']);
             }])
             ->orderByRaw("
                 CASE 
-                    WHEN estado = 'pendiente_conexion' THEN 1
-                    WHEN estado = 'corte_pendiente' THEN 2
-                    ELSE 3
+                    WHEN tipo_trabajo_pendiente = 'conexion_nueva' THEN 1
+                    WHEN tipo_trabajo_pendiente = 'corte_mora' THEN 2
+                    WHEN tipo_trabajo_pendiente = 'reconexion' THEN 3
+                    ELSE 4
                 END
             ")
             ->orderBy('barrio')
@@ -371,7 +397,7 @@ class CorteController extends Controller
                             ->orWhere('codigo_cliente', 'like', "%{$search}%");
                       });
             })
-            ->whereIn('estado', ['pendiente_conexion', 'corte_pendiente', 'cortado'])
+            ->whereNotNull('tipo_trabajo_pendiente') // 🆕 Solo propiedades con trabajo pendiente
             ->with(['client', 'debts' => function($q) {
                 $q->whereIn('estado', ['pendiente', 'corte_pendiente', 'cortado']);
             }])

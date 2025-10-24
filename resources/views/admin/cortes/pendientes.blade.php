@@ -68,8 +68,9 @@
                         <div class="col-12 col-sm-6 col-md-2">
                             <select name="tipo_trabajo" class="form-control form-control-sm">
                                 <option value="">Todos los trabajos</option>
-                                <option value="conexion" {{ request('tipo_trabajo') == 'conexion' ? 'selected' : '' }}>Conexiones Nuevas</option>
-                                <option value="corte" {{ request('tipo_trabajo') == 'corte' ? 'selected' : '' }}>Cortes Pendientes</option>
+                                <option value="conexion_nueva" {{ request('tipo_trabajo') == 'conexion_nueva' ? 'selected' : '' }}>Conexiones Nuevas</option>
+                                <option value="corte_mora" {{ request('tipo_trabajo') == 'corte_mora' ? 'selected' : '' }}>Cortes por Mora</option>
+                                <option value="reconexion" {{ request('tipo_trabajo') == 'reconexion' ? 'selected' : '' }}>Reconexiones</option>
                             </select>
                         </div>
                         <div class="col-12 col-sm-6 col-md-2">
@@ -107,20 +108,15 @@
                             <tbody>
                                 @foreach($propiedades as $propiedad)
                                     @php
-                                        // 🆕 DETERMINAR TIPO DE TRABAJO Y ESTILOS
-                                        if ($propiedad->estado === 'pendiente_conexion') {
-                                            $tipo_trabajo = 'conexion';
-                                            $badge_color = 'success';
-                                            $badge_text = 'CONEXIÓN NUEVA';
-                                            $row_class = 'table-success';
-                                            $border_class = 'border-success';
-                                        } else {
-                                            $tipo_trabajo = 'corte';
-                                            $badge_color = 'warning';
-                                            $badge_text = 'CORTE PENDIENTE';
-                                            $row_class = 'table-warning';
-                                            $border_class = 'border-warning';
-                                        }
+                                        // 🆕 ACTUALIZADO: USAR LOS NUEVOS MÉTODOS DEL MODELO
+                                        $tipo_trabajo = $propiedad->tipo_trabajo_pendiente;
+                                        $badge_color = $propiedad->color_trabajo;
+                                        $badge_text = $propiedad->texto_trabajo_pendiente;
+                                        $row_class = $propiedad->clase_fila_trabajo;
+                                        $icono = $propiedad->icono_trabajo;
+                                        $texto_boton = $propiedad->texto_accion_trabajo;
+                                        $titulo_boton = $propiedad->texto_trabajo_pendiente;
+                                        $mensaje_confirmacion = $propiedad->mensaje_confirmacion;
                                     @endphp
                                     
                                     <tr class="{{ $row_class }}">
@@ -151,7 +147,7 @@
                                             </span>
                                         </td>
                                         <td>
-                                            @if($tipo_trabajo === 'corte')
+                                            @if(in_array($tipo_trabajo, ['corte_mora', 'reconexion']))
                                                 <span class="badge badge-danger">
                                                     {{ $propiedad->debts->count() }} deuda(s)
                                                 </span>
@@ -160,7 +156,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            @if($tipo_trabajo === 'corte' && $propiedad->debts->count() > 0)
+                                            @if(in_array($tipo_trabajo, ['corte_mora', 'reconexion']) && $propiedad->debts->count() > 0)
                                                 <strong class="text-danger">
                                                     Bs {{ number_format($propiedad->debts->sum('monto_pendiente'), 2) }}
                                                 </strong>
@@ -180,6 +176,7 @@
                                                             data-ref="{{ $propiedad->referencia }}"
                                                             data-id="{{ $propiedad->id }}"
                                                             data-codigo="{{ $propiedad->client->codigo_cliente }}"
+                                                            data-cliente="{{ $propiedad->client->nombre }}"
                                                             data-tipo="{{ $tipo_trabajo }}"
                                                             title="Ver ubicación en mapa">
                                                         <i class="fas fa-map-marker-alt"></i>
@@ -192,19 +189,18 @@
                                                 @endif
 
                                                 <!-- 🆕 BOTÓN EJECUTAR TRABAJO -->
+                                                @can('admin.cortes.marcar-cortado')
                                                 <form action="{{ route('admin.cortes.marcar-cortado', $propiedad->id) }}" 
                                                       method="POST" class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="btn btn-success"
-                                                            title="{{ $tipo_trabajo === 'conexion' ? 'Marcar instalación completada y activar servicio' : 'Ejecutar corte físico' }}"
-                                                            onclick="return confirm('{{ $tipo_trabajo === 'conexion' ? '¿Confirmar que completó la instalación y dejó el servicio funcionando?' : '¿Confirmar corte físico? Se aplicará multa automáticamente.' }}')">
-                                                        <i class="fas fa-{{ $tipo_trabajo === 'conexion' ? 'faucet' : 'bolt' }} mr-1"></i>
-                                                        {{ $tipo_trabajo === 'conexion' ? 'Activar' : 'Cortar' }}
+                                                            title="{{ $titulo_boton }}"
+                                                            onclick="return confirm('{{ $mensaje_confirmacion }}')">
+                                                        <i class="fas {{ $icono }} mr-1"></i>
+                                                        {{ $texto_boton }}
                                                     </button>
                                                 </form>
-
-                                                <!-- CANCELAR TRABAJO (solo para cortes) -->
-                                                
+                                                @endcan
                                             </div>
                                         </td>
                                     </tr>
@@ -219,17 +215,14 @@
                     <div class="list-group list-group-flush">
                         @foreach($propiedades as $propiedad)
                             @php
-                                if ($propiedad->estado === 'pendiente_conexion') {
-                                    $tipo_trabajo = 'conexion';
-                                    $badge_color = 'success';
-                                    $badge_text = 'CONEXIÓN NUEVA';
-                                    $border_class = 'border-left-3-success';
-                                } else {
-                                    $tipo_trabajo = 'corte';
-                                    $badge_color = 'warning';
-                                    $badge_text = 'CORTE PENDIENTE';
-                                    $border_class = 'border-left-3-warning';
-                                }
+                                // 🆕 ACTUALIZADO: USAR LOS NUEVOS MÉTODOS DEL MODELO
+                                $tipo_trabajo = $propiedad->tipo_trabajo_pendiente;
+                                $badge_color = $propiedad->color_trabajo;
+                                $badge_text = $propiedad->texto_trabajo_pendiente;
+                                $border_class = 'border-left-3-' . $badge_color;
+                                $icono = $propiedad->icono_trabajo;
+                                $texto_boton = $propiedad->texto_accion_trabajo;
+                                $mensaje_confirmacion = $propiedad->mensaje_confirmacion;
                             @endphp
                             
                             <div class="list-group-item {{ $border_class }}">
@@ -247,7 +240,7 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        @if($tipo_trabajo === 'corte')
+                                        @if(in_array($tipo_trabajo, ['corte_mora', 'reconexion']))
                                             <span class="badge badge-danger">
                                                 {{ $propiedad->debts->count() }} deudas
                                             </span>
@@ -265,7 +258,7 @@
                                 </div>
                                 
                                 <div class="mb-2">
-                                    @if($tipo_trabajo === 'corte' && $propiedad->debts->count() > 0)
+                                    @if(in_array($tipo_trabajo, ['corte_mora', 'reconexion']) && $propiedad->debts->count() > 0)
                                         <div class="small text-danger">
                                             <strong>Monto Total:</strong> 
                                             Bs {{ number_format($propiedad->debts->sum('monto_pendiente'), 2) }}
@@ -299,19 +292,11 @@
                                           method="POST" class="d-inline flex-fill">
                                         @csrf
                                         <button type="submit" class="btn btn-success btn-sm w-100"
-                                                onclick="return confirm('{{ $tipo_trabajo === 'conexion' ? '¿Confirmar instalación completada y servicio funcionando?' : '¿Confirmar corte físico?' }}')">
-                                            <i class="fas fa-{{ $tipo_trabajo === 'conexion' ? 'faucet' : 'bolt' }} mr-1"></i>
-                                            {{ $tipo_trabajo === 'conexion' ? 'Activar' : 'Cortar' }}
+                                                onclick="return confirm('{{ $mensaje_confirmacion }}')">
+                                            <i class="fas {{ $icono }} mr-1"></i>
+                                            {{ $texto_boton }}
                                         </button>
                                     </form>
-                                    
-                                    @if($tipo_trabajo === 'corte')
-                                        <form action="{{ route('admin.properties.cancel-cut', $propiedad->id) }}" 
-                                              method="POST" class="d-inline flex-fill">
-                                            @csrf
-                                            
-                                        </form>
-                                    @endif
                                 </div>
                             </div>
                         @endforeach
@@ -372,7 +357,8 @@
         <h6><i class="fas fa-info-circle mr-2"></i>Información para el Equipo Operativo</h6>
         <ul class="mb-0 small">
             <li><span class="badge badge-success">CONEXIÓN NUEVA</span> - Realizar instalación inicial y dejar servicio funcionando</li>
-            <li><span class="badge badge-warning">CORTE PENDIENTE</span> - Ejecutar corte físico por mora</li>
+            <li><span class="badge badge-warning">CORTE POR MORA</span> - Ejecutar corte físico por mora (se aplica multa)</li>
+            <li><span class="badge badge-info">RECONEXIÓN</span> - Realizar reconexión física después del pago</li>
             <li>Use el botón <span class="badge badge-info"><i class="fas fa-map-marker-alt"></i></span> para ver ubicaciones</li>
             <li>En cortes por mora, se aplica multa automáticamente al confirmar</li>
             <li>Confirme cada trabajo solo cuando lo haya realizado físicamente</li>
@@ -393,11 +379,17 @@
         .border-left-3-warning {
             border-left-color: #ffc107 !important;
         }
+        .border-left-3-info {
+            border-left-color: #17a2b8 !important;
+        }
         .table-success {
             background-color: #d4edda !important;
         }
         .table-warning {
             background-color: #fff3cd !important;
+        }
+        .table-info {
+            background-color: #d1ecf1 !important;
         }
         .btn-group-sm > .btn {
             padding: 0.25rem 0.5rem;
@@ -440,7 +432,7 @@
                 const id = button.data('id');
                 const codigo = button.data('codigo');
                 const cliente = button.data('cliente') || 'Cliente no registrado';
-                const tipo = button.data('tipo') || 'corte';
+                const tipo = button.data('tipo') || 'corte_mora';
         
                 // Actualizar información
                 $('#mapCoordinates').text(`Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
@@ -471,13 +463,27 @@
                     attribution: '&copy; OpenStreetMap'
                 }).addTo(leafletMap);
         
-                // 🆕 DIFERENCIAR ICONO Y MENSAJE SEGÚN TIPO
+                // 🆕 ACTUALIZADO: DIFERENCIAR ICONO Y MENSAJE SEGÚN TIPO DE TRABAJO
                 let icono = '🔴';
-                let mensaje = 'CORTE PENDIENTE';
+                let mensaje = 'CORTE POR MORA';
+                let colorClase = 'text-danger';
                 
-                if (tipo === 'conexion') {
-                    icono = '🟢';
-                    mensaje = 'CONEXIÓN NUEVA';
+                switch(tipo) {
+                    case 'conexion_nueva':
+                        icono = '🟢';
+                        mensaje = 'CONEXIÓN NUEVA';
+                        colorClase = 'text-success';
+                        break;
+                    case 'corte_mora':
+                        icono = '🟠';
+                        mensaje = 'CORTE POR MORA';
+                        colorClase = 'text-warning';
+                        break;
+                    case 'reconexion':
+                        icono = '🔵';
+                        mensaje = 'RECONEXIÓN';
+                        colorClase = 'text-info';
+                        break;
                 }
 
                 // Centrar y agregar marcador
@@ -485,7 +491,7 @@
                 leafletMarker = L.marker([lat, lng]).addTo(leafletMap)
                     .bindPopup(`
                         <div class="text-center" style="min-width: 200px;">
-                            <strong class="${tipo === 'conexion' ? 'text-success' : 'text-danger'}">${icono} ${mensaje}</strong><br>
+                            <strong class="${colorClase}">${icono} ${mensaje}</strong><br>
                             <strong>${ref}</strong><br>
                             <small class="text-muted">${cliente}</small><br>
                             <span class="badge badge-primary">Código: ${codigo || 'N/A'}</span>

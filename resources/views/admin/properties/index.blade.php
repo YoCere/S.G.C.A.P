@@ -286,7 +286,14 @@
                       @elseif($p->estado === 'activo')
                         <span class="badge badge-success">Activo</span>
                       @elseif($p->estado === 'corte_pendiente')
-                        <span class="badge badge-warning">Corte Pendiente</span>
+                        {{-- 🆕 MOSTRAR EL TIPO DE TRABAJO PENDIENTE --}}
+                        @if($p->tipo_trabajo_pendiente === 'reconexion')
+                          <span class="badge badge-info">Reconexión Pendiente</span>
+                        @elseif($p->tipo_trabajo_pendiente === 'corte_mora')
+                          <span class="badge badge-warning">Corte Pendiente</span>
+                        @else
+                          <span class="badge badge-warning">Corte Pendiente</span>
+                        @endif
                       @elseif($p->estado === 'cortado')
                         <span class="badge badge-danger">Cortado</span>
                       @else
@@ -367,12 +374,13 @@
                             </form>
                           @endif
                           
-                          {{-- Secretaria y Admin pueden cancelar corte pendiente --}}
+                          {{-- 🆕 CORREGIDO: Botón dinámico para cancelar según tipo de trabajo --}}
                           @if($isAdmin || $isSecretaria)
                             <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
                               @csrf @method('PUT')
                               <button class="btn btn-secondary btn-sm" type="button" 
-                                      onclick="confirmCancelCut({{ $p->id }}, '{{ $p->referencia }}')" title="Cancelar corte">
+                                      onclick="confirmCancelAction({{ $p->id }}, '{{ $p->referencia }}', '{{ $p->tipo_trabajo_pendiente }}')" 
+                                      title="{{ ucfirst($p->texto_accion_cancelar) }}">
                                 <i class="fas fa-times"></i>
                               </button>
                             </form>
@@ -459,7 +467,14 @@
                 @elseif($p->estado === 'activo')
                   <span class="badge badge-success small">Activo</span>
                 @elseif($p->estado === 'corte_pendiente')
-                  <span class="badge badge-warning small">Corte Pendiente</span>
+                  {{-- 🆕 MOSTRAR EL TIPO DE TRABAJO PENDIENTE --}}
+                  @if($p->tipo_trabajo_pendiente === 'reconexion')
+                    <span class="badge badge-info small">Reconexión Pendiente</span>
+                  @elseif($p->tipo_trabajo_pendiente === 'corte_mora')
+                    <span class="badge badge-warning small">Corte Pendiente</span>
+                  @else
+                    <span class="badge badge-warning small">Corte Pendiente</span>
+                  @endif
                 @elseif($p->estado === 'cortado')
                   <span class="badge badge-danger small">Cortado</span>
                 @else
@@ -561,18 +576,19 @@
                   </form>
                 @endif
                 
+                {{-- 🆕 CORREGIDO: Botón dinámico para cancelar según tipo de trabajo --}}
                 @if($isAdmin || $isSecretaria)
                   <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
                     @csrf @method('PUT')
                     <button class="btn btn-secondary btn-sm" type="button" 
-                            onclick="confirmCancelCut({{ $p->id }}, '{{ $p->referencia }}')">
+                            onclick="confirmCancelAction({{ $p->id }}, '{{ $p->referencia }}', '{{ $p->tipo_trabajo_pendiente }}')">
                       <i class="fas fa-times"></i>
                     </button>
                   </form>
                 @endif
               {{-- PROPIEDADES CORTADAS --}}
               @elseif($p->estado === 'cortado')
-                @if($isAdmin || $isOperador)
+                @if($isAdmin || $isSecretaria)
                   <form action="{{ route('admin.properties.request-reconnection', $p) }}" method="POST" class="d-inline">
                     @csrf @method('PUT')
                     <button class="btn btn-success btn-sm" type="button"
@@ -859,16 +875,43 @@
       });
     }
 
-    function confirmCancelCut(propertyId, propertyRef) {
+    // 🆕 NUEVA FUNCIÓN: Confirmación dinámica para cancelar acciones
+    function confirmCancelAction(propertyId, propertyRef, tipoTrabajo) {
+      let titulo, mensaje, textoBoton;
+      
+      switch(tipoTrabajo) {
+        case 'conexion_nueva':
+          titulo = '¿Cancelar Instalación?';
+          mensaje = `¿Cancelar la instalación pendiente de: <strong>"${propertyRef}"</strong>?<br>
+                     <small class="text-info">La propiedad permanecerá en estado "Pendiente Conexión".</small>`;
+          textoBoton = 'Sí, cancelar instalación';
+          break;
+        case 'corte_mora':
+          titulo = '¿Cancelar Corte?';
+          mensaje = `¿Cancelar la solicitud de corte para: <strong>"${propertyRef}"</strong>?<br>
+                     <small class="text-info">La propiedad volverá a estado "Activo".</small>`;
+          textoBoton = 'Sí, cancelar corte';
+          break;
+        case 'reconexion':
+          titulo = '¿Cancelar Reconexión?';
+          mensaje = `¿Cancelar la solicitud de reconexión para: <strong>"${propertyRef}"</strong>?<br>
+                     <small class="text-info">La propiedad volverá a estado "Cortado".</small>`;
+          textoBoton = 'Sí, cancelar reconexión';
+          break;
+        default:
+          titulo = '¿Cancelar Acción?';
+          mensaje = `¿Cancelar la acción pendiente para: <strong>"${propertyRef}"</strong>?`;
+          textoBoton = 'Sí, cancelar';
+      }
+
       Swal.fire({
-        title: '¿Cancelar Corte Pendiente?',
-        html: `¿Cancelar la solicitud de corte para: <strong>"${propertyRef}"</strong>?<br>
-               <small class="text-info">La propiedad volverá a estado "Activo".</small>`,
+        title: titulo,
+        html: mensaje,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#6c757d',
         cancelButtonColor: '#28a745',
-        confirmButtonText: 'Sí, cancelar',
+        confirmButtonText: textoBoton,
         cancelButtonText: 'Mantener',
         reverseButtons: true
       }).then((result) => {

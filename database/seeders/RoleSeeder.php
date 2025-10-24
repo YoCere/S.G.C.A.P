@@ -48,6 +48,44 @@ class RoleSeeder extends Seeder
             'description' => 'Eliminar usuarios del sistema'
         ])->syncRoles([$admin]);
 
+            // ==================== PERMISOS DE ROLES ====================
+        Permission::create([
+            'name' => 'admin.roles.index',
+            'description' => 'Ver listado de roles'
+        ])->syncRoles([$admin]);
+        Permission::create([
+            'name' => 'admin.roles.create',
+            'description' => 'Crear nuevos roles'
+        ])->syncRoles([$admin]);
+        Permission::create([
+            'name' => 'admin.roles.store',
+            'description' => 'Guardar nuevos roles'
+        ])->syncRoles([$admin]);
+        Permission::create([
+            'name' => 'admin.roles.show',
+            'description' => 'Ver detalles de rol'
+        ])->syncRoles([$admin]);
+        Permission::create([
+            'name' => 'admin.roles.edit',
+            'description' => 'Editar información de roles'
+        ])->syncRoles([$admin]);
+        Permission::create([
+            'name' => 'admin.roles.update',
+            'description' => 'Actualizar datos de roles'
+        ])->syncRoles([$admin]);
+        Permission::create([
+            'name' => 'admin.roles.destroy',
+            'description' => 'Eliminar roles del sistema'
+        ])->syncRoles([$admin]);
+        Permission::create([
+            'name' => 'admin.roles.desactivate',
+            'description' => 'Desactivar roles'
+        ])->syncRoles([$admin]);
+        Permission::create([
+            'name' => 'admin.roles.activate',
+            'description' => 'Activar roles'
+        ])->syncRoles([$admin]);
+
         // ==================== PERMISOS DE CLIENTES ====================
         Permission::create([
             'name' => 'admin.clients.index',

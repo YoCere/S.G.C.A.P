@@ -47,7 +47,7 @@ Route::middleware(['auth'])
         ->name('admin.roles.desactivate');
         Route::put('/roles/{role}/activate', [RoleController::class, 'activate'])
         ->name('admin.roles.activate');
-        
+
         // Tarifas
         Route::resource('tariffs', TariffController::class)
             ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
@@ -115,7 +115,7 @@ Route::middleware(['auth'])
 
         // Multas
         Route::resource('multas', FineController::class)
-            ->only(['index', 'create', 'store', 'edit', 'update', 'show'])
+            ->only(['index', 'create', 'store', 'edit', 'destroy','update', 'show'])
             ->names('admin.multas');
         Route::prefix('multas')->group(function () {
             Route::post('/{multa}/marcar-pagada', [FineController::class, 'marcarPagada'])

@@ -267,6 +267,7 @@
                                             @endif
 
                                             <!-- ELIMINAR -->
+                                            @can('admin.debts.destroy')
                                             @if($debt->estado == 'pendiente')
                                                 <form action="{{ route('admin.debts.destroy', $debt) }}" method="POST" class="d-inline">
                                                     @csrf @method('DELETE')
@@ -277,6 +278,7 @@
                                                     </button>
                                                 </form>
                                             @endif
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

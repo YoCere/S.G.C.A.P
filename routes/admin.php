@@ -112,6 +112,9 @@ Route::middleware(['auth'])
         Route::get('/properties/{propiedad}/deudaspendientes', [PagoController::class, 'obtenerDeudasPendientes'])
             ->middleware('can:admin.propiedades.deudaspendientes')
             ->name('admin.propiedades.deudaspendientes');
+            Route::get('/pagos/obtener-multas-pendientes/{propiedadId}', [PagoController::class, 'obtenerMultasPendientesApi'])
+            ->middleware('can:admin.pagos.obtenerMultasPendientes') 
+            ->name('admin.pagos.obtenerMultasPendientes');
 
         // Multas
         Route::resource('multas', FineController::class)
@@ -130,6 +133,7 @@ Route::middleware(['auth'])
             Route::get('/obtener-monto-base', [FineController::class, 'obtenerMontoBase'])
                 ->middleware('can:admin.multas.obtener-monto-base')
                 ->name('admin.multas.obtener-monto-base');
+            
         });
         
         // Cortes

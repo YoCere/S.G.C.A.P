@@ -125,6 +125,23 @@
                 </div>
                 @endif
 
+                {{-- ✅ NUEVA SECCIÓN: MULTAS PENDIENTES --}}
+                <div class="alert alert-warning mt-3" id="seccionMultasPendientes" style="display: none;">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-balance-scale mr-2"></i>Multas Pendientes
+                    </h6>
+                    <div class="mt-2" id="listaMultasPendientes">
+                        {{-- Se llena automáticamente con JavaScript --}}
+                    </div>
+                    <div class="mt-2" id="resumenMultas" style="display: none;">
+                        <div class="border-top pt-2">
+                            <strong>Multas seleccionadas:</strong> 
+                            <span id="totalMultasSeleccionadas" class="text-warning font-weight-bold">0</span>
+                            <span class="text-success ml-2" id="montoTotalMultas">Bs 0.00</span>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- ✅ CORREGIDO: MESES PENDIENTES DINÁMICOS --}}
                 <div class="alert alert-warning mt-3" id="seccionMesesPendientes" style="display: none;">
                     <h6 class="alert-heading">
@@ -183,12 +200,20 @@
                         </div>
 
                         <div class="row">
+                            {{-- ✅ MODIFICADO: FECHA DE PAGO FIJA --}}
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="fecha_pago">Fecha de Pago *</label>
-                                    <input type="date" name="fecha_pago" id="fecha_pago" 
-                                           class="form-control" 
-                                           value="{{ old('fecha_pago', date('Y-m-d')) }}" required>
+                                    <input type="text" id="fecha_pago_display" 
+                                           class="form-control bg-light" 
+                                           value="{{ date('d/m/Y') }}" 
+                                           readonly
+                                           style="cursor: not-allowed;">
+                                    <input type="hidden" name="fecha_pago" 
+                                           value="{{ date('Y-m-d') }}">
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-lock mr-1"></i>Fecha actual del sistema
+                                    </small>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -222,15 +247,28 @@
                         {{-- RESUMEN FINAL --}}
                         <div class="alert alert-warning mt-3">
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <strong>Cliente:</strong> <span id="resumenCliente"></span>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <strong>Propiedad:</strong> <span id="resumenPropiedad"></span>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
+                                    <strong>Meses:</strong> <span id="resumenMesesCount">0</span>
+                                </div>
+                                <div class="col-md-3">
                                     <strong>Total a Pagar:</strong> 
                                     <span id="resumenTotal" class="text-success font-weight-bold">Bs 0.00</span>
+                                </div>
+                            </div>
+                            {{-- ✅ NUEVO: DESGLOSE DEL TOTAL --}}
+                            <div class="row mt-2" id="desgloseTotal" style="display: none;">
+                                <div class="col-12">
+                                    <small class="text-muted">
+                                        <span id="desgloseMeses">0 meses</span> 
+                                        + 
+                                        <span id="desgloseMultas">0 multas</span>
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -285,6 +323,23 @@
         #mensajeValidacionMeses {
             transition: all 0.3s ease;
         }
+        .multa-item {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+        }
+        .multa-item:hover {
+            background: #e9ecef;
+        }
+        .multa-seleccionada {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+        .bg-light {
+            background-color: #f8f9fa !important;
+        }
     </style>
 @stop
 
@@ -295,6 +350,7 @@
     // =============================================
     let tarifaMensual = 0;
     let mesesPendientes = [];
+    let multasPendientes = [];
     let timeoutBusqueda = null;
 
     // =============================================
@@ -312,6 +368,7 @@
         const mesHasta = document.getElementById('mes_hasta');
         const resumenMeses = document.getElementById('resumenMeses');
         const seccionMesesPendientes = document.getElementById('seccionMesesPendientes');
+        const seccionMultasPendientes = document.getElementById('seccionMultasPendientes');
         
         if (buscador) buscador.value = '';
         if (resultadosBusqueda) resultadosBusqueda.style.display = 'none';
@@ -329,6 +386,7 @@
         }
         if (resumenMeses) resumenMeses.style.display = 'none';
         if (seccionMesesPendientes) seccionMesesPendientes.style.display = 'none';
+        if (seccionMultasPendientes) seccionMultasPendientes.style.display = 'none';
         
         // Ocultar secciones
         const deudasPendientes = document.getElementById('deudasPendientes');
@@ -349,6 +407,10 @@
         // Resetear variables
         tarifaMensual = 0;
         mesesPendientes = [];
+        multasPendientes = [];
+        
+        // Limpiar resumen
+        actualizarResumenTotal();
     };
     
     window.mostrarBuscador = function() {
@@ -356,41 +418,231 @@
     };
 
     // =============================================
+    // ✅ NUEVO: GESTIÓN DE MULTAS PENDIENTES
+    // =============================================
+    
+    function cargarMultasPendientes(propiedadId) {
+        const url = `/admin/pagos/obtener-multas-pendientes/${propiedadId}`;
+        
+        console.log('🔍 Cargando multas pendientes desde:', url);
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Error HTTP: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📊 DATOS DE MULTAS:', data);
+                
+                if (data.success && data.multasPendientes) {
+                    multasPendientes = data.multasPendientes;
+                    actualizarListaMultasPendientesUI(multasPendientes);
+                } else {
+                    console.log('ℹ️ No hay multas pendientes');
+                    document.getElementById('seccionMultasPendientes').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('💥 Error cargando multas pendientes:', error);
+                document.getElementById('seccionMultasPendientes').style.display = 'none';
+            });
+    }
+    
+    function actualizarListaMultasPendientesUI(multas) {
+        const listaMultasPendientes = document.getElementById('listaMultasPendientes');
+        const seccionMultasPendientes = document.getElementById('seccionMultasPendientes');
+        
+        if (!listaMultasPendientes || !seccionMultasPendientes) return;
+        
+        listaMultasPendientes.innerHTML = '';
+        
+        if (multas.length > 0) {
+            multas.forEach(multa => {
+                const multaDiv = document.createElement('div');
+                multaDiv.className = 'multa-item';
+                multaDiv.innerHTML = `
+                    <div class="form-check">
+                        <input class="form-check-input multa-checkbox" 
+                               type="checkbox" 
+                               name="multas_seleccionadas[]" 
+                               value="${multa.id}" 
+                               id="multa_${multa.id}"
+                               onchange="actualizarResumenMultas()">
+                        <label class="form-check-label w-100" for="multa_${multa.id}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${multa.nombre}</strong>
+                                    <br>
+                                    <small class="text-muted">${multa.descripcion}</small>
+                                    <br>
+                                    <small class="text-info">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        ${multa.fecha_aplicacion_formateada}
+                                    </small>
+                                </div>
+                                <div class="text-right">
+                                    <span class="badge badge-warning">Bs ${parseFloat(multa.monto).toFixed(2)}</span>
+                                    <br>
+                                    <small class="text-muted">${multa.tipo_nombre}</small>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                `;
+                listaMultasPendientes.appendChild(multaDiv);
+            });
+            
+            seccionMultasPendientes.style.display = 'block';
+        } else {
+            seccionMultasPendientes.style.display = 'none';
+        }
+    }
+    
+    function actualizarResumenMultas() {
+        const checkboxes = document.querySelectorAll('.multa-checkbox:checked');
+        const totalMultasSeleccionadas = document.getElementById('totalMultasSeleccionadas');
+        const montoTotalMultas = document.getElementById('montoTotalMultas');
+        const resumenMultas = document.getElementById('resumenMultas');
+        
+        let totalMonto = 0;
+        checkboxes.forEach(checkbox => {
+            const multaId = checkbox.value;
+            const multa = multasPendientes.find(m => m.id == multaId);
+            if (multa) {
+                totalMonto += parseFloat(multa.monto);
+            }
+        });
+        
+        totalMultasSeleccionadas.textContent = checkboxes.length;
+        montoTotalMultas.textContent = `Bs ${totalMonto.toFixed(2)}`;
+        
+        if (checkboxes.length > 0) {
+            resumenMultas.style.display = 'block';
+        } else {
+            resumenMultas.style.display = 'none';
+        }
+        
+        // Actualizar el resumen total
+        actualizarResumenTotal();
+        
+        // Actualizar clases visuales
+        document.querySelectorAll('.multa-item').forEach(item => {
+            const checkbox = item.querySelector('.multa-checkbox');
+            if (checkbox.checked) {
+                item.classList.add('multa-seleccionada');
+            } else {
+                item.classList.remove('multa-seleccionada');
+            }
+        });
+    }
+
+    // =============================================
+    // ✅ ACTUALIZADO: CÁLCULO DEL TOTAL CON MULTAS
+    // =============================================
+    
+    function actualizarResumenTotal() {
+        const mesDesde = document.getElementById('mes_desde');
+        const mesHasta = document.getElementById('mes_hasta');
+        const resumenTotal = document.getElementById('resumenTotal');
+        const resumenMesesCount = document.getElementById('resumenMesesCount');
+        const desgloseTotal = document.getElementById('desgloseTotal');
+        const desgloseMeses = document.getElementById('desgloseMeses');
+        const desgloseMultas = document.getElementById('desgloseMultas');
+        
+        const desde = mesDesde.value;
+        const hasta = mesHasta.value;
+        
+        // Calcular total de meses
+        let totalMeses = 0;
+        let totalMontoMeses = 0;
+        
+        if (desde && hasta && desde <= hasta) {
+            const startYear = parseInt(desde.split('-')[0]);
+            const startMonth = parseInt(desde.split('-')[1]) - 1;
+            const endYear = parseInt(hasta.split('-')[0]);
+            const endMonth = parseInt(hasta.split('-')[1]) - 1;
+            
+            let currentYear = startYear;
+            let currentMonth = startMonth;
+            
+            while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+                totalMeses++;
+                currentMonth++;
+                if (currentMonth > 11) {
+                    currentMonth = 0;
+                    currentYear++;
+                }
+            }
+            
+            totalMontoMeses = totalMeses * tarifaMensual;
+        }
+        
+        // Calcular total de multas
+        const checkboxes = document.querySelectorAll('.multa-checkbox:checked');
+        let totalMultas = 0;
+        let totalMontoMultas = 0;
+        
+        checkboxes.forEach(checkbox => {
+            const multaId = checkbox.value;
+            const multa = multasPendientes.find(m => m.id == multaId);
+            if (multa) {
+                totalMultas++;
+                totalMontoMultas += parseFloat(multa.monto);
+            }
+        });
+        
+        // Calcular total general
+        const totalGeneral = totalMontoMeses + totalMontoMultas;
+        
+        // Actualizar interfaz
+        resumenMesesCount.textContent = totalMeses;
+        resumenTotal.textContent = `Bs ${totalGeneral.toFixed(2)}`;
+        
+        if (totalMeses > 0 || totalMultas > 0) {
+            desgloseTotal.style.display = 'block';
+            desgloseMeses.textContent = `${totalMeses} meses (Bs ${totalMontoMeses.toFixed(2)})`;
+            desgloseMultas.textContent = `${totalMultas} multas (Bs ${totalMontoMultas.toFixed(2)})`;
+        } else {
+            desgloseTotal.style.display = 'none';
+        }
+    }
+
+    // =============================================
     // ✅ CORREGIDO: GESTIÓN DE MESES PENDIENTES
     // =============================================
     
     function cargarMesesPendientes(propiedadId) {
-    const url = `/admin/pagos/obtener-meses-pendientes/${propiedadId}`;
-    
-    console.log('🔍 Cargando meses pendientes desde:', url);
-    
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error('Error HTTP: ' + response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log('📊 DATOS COMPLETOS DE LA API:', data); // ✅ DEBUG COMPLETO
-            
-            if (data.success && data.mesesPendientes) {
-                console.log('✅ Meses pendientes recibidos:', data.mesesPendientes);
-                console.log('✅ Total de meses:', data.totalPendientes);
+        const url = `/admin/pagos/obtener-meses-pendientes/${propiedadId}`;
+        
+        console.log('🔍 Cargando meses pendientes desde:', url);
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Error HTTP: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📊 DATOS COMPLETOS DE LA API:', data);
                 
-                actualizarSelectsMeses(data.mesesPendientes);
-                actualizarListaMesesPendientesUI(data.mesesPendientes);
-                
-                document.getElementById('textoMesesPendientes').textContent = 
-                    `Seleccione el rango de meses pendientes (${data.totalPendientes} disponibles)`;
-            } else {
-                console.error('❌ Error en respuesta API:', data.message);
-                mostrarMensajeValidacion('error', 'Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('💥 Error cargando meses pendientes:', error);
-            mostrarMensajeValidacion('error', 'Error al cargar meses pendientes');
-        });
-}
+                if (data.success && data.mesesPendientes) {
+                    console.log('✅ Meses pendientes recibidos:', data.mesesPendientes);
+                    console.log('✅ Total de meses:', data.totalPendientes);
+                    
+                    actualizarSelectsMeses(data.mesesPendientes);
+                    actualizarListaMesesPendientesUI(data.mesesPendientes);
+                    
+                    document.getElementById('textoMesesPendientes').textContent = 
+                        `Seleccione el rango de meses pendientes (${data.totalPendientes} disponibles)`;
+                } else {
+                    console.error('❌ Error en respuesta API:', data.message);
+                    mostrarMensajeValidacion('error', 'Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('💥 Error cargando meses pendientes:', error);
+                mostrarMensajeValidacion('error', 'Error al cargar meses pendientes');
+            });
+    }
     
     function actualizarSelectsMeses(mesesPendientesObj) {
         const mesDesde = document.getElementById('mes_desde');
@@ -456,6 +708,7 @@
         document.getElementById('mes_hasta').value = mes;
         actualizarResumenMeses();
         validarMesesEnTiempoReal();
+        actualizarResumenTotal();
     }
     
     window.seleccionarTodosMesesPendientes = function() {
@@ -471,115 +724,14 @@
         document.getElementById('mes_hasta').value = ultimoMes;
         actualizarResumenMeses();
         validarMesesEnTiempoReal();
+        actualizarResumenTotal();
         
         alert(`Se seleccionaron ${mesesPendientes.length} meses pendientes automáticamente`);
     };
 
     // =============================================
-    // ✅ CORREGIDO: VALIDACIÓN EN TIEMPO REAL - VERSIÓN MEJORADA
+    // ✅ ACTUALIZADO: RESÚMEN DE MESES
     // =============================================
-    
-    function validarMesesEnTiempoReal() {
-    const propiedadId = document.getElementById('propiedadId').value;
-    const mesDesde = document.getElementById('mes_desde').value;
-    const mesHasta = document.getElementById('mes_hasta').value;
-    
-    if (!propiedadId || !mesDesde || !mesHasta) {
-        ocultarMensajeValidacion();
-        return;
-    }
-    
-    if (mesDesde > mesHasta) {
-        mostrarMensajeValidacion('error', 'El mes final no puede ser anterior al mes inicial');
-        document.getElementById('submitBtn').disabled = true;
-        return;
-    }
-    
-    // ✅ SOLUCIÓN TEMPORAL: Validación local sin llamada al servidor
-    // Como los selects ya solo muestran meses pendientes, podemos asumir que son válidos
-    const esValido = validarRangoLocalmente(mesDesde, mesHasta);
-    
-    if (esValido) {
-        mostrarMensajeValidacion('success', 'Rango de meses válido');
-        document.getElementById('submitBtn').disabled = false;
-    } else {
-        mostrarMensajeValidacion('warning', 'El rango seleccionado contiene meses ya pagados');
-        document.getElementById('submitBtn').disabled = true;
-    }
-}
-
-function validarRangoLocalmente(mesDesde, mesHasta) {
-    // Validación simple: si los meses están en la lista de pendientes, son válidos
-    const desdeIndex = mesesPendientes.findIndex(mes => mes.valor === mesDesde);
-    const hastaIndex = mesesPendientes.findIndex(mes => mes.valor === mesHasta);
-    
-    return desdeIndex !== -1 && hastaIndex !== -1 && desdeIndex <= hastaIndex;
-}
-    
-    function mostrarMensajeValidacion(tipo, mensaje) {
-        const mensajeDiv = document.getElementById('mensajeValidacionMeses');
-        const iconos = {
-            'success': 'fa-check-circle',
-            'error': 'fa-exclamation-triangle',
-            'warning': 'fa-exclamation-triangle',
-            'info': 'fa-info-circle'
-        };
-        
-        mensajeDiv.className = `alert alert-${tipo}`;
-        mensajeDiv.innerHTML = `
-            <div class="d-flex align-items-center">
-                <i class="fas ${iconos[tipo]} mr-2"></i>
-                <div class="flex-grow-1">${mensaje}</div>
-                <button type="button" class="close" onclick="ocultarMensajeValidacion()">
-                    <span>&times;</span>
-                </button>
-            </div>
-        `;
-        mensajeDiv.style.display = 'block';
-    }
-    
-    function ocultarMensajeValidacion() {
-        const mensajeDiv = document.getElementById('mensajeValidacionMeses');
-        mensajeDiv.style.display = 'none';
-    }
-
-    // =============================================
-    // FUNCIONES EXISTENTES (MANTENIDAS)
-    // =============================================
-    
-    function seleccionarPropiedad(propiedad) {
-        console.log('Seleccionando propiedad:', propiedad);
-        
-        // Actualizar información mostrada
-        document.getElementById('clienteNombre').textContent = propiedad.cliente_nombre;
-        document.getElementById('clienteCI').textContent = propiedad.cliente_ci ? `CI: ${propiedad.cliente_ci}` : 'Sin CI';
-        document.getElementById('propiedadReferencia').textContent = propiedad.referencia;
-        document.getElementById('propiedadBarrio').textContent = propiedad.barrio ? `Barrio: ${propiedad.barrio}` : 'Sin barrio';
-        document.getElementById('tarifaMonto').textContent = `Bs ${parseFloat(propiedad.tarifa_precio).toFixed(2)}`;
-        document.getElementById('tarifaNombre').textContent = propiedad.tarifa_nombre;
-        
-        // Actualizar resumen
-        document.getElementById('resumenCliente').textContent = propiedad.cliente_nombre;
-        document.getElementById('resumenPropiedad').textContent = propiedad.referencia;
-        
-        // Guardar datos
-        document.getElementById('propiedadId').value = propiedad.id;
-        tarifaMensual = parseFloat(propiedad.tarifa_precio);
-        
-        // Mostrar secciones
-        document.getElementById('infoPropiedad').style.display = 'block';
-        document.getElementById('detallesPago').style.display = 'block';
-        document.getElementById('resultadosBusqueda').style.display = 'none';
-        document.getElementById('buscador').value = `${propiedad.referencia} - ${propiedad.cliente_nombre}`;
-        
-        // ✅ Cargar meses pendientes automáticamente
-        cargarMesesPendientes(propiedad.id);
-        
-        // Cargar deudas pendientes
-        cargarDeudasPendientes(propiedad.id);
-        
-        console.log('Propiedad seleccionada - Cargando meses pendientes...');
-    }
     
     function actualizarResumenMeses() {
         const mesDesde = document.getElementById('mes_desde');
@@ -593,13 +745,13 @@ function validarRangoLocalmente(mesDesde, mesHasta) {
         
         if (!desde || !hasta) {
             resumenMeses.style.display = 'none';
-            document.getElementById('resumenTotal').textContent = 'Bs 0.00';
+            actualizarResumenTotal();
             return;
         }
         
         if (desde > hasta) {
             resumenMeses.style.display = 'none';
-            document.getElementById('resumenTotal').textContent = 'Bs 0.00';
+            actualizarResumenTotal();
             return;
         }
         
@@ -641,28 +793,161 @@ function validarRangoLocalmente(mesDesde, mesHasta) {
         const totalPago = totalMesesCount * tarifaMensual;
         
         totalMeses.textContent = `Total: ${totalMesesCount} mes(es) × Bs ${tarifaMensual.toFixed(2)} = Bs ${totalPago.toFixed(2)}`;
-        document.getElementById('resumenTotal').textContent = `Bs ${totalPago.toFixed(2)}`;
         resumenMeses.style.display = 'block';
+        
+        // Actualizar el resumen total
+        actualizarResumenTotal();
+    }
+
+    // =============================================
+    // ✅ CORREGIDO: VALIDACIÓN EN TIEMPO REAL
+    // =============================================
+    
+    function validarMesesEnTiempoReal() {
+        const propiedadId = document.getElementById('propiedadId').value;
+        const mesDesde = document.getElementById('mes_desde').value;
+        const mesHasta = document.getElementById('mes_hasta').value;
+        
+        if (!propiedadId || !mesDesde || !mesHasta) {
+            ocultarMensajeValidacion();
+            return;
+        }
+        
+        if (mesDesde > mesHasta) {
+            mostrarMensajeValidacion('error', 'El mes final no puede ser anterior al mes inicial');
+            document.getElementById('submitBtn').disabled = true;
+            return;
+        }
+        
+        // ✅ SOLUCIÓN TEMPORAL: Validación local sin llamada al servidor
+        const esValido = validarRangoLocalmente(mesDesde, mesHasta);
+        
+        if (esValido) {
+            mostrarMensajeValidacion('success', 'Rango de meses válido');
+            document.getElementById('submitBtn').disabled = false;
+        } else {
+            mostrarMensajeValidacion('warning', 'El rango seleccionado contiene meses ya pagados');
+            document.getElementById('submitBtn').disabled = true;
+        }
+    }
+
+    function validarRangoLocalmente(mesDesde, mesHasta) {
+        // Validación simple: si los meses están en la lista de pendientes, son válidos
+        const desdeIndex = mesesPendientes.findIndex(mes => mes.valor === mesDesde);
+        const hastaIndex = mesesPendientes.findIndex(mes => mes.valor === mesHasta);
+        
+        return desdeIndex !== -1 && hastaIndex !== -1 && desdeIndex <= hastaIndex;
     }
     
-    function cargarDeudasPendientes(propiedadId) {
-    // ✅ CORREGIR la URL para que coincida con la ruta
-    const url = `/admin/properties/${propiedadId}/deudaspendientes`;
+    function mostrarMensajeValidacion(tipo, mensaje) {
+        const mensajeDiv = document.getElementById('mensajeValidacionMeses');
+        const iconos = {
+            'success': 'fa-check-circle',
+            'error': 'fa-exclamation-triangle',
+            'warning': 'fa-exclamation-triangle',
+            'info': 'fa-info-circle'
+        };
+        
+        mensajeDiv.className = `alert alert-${tipo}`;
+        mensajeDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas ${iconos[tipo]} mr-2"></i>
+                <div class="flex-grow-1">${mensaje}</div>
+                <button type="button" class="close" onclick="ocultarMensajeValidacion()">
+                    <span>&times;</span>
+                </button>
+            </div>
+        `;
+        mensajeDiv.style.display = 'block';
+    }
     
-    console.log('Cargando deudas desde:', url);
+    function ocultarMensajeValidacion() {
+        const mensajeDiv = document.getElementById('mensajeValidacionMeses');
+        mensajeDiv.style.display = 'none';
+    }
+
+    // =============================================
+    // FUNCIONES EXISTENTES (MANTENIDAS)
+    // =============================================
     
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Deudas cargadas exitosamente:', data);
-        })
-        .catch(error => {
-            console.error('Error cargando deudas:', error);
-        });
+    function seleccionarPropiedad(propiedad) {
+    console.log('Seleccionando propiedad:', propiedad);
+    
+    // ✅ NUEVO: Mostrar alerta si está cortada (VERSIÓN SEGURA)
+    if (propiedad.estado === 'cortado') {
+        const alertaExistente = document.getElementById('alertaCortado');
+        if (alertaExistente) alertaExistente.remove();
+        
+        const alerta = document.createElement('div');
+        alerta.id = 'alertaCortado';
+        alerta.className = 'alert alert-warning mt-3';
+        alerta.innerHTML = `
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <strong>Propiedad CORTADA:</strong> Esta propiedad está actualmente sin servicio. 
+            Después de pagar las deudas pendientes, solicite la reconexión.
+            <a href="/admin/properties/${propiedad.id}/request-reconnection" class="btn btn-sm btn-outline-warning ml-2">
+                <i class="fas fa-plug mr-1"></i>Solicitar Reconexión
+            </a>
+        `;
+        
+        // ✅ VERSIÓN SEGURA: Insertar después del buscador
+        const buscadorGroup = document.getElementById('buscadorGroup');
+        if (buscadorGroup && buscadorGroup.parentNode) {
+            buscadorGroup.parentNode.insertBefore(alerta, buscadorGroup.nextSibling);
+        }
+    }
+    
+    // Actualizar información mostrada
+    document.getElementById('clienteNombre').textContent = propiedad.cliente_nombre;
+    document.getElementById('clienteCI').textContent = propiedad.cliente_ci ? `CI: ${propiedad.cliente_ci}` : 'Sin CI';
+    document.getElementById('propiedadReferencia').textContent = propiedad.referencia;
+    document.getElementById('propiedadBarrio').textContent = propiedad.barrio ? `Barrio: ${propiedad.barrio}` : 'Sin barrio';
+    document.getElementById('tarifaMonto').textContent = `Bs ${parseFloat(propiedad.tarifa_precio).toFixed(2)}`;
+    document.getElementById('tarifaNombre').textContent = propiedad.tarifa_nombre;
+    
+    // Actualizar resumen
+    document.getElementById('resumenCliente').textContent = propiedad.cliente_nombre;
+    document.getElementById('resumenPropiedad').textContent = propiedad.referencia;
+    
+    // Guardar datos
+    document.getElementById('propiedadId').value = propiedad.id;
+    tarifaMensual = parseFloat(propiedad.tarifa_precio);
+    
+    // Mostrar secciones
+    document.getElementById('infoPropiedad').style.display = 'block';
+    document.getElementById('detallesPago').style.display = 'block';
+    document.getElementById('resultadosBusqueda').style.display = 'none';
+    document.getElementById('buscador').value = `${propiedad.referencia} - ${propiedad.cliente_nombre}`;
+    
+    // ✅ Cargar meses pendientes automáticamente
+    cargarMesesPendientes(propiedad.id);
+    
+    // ✅ NUEVO: Cargar multas pendientes automáticamente
+    cargarMultasPendientes(propiedad.id);
+    
+    // Cargar deudas pendientes
+    cargarDeudasPendientes(propiedad.id);
+    
+    console.log('Propiedad seleccionada - Cargando datos pendientes...');
 }
+    
+    function cargarDeudasPendientes(propiedadId) {
+        const url = `/admin/properties/${propiedadId}/deudaspendientes`;
+        
+        console.log('Cargando deudas desde:', url);
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Deudas cargadas exitosamente:', data);
+            })
+            .catch(error => {
+                console.error('Error cargando deudas:', error);
+            });
+    }
 
     // =============================================
     // INICIALIZACIÓN PRINCIPAL
@@ -681,11 +966,13 @@ function validarRangoLocalmente(mesDesde, mesHasta) {
         mesDesde.addEventListener('change', function() {
             actualizarResumenMeses();
             validarMesesEnTiempoReal();
+            actualizarResumenTotal();
         });
         
         mesHasta.addEventListener('change', function() {
             actualizarResumenMeses();
             validarMesesEnTiempoReal();
+            actualizarResumenTotal();
         });
         
         // Búsqueda en tiempo real
@@ -734,11 +1021,21 @@ function validarRangoLocalmente(mesDesde, mesHasta) {
                 `;
             } else {
                 propiedades.forEach(propiedad => {
+                    // Determinar badge según estado
+                    let estadoBadge = '';
+                    if (propiedad.estado === 'cortado') {
+                        estadoBadge = '<span class="badge badge-danger ml-2">CORTADO</span>';
+                    } else if (propiedad.estado === 'corte_pendiente') {
+                        estadoBadge = '<span class="badge badge-warning ml-2">CORTE PENDIENTE</span>';
+                    } else if (propiedad.estado === 'activo') {
+                        estadoBadge = '<span class="badge badge-success ml-2">ACTIVO</span>';
+                    }
+                    
                     const item = document.createElement('div');
                     item.className = 'list-group-item list-group-item-action';
                     item.innerHTML = `
                         <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">${propiedad.referencia}</h6>
+                            <h6 class="mb-1">${propiedad.referencia} ${estadoBadge}</h6>
                             <small class="text-success">Bs ${parseFloat(propiedad.tarifa_precio).toFixed(2)}/mes</small>
                         </div>
                         <p class="mb-1">
@@ -802,7 +1099,30 @@ function validarRangoLocalmente(mesDesde, mesHasta) {
             }, 300);
         @endif
         
-        console.log('Script de pagos inicializado completamente');
+       // ✅ NUEVO: Cargar multas pendientes si vienen por URL
+@if(isset($multasPendientes) && $multasPendientes->count() > 0)
+    @php
+        $multasData = $multasPendientes->map(function($multa) {
+            return [
+                'id' => $multa->id,
+                'nombre' => $multa->nombre,
+                'descripcion' => $multa->descripcion,
+                'monto' => $multa->monto,
+                'tipo_nombre' => $multa->nombre_tipo,
+                'fecha_aplicacion_formateada' => \Carbon\Carbon::parse($multa->fecha_aplicacion)->format('d/m/Y')
+            ];
+        })->toArray();
+    @endphp
+    
+    <script>
+        setTimeout(() => {
+            console.log('Cargando multas pendientes desde PHP...');
+            const multasData = @json($multasData);
+            multasPendientes = multasData;
+            actualizarListaMultasPendientesUI(multasPendientes);
+        }, 500);
+    </script>
+@endif
     });
 </script>
 @stop

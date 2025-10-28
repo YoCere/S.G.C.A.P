@@ -6,6 +6,7 @@ use Illuminate\Routing\Controller;
 use App\Models\Pago;
 use App\Models\Property;
 use App\Models\Debt; 
+use App\Models\Fine; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -80,11 +81,16 @@ class PagoController extends Controller
         $propiedadSeleccionada = null;
         $deudasPendientes = collect();
         $mesesPendientes = [];
+        $multasPendientes = collect(); // ✅ NUEVO: Multas pendientes
         
         if ($request->has('propiedad_id')) {
             $propiedadSeleccionada = Property::with(['client', 'tariff'])
                 ->where('id', $request->propiedad_id)
-                ->where('estado', 'activo')
+                ->whereIn('estado', [
+                    Property::ESTADO_ACTIVO,
+                    Property::ESTADO_CORTADO, // ✅ PERMITIR CORTADAS
+                    Property::ESTADO_CORTE_PENDIENTE // ✅ Y pendientes de corte
+                ])
                 ->first();
                 
             if ($propiedadSeleccionada) {
@@ -95,17 +101,34 @@ class PagoController extends Controller
                     ->get();
                 
                 $mesesPendientes = $this->obtenerMesesPendientes($propiedadSeleccionada->id);
+                
+                // ✅ NUEVO: Obtener multas pendientes del cliente/propiedad
+                $multasPendientes = Fine::with(['propiedad.client'])
+                    ->where('propiedad_id', $propiedadSeleccionada->id)
+                    ->where('estado', Fine::ESTADO_PENDIENTE)
+                    ->where('activa', true)
+                    ->orderBy('fecha_aplicacion', 'asc')
+                    ->get();
             }
         }
         
         $propiedades = Property::with(['client', 'tariff'])
-                            ->where('estado', 'activo')
-                            ->orderBy('referencia')
-                            ->get();
+            ->whereIn('estado', [
+                Property::ESTADO_ACTIVO,
+                Property::ESTADO_CORTADO, // ✅ PERMITIR CORTADAS
+                Property::ESTADO_CORTE_PENDIENTE // ✅ Y pendientes de corte
+            ])
+            ->orderBy('referencia')
+            ->get();
         
-        return view('admin.pagos.create', compact('propiedades', 'propiedadSeleccionada', 'deudasPendientes', 'mesesPendientes'));
+        return view('admin.pagos.create', compact(
+            'propiedades', 
+            'propiedadSeleccionada', 
+            'deudasPendientes', 
+            'mesesPendientes',
+            'multasPendientes'
+        ));
     }
-
     /**
      * ✅ CORREGIDO: Obtener meses pendientes para una propiedad
      */
@@ -320,96 +343,128 @@ class PagoController extends Controller
     }
 
     public function store(Request $request)
-{
-    // Validación corregida
-    $request->validate([
-        'propiedad_id' => 'required|exists:propiedades,id',
-        'mes_desde' => 'required|date_format:Y-m',
-        'mes_hasta' => 'required|date_format:Y-m',
-        'fecha_pago' => 'required|date|before_or_equal:today',
-        'metodo' => 'required|in:efectivo,transferencia,qr',
-        'comprobante' => 'nullable|string|max:50',
-        'observaciones' => 'nullable|string|max:255'
-    ]);
+    {
+        // Validación corregida
+        $request->validate([
+            'propiedad_id' => 'required|exists:propiedades,id',
+            'mes_desde' => 'required|date_format:Y-m',
+            'mes_hasta' => 'required|date_format:Y-m',
+            'fecha_pago' => 'required|date|before_or_equal:today',
+            'metodo' => 'required|in:efectivo,transferencia,qr',
+            'comprobante' => 'nullable|string|max:50',
+            'observaciones' => 'nullable|string|max:255',
+            'multas_seleccionadas' => 'nullable|array',
+            'multas_seleccionadas.*' => 'exists:multas,id'
+        ]);
 
-    try {
-        DB::beginTransaction();
+        try {
+            DB::beginTransaction();
 
-        $propiedad = Property::with(['client', 'tariff'])->findOrFail($request->propiedad_id);
-        
-        if (!$propiedad->tariff) {
-            throw new \Exception('La propiedad no tiene una tarifa asignada');
-        }
+            $propiedad = Property::with(['client', 'tariff'])->findOrFail($request->propiedad_id);
+            
+            if (!$propiedad->tariff) {
+                throw new \Exception('La propiedad no tiene una tarifa asignada');
+            }
 
-        $tarifaMensual = $propiedad->tariff->precio_mensual;
+            $tarifaMensual = $propiedad->tariff->precio_mensual;
 
-        // Calcular meses a pagar
-        $meses = $this->generarRangoMeses($request->mes_desde, $request->mes_hasta);
+            // Calcular meses a pagar
+            $meses = $this->generarRangoMeses($request->mes_desde, $request->mes_hasta);
 
-        // Verificar meses ya pagados
-        $mesesPagados = Pago::where('propiedad_id', $request->propiedad_id)
-            ->whereIn('mes_pagado', $meses)
-            ->pluck('mes_pagado')
-            ->toArray();
+            // Verificar meses ya pagados
+            $mesesPagados = Pago::where('propiedad_id', $request->propiedad_id)
+                ->whereIn('mes_pagado', $meses)
+                ->pluck('mes_pagado')
+                ->toArray();
 
-        if (!empty($mesesPagados)) {
-            $mesesPagadosFormateados = array_map(function($mes) {
-                return Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
-            }, $mesesPagados);
+            if (!empty($mesesPagados)) {
+                $mesesPagadosFormateados = array_map(function($mes) {
+                    return Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
+                }, $mesesPagados);
 
+                DB::rollBack();
+
+                return redirect()
+                    ->route('admin.pagos.create', ['propiedad_id' => $request->propiedad_id])
+                    ->withErrors([
+                        'mes_desde' => 'Los siguientes meses ya están pagados: ' . 
+                                    implode(', ', $mesesPagadosFormateados)
+                    ])
+                    ->withInput();
+            }
+
+            // ✅ CORREGIDO: Obtener multas seleccionadas y calcular total
+            $multasSeleccionadas = collect();
+            $totalMultas = 0;
+            
+            if ($request->has('multas_seleccionadas') && is_array($request->multas_seleccionadas)) {
+                $multasSeleccionadas = Fine::whereIn('id', $request->multas_seleccionadas)
+                    ->where('estado', Fine::ESTADO_PENDIENTE)
+                    ->where('activa', true)
+                    ->get();
+                
+                $totalMultas = $multasSeleccionadas->sum('monto');
+            }
+
+            // Generar número de recibo
+            $numeroRecibo = $this->generarNumeroRecibo();
+            
+            // Crear pagos individuales
+            $pagosCreados = [];
+            foreach ($meses as $mes) {
+                $pago = Pago::create([
+                    'numero_recibo' => $numeroRecibo,
+                    'propiedad_id' => $request->propiedad_id,
+                    'mes_pagado' => $mes,
+                    'monto' => $tarifaMensual,
+                    'fecha_pago' => $request->fecha_pago,
+                    'metodo' => $request->metodo,
+                    'comprobante' => $request->comprobante,
+                    'observaciones' => $request->observaciones,
+                    'registrado_por' => auth()->id(),
+                ]);
+
+                $pagosCreados[] = $pago;
+
+                // ✅ NUEVO: ACTUALIZAR DEUDA CORRESPONDIENTE
+                $this->actualizarDeudaPorPago($request->propiedad_id, $mes);
+            }
+
+            // ✅ CORREGIDO: Procesar multas seleccionadas
+            if ($multasSeleccionadas->isNotEmpty()) {
+                foreach ($multasSeleccionadas as $multa) {
+                    $multa->update([
+                        'estado' => Fine::ESTADO_PAGADA,
+                        'activa' => false
+                    ]);
+                    
+                    \Log::info("Multa #{$multa->id} marcada como PAGADA - Recibo: {$numeroRecibo}");
+                }
+            }
+
+            DB::commit();
+
+            $mensaje = count($pagosCreados) > 1 
+                ? "Se registraron " . count($pagosCreados) . " pagos exitosamente" 
+                : "Pago registrado exitosamente";
+
+            // ✅ NUEVO: Agregar info sobre multas al mensaje
+            if ($multasSeleccionadas->count() > 0) {
+                $mensaje .= " y " . $multasSeleccionadas->count() . " multa(s) pagada(s)";
+            }
+
+            return redirect()->route('admin.pagos.index')->with('info', $mensaje);
+
+        } catch (\Exception $e) {
             DB::rollBack();
-
+            \Log::error('Error al crear pago: ' . $e->getMessage());
+            
             return redirect()
                 ->route('admin.pagos.create', ['propiedad_id' => $request->propiedad_id])
-                ->withErrors([
-                    'mes_desde' => 'Los siguientes meses ya están pagados: ' . 
-                                  implode(', ', $mesesPagadosFormateados)
-                ])
+                ->withErrors(['error' => 'Error al registrar los pagos: ' . $e->getMessage()])
                 ->withInput();
         }
-
-        // Generar número de recibo
-        $numeroRecibo = $this->generarNumeroRecibo();
-        
-        // Crear pagos individuales
-        $pagosCreados = [];
-        foreach ($meses as $mes) {
-            $pago = Pago::create([
-                'numero_recibo' => $numeroRecibo,
-                'propiedad_id' => $request->propiedad_id,
-                'mes_pagado' => $mes,
-                'monto' => $tarifaMensual,
-                'fecha_pago' => $request->fecha_pago,
-                'metodo' => $request->metodo,
-                'comprobante' => $request->comprobante,
-                'observaciones' => $request->observaciones,
-                'registrado_por' => auth()->id(),
-            ]);
-
-            $pagosCreados[] = $pago;
-
-            // ✅ NUEVO: ACTUALIZAR DEUDA CORRESPONDIENTE
-            $this->actualizarDeudaPorPago($request->propiedad_id, $mes);
-        }
-
-        DB::commit();
-
-        $mensaje = count($pagosCreados) > 1 
-            ? "Se registraron " . count($pagosCreados) . " pagos exitosamente" 
-            : "Pago registrado exitosamente";
-
-        return redirect()->route('admin.pagos.index')->with('info', $mensaje);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        \Log::error('Error al crear pago: ' . $e->getMessage());
-        
-        return redirect()
-            ->route('admin.pagos.create', ['propiedad_id' => $request->propiedad_id])
-            ->withErrors(['error' => 'Error al registrar los pagos: ' . $e->getMessage()])
-            ->withInput();
     }
-}
 
 // ✅ NUEVO MÉTODO: Actualizar deuda cuando se registra un pago
 private function actualizarDeudaPorPago($propiedadId, $mesPagado)
@@ -528,5 +583,39 @@ private function actualizarDeudaPorPago($propiedadId, $mesPagado)
         }
         
         return $actualizadas;
+    }
+    public function obtenerMultasPendientesApi($propiedadId)
+    {
+        try {
+            $multasPendientes = Fine::with(['propiedad.client'])
+                ->where('propiedad_id', $propiedadId)
+                ->where('estado', Fine::ESTADO_PENDIENTE)
+                ->where('activa', true)
+                ->orderBy('fecha_aplicacion', 'asc')
+                ->get()
+                ->map(function($multa) {
+                    return [
+                        'id' => $multa->id,
+                        'nombre' => $multa->nombre,
+                        'descripcion' => $multa->descripcion,
+                        'monto' => $multa->monto,
+                        'tipo_nombre' => $multa->nombre_tipo,
+                        'fecha_aplicacion_formateada' => $multa->fecha_aplicacion->format('d/m/Y')
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'multasPendientes' => $multasPendientes,
+                'total' => $multasPendientes->count()
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error en obtenerMultasPendientesApi: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar multas pendientes'
+            ], 500);
+        }
     }
 }

@@ -100,6 +100,10 @@ class FineController extends Controller
                 'aplicada_automaticamente' => false
             ]));
 
+            if (in_array($validated['tipo'], ['reconexion_3meses', 'reconexion_12meses'])) {
+                $validated['deuda_id'] = null; // Forzar null para reconexión
+            }
+            
             // Opcional: Actualizar estado de la propiedad si es multa grave
             if (in_array($validated['tipo'], [
                 Fine::TIPO_CONEXION_CLANDESTINA, 

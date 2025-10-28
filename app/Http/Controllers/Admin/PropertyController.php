@@ -7,6 +7,7 @@ use App\Http\Requests\PropertyRequest;
 use App\Models\Property;
 use App\Models\Client;
 use App\Models\Tariff;
+use App\Models\Fine;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -260,32 +261,64 @@ class PropertyController extends Controller
 
     // 🆕 ACTUALIZADO: Solicitar reconexión (para secretaria)
     public function requestReconnection(Property $property)
-    {
-        // Solo permitir si está cortado
-        if ($property->estado !== Property::ESTADO_CORTADO) {
-            return redirect()->back()
-                ->with('error', 'Solo se puede solicitar reconexión para propiedades cortadas');
-        }
-
-        try {
-            // 🆕 ASIGNAR TRABAJO PENDIENTE: RECONEXIÓN
-            $property->asignarTrabajoPendiente(Property::TRABAJO_RECONEXION);
-
-            return redirect()->route('admin.properties.index')
-                ->with('success', 'Reconexión solicitada. El equipo físico procederá con la reconexión.');
-                
-        } catch (\Exception $e) {
-            \Log::error("Error en requestReconnection: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Error al solicitar reconexión: ' . $e->getMessage());
-        }
+{
+    // Solo permitir si está cortado
+    if ($property->estado !== Property::ESTADO_CORTADO) {
+        return redirect()->back()
+            ->with('error', 'Solo se puede solicitar reconexión para propiedades cortadas');
     }
+
+    try {
+        // ✅ NUEVO: Calcular meses de mora para determinar el tipo de multa
+        $mesesAdeudados = $property->obtenerMesesAdeudados();
+        $mesesMora = count($mesesAdeudados);
+        
+        // Determinar tipo de multa según meses de mora
+        if ($mesesMora >= 12) {
+            $tipoMulta = Fine::TIPO_RECONEXION_12MESES;
+            $nombreMulta = 'Multa por Reconexión (12+ meses de mora)';
+        } else {
+            $tipoMulta = Fine::TIPO_RECONEXION_3MESES;
+            $nombreMulta = 'Multa por Reconexión (3+ meses de mora)';
+        }
+
+        // ✅ NUEVO: Crear multa automáticamente
+        Fine::create([
+            'propiedad_id' => $property->id,
+            'deuda_id' => null, // ✅ IMPORTANTE: Multa independiente, no asociada a deuda
+            'tipo' => $tipoMulta,
+            'nombre' => $nombreMulta,
+            'monto' => Fine::obtenerMontosBase()[$tipoMulta],
+            'descripcion' => 'Multa aplicada automáticamente por solicitud de reconexión de servicio cortado por mora. Meses en mora: ' . $mesesMora,
+            'fecha_aplicacion' => now(),
+            'creado_por' => auth()->id(),
+            'estado' => Fine::ESTADO_PENDIENTE,
+            'activa' => true,
+            'aplicada_automaticamente' => true,
+        ]);
+
+        // 🆕 ASIGNAR TRABAJO PENDIENTE: RECONEXIÓN
+        $property->asignarTrabajoPendiente(Property::TRABAJO_RECONEXION);
+
+        return redirect()->route('admin.properties.index')
+            ->with('success', 'Reconexión solicitada y multa por reconexión aplicada automáticamente. El equipo físico procederá con la reconexión una vez pagada la multa.');
+            
+    } catch (\Exception $e) {
+        \Log::error("Error en requestReconnection: " . $e->getMessage());
+        return redirect()->back()->with('error', 'Error al solicitar reconexión: ' . $e->getMessage());
+    }
+}
 
     public function search(Request $request)
     {
         $query = $request->get('q');
         
         $propiedades = Property::with(['client', 'tariff'])
-            ->where('estado', Property::ESTADO_ACTIVO)
+        ->whereIn('estado', [
+            Property::ESTADO_ACTIVO, 
+            Property::ESTADO_CORTADO, // ✅ AGREGAR CORTADAS
+            Property::ESTADO_CORTE_PENDIENTE // ✅ Y pendientes de corte
+        ])
             ->where(function($q) use ($query) {
                 $q->where('referencia', 'like', "%{$query}%")
                   ->orWhere('barrio', 'like', "%{$query}%")
@@ -306,7 +339,8 @@ class PropertyController extends Controller
                     'cliente_ci' => $propiedad->client->ci,
                     'cliente_codigo' => $propiedad->client->codigo_cliente,
                     'tarifa_precio' => $propiedad->tariff->precio_mensual,
-                    'tarifa_nombre' => $propiedad->tariff->nombre
+                    'tarifa_nombre' => $propiedad->tariff->nombre,
+                    'estado' => $propiedad->estado,
                 ];
             });
         

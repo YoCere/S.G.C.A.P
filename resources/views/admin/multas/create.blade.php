@@ -35,7 +35,7 @@
                                 @foreach($propiedades as $propiedad)
                                     <option value="{{ $propiedad->id }}" 
                                             {{ old('propiedad_id') == $propiedad->id ? 'selected' : '' }}>
-                                        {{ $propiedad->referencia }} - {{ $propiedad->cliente->nombre }}
+                                        {{ $propiedad->referencia }} - {{ $propiedad->client->nombre }}
                                         ({{ $propiedad->barrio }})
                                     </option>
                                 @endforeach
@@ -44,25 +44,23 @@
                                 <small class="text-danger">{{ $message }}</small>
                             @enderror
                         </div>
-
-                        <!-- Deuda (Opcional) -->
                         <div class="form-group">
-                            <label for="deuda_id">Deuda Relacionada (Opcional)</label>
+                            <label for="deuda_id">Deuda Asociada (Solo para multas por reconexión)</label>
                             <select name="deuda_id" id="deuda_id" class="form-control select2">
-                                <option value="">Sin deuda específica</option>
+                                <option value="">Sin deuda asociada</option>
                                 @foreach($deudas as $deuda)
                                     <option value="{{ $deuda->id }}" 
                                             {{ old('deuda_id') == $deuda->id ? 'selected' : '' }}>
-                                        Deuda #{{ $deuda->id }} - {{ $deuda->propiedad->referencia }}
-                                        - Bs. {{ number_format($deuda->monto_pendiente, 2) }}
+                                        Deuda {{ $deuda->fecha_emision->format('d/m/Y') }} - 
+                                        Bs. {{ number_format($deuda->monto_pendiente, 2) }}
                                     </option>
                                 @endforeach
                             </select>
-                            @error('deuda_id')
-                                <small class="text-danger">{{ $message }}</small>
-                            @enderror
+                            <small class="form-text text-muted">
+                                Solo seleccione una deuda si la multa es por reconexión después de mora
+                            </small>
                         </div>
-
+                        
                         <!-- Tipo de Multa -->
                         <div class="form-group">
                             <label for="tipo">Tipo de Multa *</label>
@@ -88,7 +86,7 @@
                         <div class="form-group">
                             <label for="nombre">Nombre de la Multa *</label>
                             <input type="text" name="nombre" id="nombre" class="form-control" 
-                                   value="{{ old('nombre') }}" placeholder="Ej: Multa por conexión clandestina" required>
+                                   value=" " placeholder="Ej: Multa por conexión clandestina" required>
                             @error('nombre')
                                 <small class="text-danger">{{ $message }}</small>
                             @enderror
@@ -116,7 +114,7 @@
                         <div class="form-group">
                             <label for="fecha_aplicacion">Fecha de Aplicación *</label>
                             <input type="date" name="fecha_aplicacion" id="fecha_aplicacion" 
-                                   class="form-control" value="{{ old('fecha_aplicacion', date('Y-m-d')) }}" required>
+                                   class="form-control" readonly value="{{ old('fecha_aplicacion', date('Y-m-d')) }}" required>
                             @error('fecha_aplicacion')
                                 <small class="text-danger">{{ $message }}</small>
                             @enderror
@@ -234,6 +232,21 @@
 
             // Trigger change en carga para inicializar valores
             $('#tipo').trigger('change');
+            $('#tipo').change(function() {
+        const tipo = $(this).val();
+        const esReconexion = tipo === 'reconexion_3meses' || tipo === 'reconexion_12meses';
+        
+        if (esReconexion) {
+            $('#deuda_id').closest('.form-group').show();
+            $('#deuda_id').prop('required', true);
+        } else {
+            $('#deuda_id').closest('.form-group').hide();
+            $('#deuda_id').prop('required', false).val('');
+        }
+    });
+
+    // Ocultar inicialmente
+    $('#deuda_id').closest('.form-group').hide();
         });
     </script>
 @stop

@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             
             // ✅ CORREGIDO: Relaciones REQUERIDAS
-            $table->foreignId('deuda_id')->constrained('deudas')->onDelete('cascade');
+            $table->foreignId('deuda_id')->nullable()->constrained('deudas')->onDelete('cascade');
             $table->foreignId('propiedad_id')->constrained('propiedades')->onDelete('cascade');
             
             $table->enum('tipo', [

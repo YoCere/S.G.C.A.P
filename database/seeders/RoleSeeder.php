@@ -237,6 +237,10 @@ class RoleSeeder extends Seeder
             'name' => 'admin.propiedades.deudaspendientes',
             'description' => 'Consultar deudas pendientes por propiedad'
         ])->syncRoles([$admin, $secretaria]);
+        Permission::create([
+            'name' => 'admin.pagos.obtenerMultasPendientes',
+            'description' => 'Consultar deudas multas por propiedad'
+        ])->syncRoles([$admin, $secretaria]);
 
         // ==================== PERMISOS DE DEUDAS ====================
         Permission::create([

@@ -46,7 +46,7 @@
         }
         .resumen-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
             gap: 10px;
             text-align: center;
         }
@@ -82,6 +82,27 @@
         .pagos-table tr:nth-child(even) {
             background: #f8f9fa;
         }
+
+        /* TABLA DE MULTAS */
+        .multas-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .multas-table th {
+            background: #e74c3c;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        .multas-table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        .multas-table tr:nth-child(even) {
+            background: #fdedec;
+        }
         
         /* TOTALES */
         .totales {
@@ -94,6 +115,10 @@
             font-size: 18px;
             font-weight: bold;
             color: #27ae60;
+        }
+        .multas-amount {
+            font-size: 14px;
+            color: #e74c3c;
         }
         
         /* FIRMAS COMPACTAS */
@@ -119,6 +144,14 @@
             padding: 5px 10px;
             border-radius: 3px;
             font-weight: bold;
+        }
+
+        .seccion-multas {
+            background: #fef9e7;
+            border: 1px solid #f39c12;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
         }
         
         @media print {
@@ -150,7 +183,7 @@
         {{-- NÚMERO DE RECIBO --}}
         <div class="recibo-number">RECIBO: {{ $pagoPrincipal->numero_recibo }}</div>
 
-        {{-- ✅ RESUMEN CONSOLIDADO --}}
+        {{-- ✅ RESUMEN CONSOLIDADO MEJORADO --}}
         <div class="resumen">
             <div class="resumen-grid">
                 <div>
@@ -166,9 +199,20 @@
                     </span>
                 </div>
                 <div>
+                    <strong>Multas:</strong><br>
+                    <span style="font-size: 14px; color: #e74c3c;">
+                        {{ $multasPagadas->count() }}
+                    </span>
+                </div>
+                <div>
                     <strong>Monto Total:</strong><br>
                     <span style="font-size: 16px; color: #27ae60;">
-                        Bs {{ number_format($pagosDelRecibo->sum('monto'), 2) }}
+                        @php
+                            $totalMeses = $pagosDelRecibo->sum('monto');
+                            $totalMultas = $multasPagadas->sum('monto');
+                            $totalGeneral = $totalMeses + $totalMultas;
+                        @endphp
+                        Bs {{ number_format($totalGeneral, 2) }}
                     </span>
                 </div>
             </div>
@@ -210,6 +254,38 @@
             </tbody>
         </table>
 
+        {{-- ✅ NUEVA SECCIÓN: MULTAS PAGADAS --}}
+        @if($multasPagadas->count() > 0)
+        <div class="seccion-multas">
+            <h3 style="margin: 0 0 10px 0; color: #e74c3c; font-size: 14px; text-align: center;">
+                <i class="fas fa-balance-scale"></i> MULTAS PAGADAS
+            </h3>
+            <table class="multas-table">
+                <thead>
+                    <tr>
+                        <th width="60%">Descripción</th>
+                        <th width="20%">Fecha</th>
+                        <th width="20%">Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($multasPagadas as $multa)
+                    <tr>
+                        <td>
+                            <strong>{{ $multa->nombre }}</strong>
+                            @if($multa->descripcion)
+                            <br><small style="color: #7f8c8d;">{{ $multa->descripcion }}</small>
+                            @endif
+                        </td>
+                        <td>{{ $multa->fecha_aplicacion->format('d/m/Y') }}</td>
+                        <td><strong style="color: #e74c3c;">Bs {{ number_format($multa->monto, 2) }}</strong></td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
+
         {{-- ✅ INFORMACIÓN DEL PAGO CENTRALIZADA --}}
         <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 15px 0;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px;">
@@ -224,17 +300,27 @@
             </div>
         </div>
 
-        {{-- ✅ TOTAL --}}
+        {{-- ✅ TOTAL MEJORADO --}}
         <div class="totales">
             <div>
-                <span style="font-size: 16px;">
-                    @if($pagosDelRecibo->count() > 1)
-                    TOTAL ({{ $pagosDelRecibo->count() }} MESES):
-                    @else
-                    TOTAL:
-                    @endif
-                </span>
-                <span class="total-amount">Bs {{ number_format($pagosDelRecibo->sum('monto'), 2) }}</span>
+                @if($pagosDelRecibo->count() > 1)
+                    <div style="margin-bottom: 5px;">
+                        <small>Subtotal ({{ $pagosDelRecibo->count() }} meses):</small>
+                        <strong>Bs {{ number_format($totalMeses, 2) }}</strong>
+                    </div>
+                @endif
+                
+                @if($multasPagadas->count() > 0)
+                    <div style="margin-bottom: 5px;">
+                        <small>Multas ({{ $multasPagadas->count() }}):</small>
+                        <strong class="multas-amount">Bs {{ number_format($totalMultas, 2) }}</strong>
+                    </div>
+                @endif
+                
+                <div style="border-top: 1px solid #333; padding-top: 5px;">
+                    <span style="font-size: 16px;">TOTAL GENERAL:</span>
+                    <span class="total-amount">Bs {{ number_format($totalGeneral, 2) }}</span>
+                </div>
             </div>
         </div>
 

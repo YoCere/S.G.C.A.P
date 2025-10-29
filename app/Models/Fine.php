@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Fine extends Model
 {
@@ -60,6 +61,14 @@ class Fine extends Model
     public function usuario()
     {
         return $this->belongsTo(User::class, 'creado_por');
+    }
+
+    // ✅ CORREGIDO: Especificar claves foráneas explícitamente
+    public function pagos(): BelongsToMany
+    {
+        return $this->belongsToMany(Pago::class, 'multa_pago', 'multa_id', 'pago_id')
+                    ->withPivot('monto_pagado')
+                    ->withTimestamps();
     }
 
     // Scopes para el CRUD
@@ -155,4 +164,32 @@ class Fine extends Model
     {
         return $this->aplicada_automaticamente;
     }
+    // En app/Models/Fine.php - AGREGAR estos métodos:
+
+/**
+ * 🆕 SCOPE: Multas de reconexión pendientes por propiedad
+ */
+public function scopePendingReconnectionFor($query, $propertyId)
+{
+    return $query->where('propiedad_id', $propertyId)
+                ->where('estado', self::ESTADO_PENDIENTE)
+                ->where('activa', true)
+                ->whereIn('tipo', [self::TIPO_RECONEXION_3MESES, self::TIPO_RECONEXION_12MESES]);
+}
+
+/**
+ * 🆕 MÉTODO: Verificar si ya existe multa de reconexión pendiente
+ */
+public static function existeMultaReconexionPendiente($propertyId)
+{
+    return self::pendingReconnectionFor($propertyId)->exists();
+}
+
+/**
+ * 🆕 MÉTODO: Obtener multa de reconexión pendiente existente
+ */
+public static function obtenerMultaReconexionPendiente($propertyId)
+{
+    return self::pendingReconnectionFor($propertyId)->first();
+}
 }

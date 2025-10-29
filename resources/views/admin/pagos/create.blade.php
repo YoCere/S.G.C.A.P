@@ -23,11 +23,60 @@
         <div class="card-header">
             <h3 class="card-title">Formulario de Pago</h3>
         </div>
+        @if(session('success') && isset($esReconexion) && $esReconexion)
+    <div class="alert alert-success">
+        <i class="fas fa-bolt mr-2"></i>
+        <strong>RECONEXIÓN SOLICITADA</strong>
+        <p class="mb-0 mt-1">{{ session('success') }}</p>
+    </div>
+@endif
+
+@if(isset($propiedadSeleccionada) && $propiedadSeleccionada->estado === \App\Models\Property::ESTADO_CORTADO)
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        <strong>PROPIEDAD CORTADA - RECONEXIÓN PENDIENTE</strong>
+        <p class="mb-0 mt-1">
+            <strong>Requisito para reconexión:</strong> Debe pagar <strong>TODOS</strong> los meses pendientes 
+            + la multa de reconexión para que el servicio sea restablecido.
+        </p>
+        @php
+            $mesesAdeudados = $propiedadSeleccionada->obtenerMesesAdeudados();
+            $totalMeses = count($mesesAdeudados);
+        @endphp
+        @if($totalMeses > 0)
+            <small class="text-muted">
+                Meses adeudados: {{ $totalMeses }} ({{ implode(', ', array_map(function($mes) {
+                    return \Carbon\Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
+                }, $mesesAdeudados)) }})
+            </small>
+        @endif
+    </div>
+@endif
         <div class="card-body">
             <form action="{{ route('admin.pagos.store') }}" method="POST" id="pagoForm">
                 @csrf
+                
+                {{-- ✅ NUEVO: Campos para detectar reconexión --}}
+                @if(isset($esReconexion) && $esReconexion)
+                <input type="hidden" name="reconexion" value="1">
+            @endif
 
-                {{-- BUSCADOR DE CLIENTES/PROPIEDADES --}}
+            @if(isset($forzarPagoCompleto) && $forzarPagoCompleto)
+                <input type="hidden" name="forzar_pago_completo" value="1">
+            @endif
+
+            @if(isset($mesDesdeReconexion))
+                <input type="hidden" name="mes_desde_reconexion" value="{{ $mesDesdeReconexion }}">
+            @endif
+
+            @if(isset($mesHastaReconexion))
+                <input type="hidden" name="mes_hasta_reconexion" value="{{ $mesHastaReconexion }}">
+            @endif
+
+            @if(isset($multaIdReconexion))
+                <input type="hidden" name="multa_id_reconexion" value="{{ $multaIdReconexion }}">
+            @endif
+                                {{-- BUSCADOR DE CLIENTES/PROPIEDADES --}}
                 <div class="form-group" id="buscadorGroup">
                     <label for="buscador">Buscar Cliente o Propiedad *</label>
                     <div class="input-group">
@@ -288,61 +337,169 @@
         </div>
     </div>
 @stop
-
 @section('css')
     <style>
-        .list-group-item:hover {
-            background-color: #f8f9fa;
-            cursor: pointer;
+         .list-group-item:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+    .list-group-item.active {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+    .mes-item {
+        display: inline-block;
+        background: #e9ecef;
+        padding: 2px 8px;
+        margin: 2px;
+        border-radius: 3px;
+        font-size: 0.85em;
+    }
+    select.form-control {
+        pointer-events: all !important;
+    }
+    .deuda-item {
+        font-size: 0.9em;
+    }
+    .mes-adeudado {
+        font-size: 0.8em;
+        cursor: pointer;
+    }
+    .mes-adeudado:hover {
+        opacity: 0.8;
+    }
+    #mensajeValidacionMeses {
+        transition: all 0.3s ease;
+    }
+    .multa-item {
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 8px;
+        background: #f8f9fa;
+    }
+    .multa-item:hover {
+        background: #e9ecef;
+    }
+    .multa-seleccionada {
+        border-color: #ff3907;
+        background: #852c02;
+    }
+    .bg-light {
+        background-color: #f8f9fa !important;
+    }
+    
+    /* ✅ NUEVO: Estilos para reconexión automática */
+    .alert-reconexion {
+        border-left: 4px solid #28a745;
+        background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+    }
+    .alert-reconexion .fa-bolt {
+        color: #28a745;
+    }
+    /* Mejoras visuales para multas auto-seleccionadas en reconexión */
+    .multa-auto-seleccionada {
+        border: 2px solid #28a745 !important;
+        background: #f8fff9 !important;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    }
+    
+    /* ✅ CORREGIDO: Estilos para alerta de propiedad cortada */
+    .alerta-cortada {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px 15px;
+        border-left: 4px solid #856404;
+    }
+
+    .alerta-cortada .contenido {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .alerta-cortada .boton-reconexion {
+        flex-shrink: 0;
+    }
+
+    /* ✅ NUEVO: Estilos mejorados para el botón en fondo amarillo */
+    .btn-outline-warning-improved {
+        color: #856404;
+        border-color: #856404;
+        background-color: transparent;
+        font-weight: 600;
+        border-width: 2px;
+    }
+
+    .btn-outline-warning-improved:hover {
+        color: #fff;
+        background-color: #856404;
+        border-color: #856404;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(133, 100, 4, 0.3);
+    }
+
+    .btn-outline-warning-improved:focus {
+        box-shadow: 0 0 0 0.2rem rgba(133, 100, 4, 0.25);
+    }
+
+    .btn-outline-warning-improved:active {
+        transform: translateY(0);
+        box-shadow: none;
+    }
+
+    /* ✅ ALTERNATIVA: Botón con mejor contraste */
+    .btn-warning-contrast {
+        color: #fff;
+        background-color: #e67700;
+        border-color: #e67700;
+        font-weight: 600;
+    }
+
+    .btn-warning-contrast:hover {
+        color: #fff;
+        background-color: #cc6a00;
+        border-color: #cc6a00;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(230, 119, 0, 0.3);
+    }
+
+    .btn-warning-contrast:focus {
+        box-shadow: 0 0 0 0.2rem rgba(230, 119, 0, 0.25);
+    }
+
+    .btn-warning-contrast:active {
+        transform: translateY(0);
+        box-shadow: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 576px) {
+        .alerta-cortada {
+            flex-direction: column;
+            align-items: stretch;
         }
-        .list-group-item.active {
-            background-color: #007bff;
-            border-color: #007bff;
+        
+        .alerta-cortada .boton-reconexion {
+            align-self: flex-end;
+            margin-top: 8px;
         }
-        .mes-item {
-            display: inline-block;
-            background: #e9ecef;
-            padding: 2px 8px;
-            margin: 2px;
-            border-radius: 3px;
-            font-size: 0.85em;
+        
+        .btn-outline-warning-improved,
+        .btn-warning-contrast {
+            width: 100%;
+            text-align: center;
         }
-        select.form-control {
-            pointer-events: all !important;
-        }
-        .deuda-item {
-            font-size: 0.9em;
-        }
-        .mes-adeudado {
-            font-size: 0.8em;
-            cursor: pointer;
-        }
-        .mes-adeudado:hover {
-            opacity: 0.8;
-        }
-        #mensajeValidacionMeses {
-            transition: all 0.3s ease;
-        }
-        .multa-item {
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 10px;
-            margin-bottom: 8px;
-            background: #f8f9fa;
-        }
-        .multa-item:hover {
-            background: #e9ecef;
-        }
-        .multa-seleccionada {
-            border-color: #ffc107;
-            background: #fff3cd;
-        }
-        .bg-light {
-            background-color: #f8f9fa !important;
-        }
+    }
+    
+    /* Estilos para el formulario en modo reconexión */
+    #buscadorGroup[style*="display: none"] + .alert-info {
+        margin-top: 0;
+    }
     </style>
 @stop
-
 @section('js')
 <script>
     // =============================================
@@ -352,6 +509,127 @@
     let mesesPendientes = [];
     let multasPendientes = [];
     let timeoutBusqueda = null;
+
+    // =============================================
+    // ✅ NUEVO: AUTO-CONFIGURACIÓN PARA RECONEXIÓN
+    // =============================================
+
+    function configurarAutoReconexion() {
+        // Verificar si viene de reconexión
+        const urlParams = new URLSearchParams(window.location.search);
+        const esReconexion = urlParams.has('reconexion');
+        const mesDesdeReconexion = urlParams.get('mes_desde');
+        const mesHastaReconexion = urlParams.get('mes_hasta');
+        const multaIdReconexion = urlParams.get('multa_id');
+
+        if (!esReconexion) return;
+
+        console.log('🔄 Iniciando auto-configuración para reconexión...');
+
+        // Ocultar buscador cuando viene de reconexión
+        const buscadorGroup = document.getElementById('buscadorGroup');
+        if (buscadorGroup) {
+            buscadorGroup.style.display = 'none';
+        }
+
+        // Esperar a que se cargue la propiedad y datos
+        setTimeout(() => {
+            // Auto-seleccionar meses si están disponibles
+            if (mesDesdeReconexion && mesHastaReconexion) {
+                const mesDesde = document.getElementById('mes_desde');
+                const mesHasta = document.getElementById('mes_hasta');
+                
+                if (mesDesde && mesHasta) {
+                    mesDesde.value = mesDesdeReconexion;
+                    mesHasta.value = mesHastaReconexion;
+                    
+                    console.log('✅ Meses auto-seleccionados:', mesDesdeReconexion, 'a', mesHastaReconexion);
+                    
+                    // Disparar eventos para actualizar resumen
+                    if (mesDesde.dispatchEvent) {
+                        mesDesde.dispatchEvent(new Event('change'));
+                    }
+                    if (mesHasta.dispatchEvent) {
+                        mesHasta.dispatchEvent(new Event('change'));
+                    }
+                }
+            }
+
+            // Auto-seleccionar multa de reconexión
+            if (multaIdReconexion) {
+                setTimeout(() => {
+                    const multaCheckbox = document.getElementById(`multa_${multaIdReconexion}`);
+                    if (multaCheckbox) {
+                        multaCheckbox.checked = true;
+                        multaCheckbox.dispatchEvent(new Event('change'));
+                        
+                        // Agregar clase especial para multa auto-seleccionada
+                        const multaItem = multaCheckbox.closest('.multa-item');
+                        if (multaItem) {
+                            multaItem.classList.add('multa-auto-seleccionada');
+                        }
+                        
+                        console.log('✅ Multa de reconexión auto-seleccionada:', multaIdReconexion);
+                    }
+                }, 1000);
+            }
+
+            // Habilitar formulario
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
+
+            // Mostrar mensaje especial para reconexión
+            mostrarMensajeReconexion();
+
+        }, 1500);
+    }
+
+    function mostrarMensajeReconexion() {
+        const alertaExistente = document.querySelector('.alert-reconexion');
+        if (alertaExistente) return;
+
+        const alerta = document.createElement('div');
+        alerta.className = 'alert alert-success alert-reconexion';
+        alerta.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-bolt mr-3 fa-2x"></i>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading mb-1">RECONEXIÓN AUTOMÁTICA CONFIGURADA</h5>
+                    <p class="mb-0">El sistema ha precargado automáticamente todos los elementos necesarios para la reconexión.</p>
+                    <small class="text-muted">Revise los datos y haga clic en "Registrar Pago" para completar el proceso.</small>
+                </div>
+                <button type="button" class="close" onclick="this.parentElement.parentElement.remove()">
+                    <span>&times;</span>
+                </button>
+            </div>
+        `;
+
+        // Insertar al inicio del card-body
+        const cardBody = document.querySelector('.card-body');
+        if (cardBody) {
+            cardBody.insertBefore(alerta, cardBody.firstChild);
+        }
+    }
+
+    // =============================================
+    // ✅ NUEVA FUNCIÓN: SOLICITAR RECONEXIÓN
+    // =============================================
+
+    function solicitarReconexion(propiedadId) {
+        if (confirm('¿Solicitar reconexión para esta propiedad? Se aplicará multa automáticamente.')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/admin/properties/${propiedadId}/request-reconnection`;
+            form.innerHTML = `
+                @csrf
+                @method('PUT')
+            `;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
 
     // =============================================
     // FUNCIONES GLOBALES
@@ -400,7 +678,9 @@
         
         // Remover mensajes
         const alertInfo = document.querySelector('.alert-info');
+        const alertReconexion = document.querySelector('.alert-reconexion');
         if (alertInfo) alertInfo.remove();
+        if (alertReconexion) alertReconexion.remove();
         
         ocultarMensajeValidacion();
         
@@ -532,6 +812,7 @@
                 item.classList.add('multa-seleccionada');
             } else {
                 item.classList.remove('multa-seleccionada');
+                item.classList.remove('multa-auto-seleccionada');
             }
         });
     }
@@ -867,69 +1148,68 @@
     }
 
     // =============================================
-    // FUNCIONES EXISTENTES (MANTENIDAS)
+    // ✅ CORREGIDO: FUNCIÓN SELECCIONAR PROPIEDAD CON BOTÓN DE RECONEXIÓN MEJORADO
     // =============================================
     
     function seleccionarPropiedad(propiedad) {
-    console.log('Seleccionando propiedad:', propiedad);
-    
-    // ✅ NUEVO: Mostrar alerta si está cortada (VERSIÓN SEGURA)
-    if (propiedad.estado === 'cortado') {
-        const alertaExistente = document.getElementById('alertaCortado');
-        if (alertaExistente) alertaExistente.remove();
+        console.log('Seleccionando propiedad:', propiedad);
         
-        const alerta = document.createElement('div');
-        alerta.id = 'alertaCortado';
-        alerta.className = 'alert alert-warning mt-3';
-        alerta.innerHTML = `
-            <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Propiedad CORTADA:</strong> Esta propiedad está actualmente sin servicio. 
-            Después de pagar las deudas pendientes, solicite la reconexión.
-            <a href="/admin/properties/${propiedad.id}/request-reconnection" class="btn btn-sm btn-outline-warning ml-2">
-                <i class="fas fa-plug mr-1"></i>Solicitar Reconexión
-            </a>
-        `;
-        
-        // ✅ VERSIÓN SEGURA: Insertar después del buscador
-        const buscadorGroup = document.getElementById('buscadorGroup');
-        if (buscadorGroup && buscadorGroup.parentNode) {
-            buscadorGroup.parentNode.insertBefore(alerta, buscadorGroup.nextSibling);
+        // ✅ CORREGIDO: Botón con mejor visibilidad en fondo amarillo
+        if (propiedad.estado === 'cortado') {
+            const alertaExistente = document.getElementById('alertaCortado');
+            if (alertaExistente) alertaExistente.remove();
+            
+            const alerta = document.createElement('div');
+            alerta.id = 'alertaCortado';
+            alerta.className = 'alert alert-warning mt-3 alerta-cortada';
+            alerta.innerHTML = `
+                <div class="contenido">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <strong>Propiedad CORTADA:</strong> Esta propiedad está actualmente sin servicio.
+                </div>
+                <div class="boton-reconexion">
+                    <button type="button" class="btn btn-warning-contrast btn-sm" 
+                            onclick="solicitarReconexion(${propiedad.id})">
+                        <i class="fas fa-plug mr-1"></i>Solicitar Reconexión
+                    </button>
+                </div>
+            `;
+            
+            const buscadorGroup = document.getElementById('buscadorGroup');
+            if (buscadorGroup && buscadorGroup.parentNode) {
+                buscadorGroup.parentNode.insertBefore(alerta, buscadorGroup.nextSibling);
+            }
         }
+        
+        // Actualizar información mostrada
+        document.getElementById('clienteNombre').textContent = propiedad.cliente_nombre;
+        document.getElementById('clienteCI').textContent = propiedad.cliente_ci ? `CI: ${propiedad.cliente_ci}` : 'Sin CI';
+        document.getElementById('propiedadReferencia').textContent = propiedad.referencia;
+        document.getElementById('propiedadBarrio').textContent = propiedad.barrio ? `Barrio: ${propiedad.barrio}` : 'Sin barrio';
+        document.getElementById('tarifaMonto').textContent = `Bs ${parseFloat(propiedad.tarifa_precio).toFixed(2)}`;
+        document.getElementById('tarifaNombre').textContent = propiedad.tarifa_nombre;
+        
+        // Actualizar resumen
+        document.getElementById('resumenCliente').textContent = propiedad.cliente_nombre;
+        document.getElementById('resumenPropiedad').textContent = propiedad.referencia;
+        
+        // Guardar datos
+        document.getElementById('propiedadId').value = propiedad.id;
+        tarifaMensual = parseFloat(propiedad.tarifa_precio);
+        
+        // Mostrar secciones
+        document.getElementById('infoPropiedad').style.display = 'block';
+        document.getElementById('detallesPago').style.display = 'block';
+        document.getElementById('resultadosBusqueda').style.display = 'none';
+        document.getElementById('buscador').value = `${propiedad.referencia} - ${propiedad.cliente_nombre}`;
+        
+        // ✅ Cargar datos pendientes automáticamente
+        cargarMesesPendientes(propiedad.id);
+        cargarMultasPendientes(propiedad.id);
+        cargarDeudasPendientes(propiedad.id);
+        
+        console.log('Propiedad seleccionada - Cargando datos pendientes...');
     }
-    
-    // Actualizar información mostrada
-    document.getElementById('clienteNombre').textContent = propiedad.cliente_nombre;
-    document.getElementById('clienteCI').textContent = propiedad.cliente_ci ? `CI: ${propiedad.cliente_ci}` : 'Sin CI';
-    document.getElementById('propiedadReferencia').textContent = propiedad.referencia;
-    document.getElementById('propiedadBarrio').textContent = propiedad.barrio ? `Barrio: ${propiedad.barrio}` : 'Sin barrio';
-    document.getElementById('tarifaMonto').textContent = `Bs ${parseFloat(propiedad.tarifa_precio).toFixed(2)}`;
-    document.getElementById('tarifaNombre').textContent = propiedad.tarifa_nombre;
-    
-    // Actualizar resumen
-    document.getElementById('resumenCliente').textContent = propiedad.cliente_nombre;
-    document.getElementById('resumenPropiedad').textContent = propiedad.referencia;
-    
-    // Guardar datos
-    document.getElementById('propiedadId').value = propiedad.id;
-    tarifaMensual = parseFloat(propiedad.tarifa_precio);
-    
-    // Mostrar secciones
-    document.getElementById('infoPropiedad').style.display = 'block';
-    document.getElementById('detallesPago').style.display = 'block';
-    document.getElementById('resultadosBusqueda').style.display = 'none';
-    document.getElementById('buscador').value = `${propiedad.referencia} - ${propiedad.cliente_nombre}`;
-    
-    // ✅ Cargar meses pendientes automáticamente
-    cargarMesesPendientes(propiedad.id);
-    
-    // ✅ NUEVO: Cargar multas pendientes automáticamente
-    cargarMultasPendientes(propiedad.id);
-    
-    // Cargar deudas pendientes
-    cargarDeudasPendientes(propiedad.id);
-    
-    console.log('Propiedad seleccionada - Cargando datos pendientes...');
-}
     
     function cargarDeudasPendientes(propiedadId) {
         const url = `/admin/properties/${propiedadId}/deudaspendientes`;
@@ -950,10 +1230,11 @@
     }
 
     // =============================================
-    // INICIALIZACIÓN PRINCIPAL
+    // INICIALIZACIÓN PRINCIPAL MEJORADA
     // =============================================
     
     document.addEventListener('DOMContentLoaded', function() {
+        configurarModoReconexion();
         console.log('DOM completamente cargado - Inicializando script de pagos');
         
         const buscador = document.getElementById('buscador');
@@ -1057,6 +1338,11 @@
             resultadosBusqueda.style.display = 'block';
         }
         
+        // ✅ NUEVO: Configurar auto-reconexión si aplica
+        setTimeout(() => {
+            configurarAutoReconexion();
+        }, 500);
+        
         // Auto-selección si viene propiedad por URL
         @if(isset($propiedadSeleccionada) && $propiedadSeleccionada)
             console.log('Iniciando auto-selección para propiedad ID:', {{ $propiedadSeleccionada->id }});
@@ -1068,18 +1354,21 @@
                 cliente_ci: '{{ $propiedadSeleccionada->client->ci ?? '' }}',
                 barrio: '{{ $propiedadSeleccionada->barrio ?? '' }}',
                 tarifa_precio: {{ $propiedadSeleccionada->tariff->precio_mensual ?? 0 }},
-                tarifa_nombre: '{{ $propiedadSeleccionada->tariff->nombre ?? 'N/A' }}'
+                tarifa_nombre: '{{ $propiedadSeleccionada->tariff->nombre ?? 'N/A' }}',
+                estado: '{{ $propiedadSeleccionada->estado }}'
             };
             
             setTimeout(() => {
                 console.log('Ejecutando auto-selección...');
                 seleccionarPropiedad(propiedadData);
                 
+                // ✅ MEJORADO: Ocultar buscador cuando viene con propiedad seleccionada
                 const buscadorGroup = document.getElementById('buscadorGroup');
                 if (buscadorGroup) {
                     buscadorGroup.style.display = 'none';
                 }
                 
+                // ✅ MEJORADO: Mensaje informativo
                 const infoHeader = document.createElement('div');
                 infoHeader.className = 'alert alert-info mb-3';
                 infoHeader.innerHTML = `
@@ -1096,33 +1385,156 @@
                 }
                 
                 console.log('Auto-selección completada exitosamente');
+                
+                // ✅ NUEVO: Si es reconexión, auto-configurar meses y multas
+                @if(isset($esReconexion) && $esReconexion)
+                    console.log('🔄 Configurando auto-reconexión...');
+                    
+                    // Auto-seleccionar meses si están disponibles
+                    @if(isset($mesDesdeReconexion) && isset($mesHastaReconexion))
+                        setTimeout(() => {
+                            const mesDesde = document.getElementById('mes_desde');
+                            const mesHasta = document.getElementById('mes_hasta');
+                            
+                            if (mesDesde && mesHasta) {
+                                mesDesde.value = '{{ $mesDesdeReconexion }}';
+                                mesHasta.value = '{{ $mesHastaReconexion }}';
+                                
+                                // Disparar eventos para actualizar
+                                if (typeof actualizarResumenMeses === 'function') {
+                                    actualizarResumenMeses();
+                                }
+                                if (typeof validarMesesEnTiempoReal === 'function') {
+                                    validarMesesEnTiempoReal();
+                                }
+                                if (typeof actualizarResumenTotal === 'function') {
+                                    actualizarResumenTotal();
+                                }
+                                
+                                console.log('✅ Meses de reconexión auto-seleccionados');
+                            }
+                        }, 1000);
+                    @endif
+                    
+                    // Auto-seleccionar multa si está disponible
+                    @if(isset($multaIdReconexion))
+                        setTimeout(() => {
+                            const multaCheckbox = document.getElementById(`multa_{{ $multaIdReconexion }}`);
+                            if (multaCheckbox) {
+                                multaCheckbox.checked = true;
+                                if (typeof actualizarResumenMultas === 'function') {
+                                    actualizarResumenMultas();
+                                }
+                                
+                                // Agregar clase especial para multa auto-seleccionada
+                                const multaItem = multaCheckbox.closest('.multa-item');
+                                if (multaItem) {
+                                    multaItem.classList.add('multa-auto-seleccionada');
+                                }
+                                
+                                console.log('✅ Multa de reconexión auto-seleccionada');
+                            }
+                        }, 1500);
+                    @endif
+                    
+                    // Mostrar mensaje especial de reconexión
+                    mostrarMensajeReconexion();
+                    
+                @endif
+                
             }, 300);
         @endif
         
-       // ✅ NUEVO: Cargar multas pendientes si vienen por URL
-@if(isset($multasPendientes) && $multasPendientes->count() > 0)
-    @php
-        $multasData = $multasPendientes->map(function($multa) {
-            return [
-                'id' => $multa->id,
-                'nombre' => $multa->nombre,
-                'descripcion' => $multa->descripcion,
-                'monto' => $multa->monto,
-                'tipo_nombre' => $multa->nombre_tipo,
-                'fecha_aplicacion_formateada' => \Carbon\Carbon::parse($multa->fecha_aplicacion)->format('d/m/Y')
-            ];
-        })->toArray();
-    @endphp
-    
-    <script>
-        setTimeout(() => {
-            console.log('Cargando multas pendientes desde PHP...');
-            const multasData = @json($multasData);
-            multasPendientes = multasData;
-            actualizarListaMultasPendientesUI(multasPendientes);
-        }, 500);
-    </script>
-@endif
+        // ✅ NUEVO: Cargar multas pendientes si vienen por URL
+        @if(isset($multasPendientes) && $multasPendientes->count() > 0)
+            @php
+                $multasData = $multasPendientes->map(function($multa) {
+                    return [
+                        'id' => $multa->id,
+                        'nombre' => $multa->nombre,
+                        'descripcion' => $multa->descripcion,
+                        'monto' => $multa->monto,
+                        'tipo_nombre' => $multa->nombre_tipo,
+                        'fecha_aplicacion_formateada' => \Carbon\Carbon::parse($multa->fecha_aplicacion)->format('d/m/Y')
+                    ];
+                })->toArray();
+            @endphp
+            
+            setTimeout(() => {
+                console.log('Cargando multas pendientes desde PHP...');
+                const multasData = @json($multasData);
+                multasPendientes = multasData;
+                actualizarListaMultasPendientesUI(multasPendientes);
+            }, 500);
+        @endif
     });
+    // EN resources/views/admin/pagos/create.blade.php - AGREGAR esta función:
+
+    // ✅ NUEVO: Validar formulario antes de enviar
+        document.getElementById('pagoForm').addEventListener('submit', function(e) {
+            const propiedadId = document.getElementById('propiedadId').value;
+            const mesDesde = document.getElementById('mes_desde').value;
+            const mesHasta = document.getElementById('mes_hasta').value;
+            
+            if (!propiedadId) {
+                e.preventDefault();
+                alert('Debe seleccionar una propiedad antes de registrar el pago.');
+                return;
+            }
+            
+            if (!mesDesde || !mesHasta) {
+                e.preventDefault();
+                alert('Debe seleccionar el rango de meses a pagar.');
+                return;
+            }
+            
+            if (mesDesde > mesHasta) {
+                e.preventDefault();
+                alert('El mes final no puede ser anterior al mes inicial.');
+                return;
+            }
+            
+            // Mostrar loading
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Procesando...';
+        });
+
+        function configurarModoReconexion() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const forzarPagoCompleto = urlParams.has('forzar_pago_completo');
+        
+        if (forzarPagoCompleto) {
+            // Deshabilitar cambios en meses
+            const mesDesde = document.getElementById('mes_desde');
+            const mesHasta = document.getElementById('mes_hasta');
+            const btnSeleccionarTodos = document.querySelector('button[onclick*="seleccionarTodosMesesPendientes"]');
+            
+            if (mesDesde && mesHasta) {
+                mesDesde.disabled = true;
+                mesHasta.disabled = true;
+                
+                // Ocultar botón de seleccionar todos (ya están todos seleccionados)
+                if (btnSeleccionarTodos) {
+                    btnSeleccionarTodos.style.display = 'none';
+                }
+                
+                // Mostrar mensaje informativo
+                const infoMeses = document.createElement('div');
+                infoMeses.className = 'alert alert-info mt-2';
+                infoMeses.innerHTML = `
+                    <i class="fas fa-lock mr-2"></i>
+                    <strong>Modo reconexión:</strong> Debe pagar todos los meses adeudados + la multa de reconexión.
+                    Los meses han sido bloqueados para asegurar el pago completo.
+                `;
+                
+                const seccionMeses = document.querySelector('.form-group:has(#mes_desde)');
+                if (seccionMeses) {
+                    seccionMeses.appendChild(infoMeses);
+                }
+            }
+        }
+    }
+
 </script>
 @stop

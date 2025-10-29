@@ -187,6 +187,7 @@
                                     <th width="110">Monto</th>
                                     <th width="110">Fecha Pago</th>
                                     <th width="100">Método</th>
+                                    <th width="80">Multas</th>
                                     <th width="120" class="text-center">Acciones</th>
                                 </tr>
                             </thead>
@@ -248,6 +249,15 @@
                                                 <span class="badge badge-primary">Transferencia</span>
                                             @else
                                                 <span class="badge badge-secondary">QR</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($pago->multasPagadas->count() > 0)
+                                                <span class="badge badge-warning" title="{{ $pago->multasPagadas->count() }} multa(s) pagada(s)">
+                                                    <i class="fas fa-balance-scale mr-1"></i>{{ $pago->multasPagadas->count() }}
+                                                </span>
+                                            @else
+                                                <span class="text-muted">-</span>
                                             @endif
                                         </td>
                                         <td>
@@ -476,4 +486,4 @@
         $('.alert').alert('close');
     }, 5000);
 </script>
-@stop
+    @stop

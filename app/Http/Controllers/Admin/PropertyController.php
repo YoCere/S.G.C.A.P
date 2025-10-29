@@ -260,7 +260,10 @@ class PropertyController extends Controller
     }
 
     // 🆕 ACTUALIZADO: Solicitar reconexión (para secretaria)
-    public function requestReconnection(Property $property)
+    // En PropertyController.php - ACTUALIZAR el método requestReconnection:
+
+// 🆕 ACTUALIZADO: Solicitar reconexión (para secretaria)
+public function requestReconnection(Property $property)
 {
     // Solo permitir si está cortado
     if ($property->estado !== Property::ESTADO_CORTADO) {
@@ -269,27 +272,49 @@ class PropertyController extends Controller
     }
 
     try {
-        // ✅ NUEVO: Calcular meses de mora para determinar el tipo de multa
+        // ✅ Verificar que tenga meses adeudados
         $mesesAdeudados = $property->obtenerMesesAdeudados();
         $mesesMora = count($mesesAdeudados);
         
-        // Determinar tipo de multa según meses de mora
-        if ($mesesMora >= 12) {
-            $tipoMulta = Fine::TIPO_RECONEXION_12MESES;
-            $nombreMulta = 'Multa por Reconexión (12+ meses de mora)';
-        } else {
-            $tipoMulta = Fine::TIPO_RECONEXION_3MESES;
-            $nombreMulta = 'Multa por Reconexión (3+ meses de mora)';
+        if ($mesesMora === 0) {
+            return redirect()->back()
+                ->with('error', 'No se puede solicitar reconexión: la propiedad no tiene meses adeudados');
         }
 
-        // ✅ NUEVO: Crear multa automáticamente
-        Fine::create([
+        // ✅ Verificar si ya existe multa de reconexión pendiente
+        if (Fine::existeMultaReconexionPendiente($property->id)) {
+            $multaExistente = Fine::obtenerMultaReconexionPendiente($property->id);
+            
+            return redirect()->route('admin.pagos.create', [
+                'propiedad_id' => $property->id,
+                'reconexion' => true,
+                'mes_desde' => !empty($mesesAdeudados) ? min($mesesAdeudados) : null,
+                'mes_hasta' => !empty($mesesAdeudados) ? max($mesesAdeudados) : null,
+                'multa_id' => $multaExistente->id,
+                'forzar_pago_completo' => true // ✅ NUEVO PARÁMETRO
+            ])->with('info', 
+                "ℹ️ Ya existe una multa de reconexión pendiente (Bs. {$multaExistente->monto}). " .
+                "Debe pagar los {$mesesMora} meses pendientes + la multa para proceder con la reconexión."
+            );
+        }
+
+        // ✅ Calcular meses de mora y multa
+        if ($mesesMora >= 12) {
+            $tipoMulta = Fine::TIPO_RECONEXION_12MESES;
+            $montoMulta = Fine::obtenerMontosBase()[$tipoMulta];
+        } else {
+            $tipoMulta = Fine::TIPO_RECONEXION_3MESES;
+            $montoMulta = Fine::obtenerMontosBase()[$tipoMulta];
+        }
+
+        // ✅ Crear multa automáticamente
+        $multa = Fine::create([
             'propiedad_id' => $property->id,
-            'deuda_id' => null, // ✅ IMPORTANTE: Multa independiente, no asociada a deuda
+            'deuda_id' => null,
             'tipo' => $tipoMulta,
-            'nombre' => $nombreMulta,
-            'monto' => Fine::obtenerMontosBase()[$tipoMulta],
-            'descripcion' => 'Multa aplicada automáticamente por solicitud de reconexión de servicio cortado por mora. Meses en mora: ' . $mesesMora,
+            'nombre' => 'Multa por Reconexión de Servicio',
+            'monto' => $montoMulta,
+            'descripcion' => 'Multa aplicada por solicitud de reconexión después de corte por mora. Meses en mora: ' . $mesesMora,
             'fecha_aplicacion' => now(),
             'creado_por' => auth()->id(),
             'estado' => Fine::ESTADO_PENDIENTE,
@@ -297,12 +322,19 @@ class PropertyController extends Controller
             'aplicada_automaticamente' => true,
         ]);
 
-        // 🆕 ASIGNAR TRABAJO PENDIENTE: RECONEXIÓN
-        $property->asignarTrabajoPendiente(Property::TRABAJO_RECONEXION);
+        // ✅ Redirigir con TODOS los meses adeudados seleccionados automáticamente
+        return redirect()->route('admin.pagos.create', [
+            'propiedad_id' => $property->id,
+            'reconexion' => true,
+            'mes_desde' => !empty($mesesAdeudados) ? min($mesesAdeudados) : null,
+            'mes_hasta' => !empty($mesesAdeudados) ? max($mesesAdeudados) : null,
+            'multa_id' => $multa->id,
+            'forzar_pago_completo' => true // ✅ NUEVO PARÁMETRO
+        ])->with('success', 
+            "✅ Multa de reconexión aplicada (Bs. {$montoMulta}). " .
+            "Debe pagar los {$mesesMora} meses pendientes + la multa para proceder con la reconexión."
+        );
 
-        return redirect()->route('admin.properties.index')
-            ->with('success', 'Reconexión solicitada y multa por reconexión aplicada automáticamente. El equipo físico procederá con la reconexión una vez pagada la multa.');
-            
     } catch (\Exception $e) {
         \Log::error("Error en requestReconnection: " . $e->getMessage());
         return redirect()->back()->with('error', 'Error al solicitar reconexión: ' . $e->getMessage());
@@ -345,5 +377,17 @@ class PropertyController extends Controller
             });
         
         return response()->json($propiedades);
+    }
+    private function obtenerTextoMesesMora($mesesMora)
+    {
+        if ($mesesMora >= 12) {
+            return "más de 12 meses";
+        } elseif ($mesesMora >= 6) {
+            return "{$mesesMora} meses (mora grave)";
+        } elseif ($mesesMora >= 3) {
+            return "{$mesesMora} meses (mora significativa)";
+        } else {
+            return "{$mesesMora} meses";
+        }
     }
 }

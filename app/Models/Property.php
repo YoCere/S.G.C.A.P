@@ -160,9 +160,11 @@ class Property extends Model
     public function asignarTrabajoPendiente($tipoTrabajo)
     {
         $this->update([
-            'estado' => self::ESTADO_CORTE_PENDIENTE,
+            'estado' => self::ESTADO_CORTE_PENDIENTE, // ✅ DEBE cambiar a CORTE_PENDIENTE
             'tipo_trabajo_pendiente' => $tipoTrabajo
         ]);
+        
+        \Log::info("✅ Trabajo pendiente asignado - Propiedad: {$this->id}, Estado: CORTE_PENDIENTE, Trabajo: {$tipoTrabajo}");
     }
 
     public function obtenerMesesAdeudados()
@@ -252,4 +254,21 @@ class Property extends Model
     {
         return $this->multas()->where('estado', Fine::ESTADO_PENDIENTE);
     }
+
+    // En app/Models/Property.php - AGREGAR método:
+
+/**
+ * 🆕 MÉTODO: Forzar actualización a corte pendiente para reconexión
+ */
+public function forzarReconexionPendiente()
+{
+    $this->update([
+        'estado' => self::ESTADO_CORTE_PENDIENTE,
+        'tipo_trabajo_pendiente' => self::TRABAJO_RECONEXION
+    ]);
+    
+    \Log::info("🔄 RECONEXIÓN FORZADA - Propiedad: {$this->id} ahora en CORTE_PENDIENTE");
+    
+    return $this->refresh();
+}
 }

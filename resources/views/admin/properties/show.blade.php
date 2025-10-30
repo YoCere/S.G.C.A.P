@@ -228,6 +228,7 @@
                   </button>
                 </form>
               </div>
+            @can('admin.properties.restore')
             @elseif($property->estado === 'cortado')
               <form action="{{ route('admin.properties.restore', $property) }}" method="POST" class="d-grid">
                 @csrf @method('PUT')
@@ -237,11 +238,9 @@
                 </button>
               </form>
             @endif
+            @endcan
 
-            <button type="button" class="btn btn-outline-danger btn-sm" 
-                    onclick="confirmDelete({{ $property->id }}, '{{ $property->referencia }}')">
-              <i class="fas fa-trash mr-1"></i> Eliminar Propiedad
-            </button>
+            
           </div>
         </div>
       </div>

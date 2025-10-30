@@ -196,6 +196,14 @@
                     <h6 class="alert-heading">
                         <i class="fas fa-calendar-check mr-2"></i>Meses para pagar disponibles
                     </h6>
+
+                    {{-- ✅ NUEVO: Información de pago cronológico --}}
+                    <div class="alert alert-info mb-2">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <strong>Importante:</strong> Debe pagar los meses en orden cronológico desde el más antiguo.
+                        No puede saltar meses pendientes.
+                    </div>
+
                     <div class="mt-2" id="listaMesesPendientes">
                         {{-- Se llena automáticamente con JavaScript --}}
                     </div>
@@ -985,21 +993,46 @@
     }
     
     function seleccionarMesEspecifico(mes) {
+    const mesesPendientesOrdenados = [...mesesPendientes].sort((a, b) => a.valor.localeCompare(b.valor));
+    const primerMes = mesesPendientesOrdenados[0].valor;
+    const mesIndex = mesesPendientesOrdenados.findIndex(m => m.valor === mes);
+    
+    // Si intenta seleccionar un mes que no es el primero
+    if (mes !== primerMes) {
+        const primerMesTexto = mesesPendientesOrdenados[0].texto;
+        const mesSeleccionadoTexto = mesesPendientesOrdenados.find(m => m.valor === mes)?.texto;
+        
+        // Calcular los meses que debería pagar primero
+        const mesesNecesarios = mesesPendientesOrdenados.slice(0, mesIndex + 1).map(m => m.texto).join(', ');
+        
+        if (!confirm(`Para pagar ${mesSeleccionadoTexto}, primero debe pagar: ${mesesNecesarios}\n\n¿Desea seleccionar automáticamente desde ${primerMesTexto} hasta ${mesSeleccionadoTexto}?`)) {
+            return;
+        }
+        
+        // Forzar selección desde el primer mes
+        document.getElementById('mes_desde').value = primerMes;
+        document.getElementById('mes_hasta').value = mes;
+    } else {
+        // Si selecciona el primer mes, permitir selección individual
         document.getElementById('mes_desde').value = mes;
         document.getElementById('mes_hasta').value = mes;
-        actualizarResumenMeses();
-        validarMesesEnTiempoReal();
-        actualizarResumenTotal();
     }
     
+    actualizarResumenMeses();
+    validarSeleccionCronologica();
+    actualizarResumenTotal();
+}
+
+    // ✅ MODIFICADO: Seleccionar todos los meses - ahora selecciona desde el primero
     window.seleccionarTodosMesesPendientes = function() {
         if (mesesPendientes.length === 0) {
             alert('No hay meses pendientes para seleccionar');
             return;
         }
         
-        const primerMes = mesesPendientes[0].valor;
-        const ultimoMes = mesesPendientes[mesesPendientes.length - 1].valor;
+        const mesesOrdenados = [...mesesPendientes].sort((a, b) => a.valor.localeCompare(b.valor));
+        const primerMes = mesesOrdenados[0].valor;
+        const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1].valor;
         
         document.getElementById('mes_desde').value = primerMes;
         document.getElementById('mes_hasta').value = ultimoMes;
@@ -1007,9 +1040,8 @@
         validarMesesEnTiempoReal();
         actualizarResumenTotal();
         
-        alert(`Se seleccionaron ${mesesPendientes.length} meses pendientes automáticamente`);
+        alert(`Se seleccionaron ${mesesPendientes.length} meses pendientes automáticamente desde ${mesesOrdenados[0].texto}`);
     };
-
     // =============================================
     // ✅ ACTUALIZADO: RESÚMEN DE MESES
     // =============================================
@@ -1151,6 +1183,53 @@
     // ✅ CORREGIDO: FUNCIÓN SELECCIONAR PROPIEDAD CON BOTÓN DE RECONEXIÓN MEJORADO
     // =============================================
     
+    function validarSeleccionCronologica() {
+    const mesDesde = document.getElementById('mes_desde').value;
+    const mesHasta = document.getElementById('mes_hasta').value;
+    
+    if (!mesDesde || !mesHasta || mesesPendientes.length === 0) {
+        return;
+    }
+    
+    const mesesOrdenados = [...mesesPendientes].sort((a, b) => a.valor.localeCompare(b.valor));
+    const primerMesPendiente = mesesOrdenados[0].valor;
+    
+    // Validar que empiece desde el primer mes
+    if (mesDesde !== primerMesPendiente) {
+        const primerMesTexto = mesesOrdenados[0].texto;
+        const mesDesdeTexto = mesesPendientes.find(m => m.valor === mesDesde)?.texto;
+        
+        mostrarMensajeValidacion('warning', 
+            `Debe pagar desde el primer mes pendiente (${primerMesTexto}). ` +
+            `No puede pagar desde ${mesDesdeTexto} sin antes pagar los meses anteriores.`
+        );
+        
+        document.getElementById('submitBtn').disabled = true;
+        return;
+    }
+    
+    // Validar que no haya saltos en la selección
+    const desdeIndex = mesesOrdenados.findIndex(m => m.valor === mesDesde);
+    const hastaIndex = mesesOrdenados.findIndex(m => m.valor === mesHasta);
+    
+    if (hastaIndex - desdeIndex + 1 !== (hastaIndex + 1)) {
+        const mesesEsperados = mesesOrdenados.slice(0, hastaIndex + 1).map(m => m.texto).join(', ');
+        
+        mostrarMensajeValidacion('warning', 
+            `Debe pagar los meses en orden secuencial: ${mesesEsperados}. ` +
+            `No puede saltar meses pendientes.`
+        );
+        
+        document.getElementById('submitBtn').disabled = true;
+        return;
+    }
+    
+    // Si pasa todas las validaciones
+    ocultarMensajeValidacion();
+    document.getElementById('submitBtn').disabled = false;
+}
+
+
     function seleccionarPropiedad(propiedad) {
         console.log('Seleccionando propiedad:', propiedad);
         
@@ -1247,12 +1326,14 @@
         mesDesde.addEventListener('change', function() {
             actualizarResumenMeses();
             validarMesesEnTiempoReal();
+            validarSeleccionCronologica();
             actualizarResumenTotal();
         });
         
         mesHasta.addEventListener('change', function() {
             actualizarResumenMeses();
             validarMesesEnTiempoReal();
+            validarSeleccionCronologica();
             actualizarResumenTotal();
         });
         

@@ -132,7 +132,7 @@
                             <th width="20%">Dirección</th>
                             <th width="13%" class="text-center">Barrio</th>
                             <th width="12%" class="text-center">Tipo Trabajo</th>
-                            <th width="10%" class="text-center">Días Pend.</th>
+
                             <th width="10%" class="text-center">Estado</th>
                         </tr>
                     </thead>
@@ -160,15 +160,7 @@
                                     <span class="badge badge-info">{{ $trabajo['tipo_trabajo'] }}</span>
                                 @endif
                             </td>
-                            <td class="text-center">
-                                @if($trabajo['dias_pendiente'] > 7)
-                                    <span class="badge badge-danger">{{ $trabajo['dias_pendiente'] }}d</span>
-                                @elseif($trabajo['dias_pendiente'] > 3)
-                                    <span class="badge badge-warning">{{ $trabajo['dias_pendiente'] }}d</span>
-                                @else
-                                    <span class="badge badge-secondary">{{ $trabajo['dias_pendiente'] }}d</span>
-                                @endif
-                            </td>
+                            
                             <td class="text-center">
                                 <span class="badge badge-warning">PENDIENTE</span>
                             </td>

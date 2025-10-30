@@ -217,19 +217,45 @@ class PropertyController extends Controller
         }
 
         try {
-            // 🆕 DETERMINAR ESTADO ANTERIOR SEGÚN EL TIPO DE TRABAJO
+            // ✅ NUEVA LÓGICA: Diferente comportamiento según el tipo de trabajo
             $tipoTrabajo = $property->tipo_trabajo_pendiente;
-            $nuevoEstado = Property::ESTADO_ACTIVO; // Por defecto
             
+            // 🚨 CASO CRÍTICO: Si es RECONEXIÓN y el cliente YA PAGÓ, NO permitir cancelación
             if ($tipoTrabajo === Property::TRABAJO_RECONEXION) {
-                $nuevoEstado = Property::ESTADO_CORTADO; // Si era reconexión, volver a cortado
+                // Verificar si hay pagos recientes para reconexión
+                $pagosRecientes = Pago::where('propiedad_id', $property->id)
+                    ->where('created_at', '>=', now()->subDays(7)) // Últimos 7 días
+                    ->exists();
+                    
+                if ($pagosRecientes) {
+                    return redirect()->back()
+                        ->with('error', 
+                            'NO se puede cancelar la reconexión. ' .
+                            'El cliente ya realizó el pago completo. ' .
+                            'Contacte al operador para que ejecute la reconexión física.'
+                        );
+                }
+                
+                // Si no hay pagos recientes, permitir cancelación pero con estado CORTADO
+                $property->update([
+                    'estado' => Property::ESTADO_CORTADO,
+                    'tipo_trabajo_pendiente' => null
+                ]);
+                
+                \Log::info("✅ Reconexión cancelada (sin pago) - Propiedad {$property->id} vuelve a CORTADO");
+                
+            } else {
+                // Para otros tipos de trabajo (corte_mora, conexion_nueva), lógica normal
+                $nuevoEstado = $tipoTrabajo === Property::TRABAJO_CORTE_MORA ? 
+                    Property::ESTADO_ACTIVO : Property::ESTADO_PENDIENTE_CONEXION;
+                
+                $property->update([
+                    'estado' => $nuevoEstado,
+                    'tipo_trabajo_pendiente' => null
+                ]);
+                
+                \Log::info("✅ Trabajo {$tipoTrabajo} cancelado - Propiedad {$property->id} a estado: {$nuevoEstado}");
             }
-
-            // 🆕 LIMPIAR TRABAJO PENDIENTE Y ACTUALIZAR ESTADO
-            $property->update([
-                'estado' => $nuevoEstado,
-                'tipo_trabajo_pendiente' => null
-            ]);
 
             return redirect()->route('admin.properties.index')
                 ->with('success', 'Trabajo pendiente cancelado correctamente.');

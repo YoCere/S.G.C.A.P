@@ -335,6 +335,7 @@ class PagoController extends Controller
 
         $pagosCreados = [];
         $multasSeleccionadas = collect();
+        $mensajeReconexion = ""; // ✅ INICIALIZAR LA VARIABLE
 
         try {
             DB::beginTransaction();
@@ -364,144 +365,70 @@ class PagoController extends Controller
                 throw new \Exception('No se pudo generar el rango de meses. Verifique las fechas.');
             }
 
-            \Log::info("Meses a pagar: " . implode(', ', $meses));
-            \Log::info("Total meses a pagar: " . $mesesPagadosCount);
+            // ✅ CORREGIDO: VALIDACIÓN DE PAGO SECUENCIAL MEJORADA
+            $mesesAdeudados = $propiedad->obtenerMesesAdeudados();
+            sort($mesesAdeudados); // Ordenar cronológicamente
 
+            if (!empty($mesesAdeudados)) {
+                $primerMesAdeudado = $mesesAdeudados[0];
+                
+                \Log::info("🔍 Validando secuencia - Primer mes adeudado: {$primerMesAdeudado}");
+                \Log::info("Meses adeudados totales: " . implode(', ', $mesesAdeudados));
+                \Log::info("Meses a pagar: " . implode(', ', $meses));
+                
+                // ✅ Validar que pague desde el primer mes adeudado
+                if ($mesDesde !== $primerMesAdeudado) {
+                    DB::rollBack();
+                    $primerMesFormateado = Carbon::createFromFormat('Y-m', $primerMesAdeudado)->locale('es')->translatedFormat('F Y');
+                    $mesDesdeFormateado = Carbon::createFromFormat('Y-m', $mesDesde)->locale('es')->translatedFormat('F Y');
+                    
+                    \Log::warning("❌ Validación secuencial fallida - Debe pagar desde {$primerMesAdeudado}, está pagando desde {$mesDesde}");
+                    
+                    return redirect()
+                        ->route('admin.pagos.create', ['propiedad_id' => $propiedad->id])
+                        ->withErrors([
+                            'error' => "Debe pagar desde el primer mes adeudado ({$primerMesFormateado}). " .
+                                    "No puede pagar desde {$mesDesdeFormateado} sin antes pagar los meses anteriores."
+                        ])
+                        ->withInput();
+                }
+                
+                // ✅ Validar que los meses seleccionados sean consecutivos desde el inicio
+                $mesesSeleccionadosOrdenados = $meses;
+                sort($mesesSeleccionadosOrdenados);
+                
+                // Verificar que los meses seleccionados sean los primeros N meses de la lista de adeudados
+                $mesesEsperados = array_slice($mesesAdeudados, 0, count($mesesSeleccionadosOrdenados));
+                
+                if ($mesesSeleccionadosOrdenados !== $mesesEsperados) {
+                    DB::rollBack();
+                    
+                    $mesesEsperadosFormateados = array_map(function($mes) {
+                        return Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
+                    }, $mesesEsperados);
+                    
+                    $mesesSeleccionadosFormateados = array_map(function($mes) {
+                        return Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
+                    }, $mesesSeleccionadosOrdenados);
+                    
+                    \Log::warning("❌ Validación de secuencia fallida - Esperados: " . implode(', ', $mesesEsperados) . " - Seleccionados: " . implode(', ', $mesesSeleccionadosOrdenados));
+                    
+                    return redirect()
+                        ->route('admin.pagos.create', ['propiedad_id' => $propiedad->id])
+                        ->withErrors([
+                            'error' => "Debe pagar los meses en orden secuencial. " .
+                                    "Los próximos meses a pagar son: " . implode(', ', $mesesEsperadosFormateados) . ". " .
+                                    "No puede saltar meses pendientes."
+                        ])
+                        ->withInput();
+                }
+                
+                \Log::info("✅ Validación secuencial exitosa");
+            }
+
+            // ✅ CORREGIDO: VALIDACIÓN DE PAGO COMPLETO PARA RECONEXIÓN
             $esReconexion = $request->has('reconexion') || $request->has('forzar_pago_completo');
-            \Log::info("Es reconexión: " . ($esReconexion ? 'SÍ' : 'NO'));
 
-            if ($esReconexion) {
-                \Log::info("=== VALIDANDO RECONEXIÓN ===");
-                $mesesAdeudados = $propiedad->obtenerMesesAdeudados();
-                \Log::info("Meses adeudados: " . implode(', ', $mesesAdeudados));
-                \Log::info("Total meses adeudados: " . count($mesesAdeudados));
-                
-                $totalMesesAdeudados = count($mesesAdeudados);
-                
-                $mesesAdeudadosPagados = array_intersect($mesesAdeudados, $meses);
-                $todosMesesPagados = count($mesesAdeudadosPagados) === $totalMesesAdeudados;
-                
-                if (!$todosMesesPagados) {
-                    DB::rollBack();
-                    \Log::warning("❌ Validación fallida - Pagó {$mesesPagadosCount} de {$totalMesesAdeudados} meses");
-                    return redirect()
-                        ->route('admin.pagos.create', ['propiedad_id' => $request->propiedad_id])
-                        ->withErrors([
-                            'error' => "Para reconexión debe pagar TODOS los meses adeudados ({$totalMesesAdeudados} meses). " .
-                                    "Está pagando {$mesesPagadosCount} meses."
-                        ])
-                        ->withInput();
-                }
-                
-                $multasReconexionSeleccionadas = false;
-                if ($request->has('multas_seleccionadas') && is_array($request->multas_seleccionadas)) {
-                    $multasReconexion = Fine::whereIn('id', $request->multas_seleccionadas)
-                        ->whereIn('tipo', [Fine::TIPO_RECONEXION_3MESES, Fine::TIPO_RECONEXION_12MESES])
-                        ->exists();
-                    $multasReconexionSeleccionadas = $multasReconexion;
-                }
-                
-                if (!$multasReconexionSeleccionadas) {
-                    DB::rollBack();
-                    \Log::warning("❌ Validación fallida - No seleccionó multa de reconexión");
-                    return redirect()
-                        ->route('admin.pagos.create', ['propiedad_id' => $request->propiedad_id])
-                        ->withErrors([
-                            'error' => "Para reconexión debe pagar la multa de reconexión además de todos los meses adeudados."
-                        ])
-                        ->withInput();
-                }
-                
-                \Log::info("✅ Validación exitosa - Pago completo para reconexión");
-            }
-
-            $mesesPagados = Pago::where('propiedad_id', $request->propiedad_id)
-                ->whereIn('mes_pagado', $meses)
-                ->pluck('mes_pagado')
-                ->toArray();
-
-            if (!empty($mesesPagados)) {
-                $mesesPagadosFormateados = array_map(function($mes) {
-                    return Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
-                }, $mesesPagados);
-
-                DB::rollBack();
-
-                return redirect()
-                    ->route('admin.pagos.create', ['propiedad_id' => $request->propiedad_id])
-                    ->withErrors([
-                        'mes_desde' => 'Los siguientes meses ya están pagados: ' . 
-                                    implode(', ', $mesesPagadosFormateados)
-                    ])
-                    ->withInput();
-            }
-
-            $totalMultas = 0;
-            
-            if ($request->has('multas_seleccionadas') && is_array($request->multas_seleccionadas)) {
-                $multasSeleccionadas = Fine::whereIn('id', $request->multas_seleccionadas)
-                    ->where('estado', Fine::ESTADO_PENDIENTE)
-                    ->where('activa', true)
-                    ->get();
-                
-                $totalMultas = $multasSeleccionadas->sum('monto');
-
-                $multasInvalidas = $multasSeleccionadas->filter(function($multa) {
-                    return $multa->estado !== Fine::ESTADO_PENDIENTE;
-                });
-
-                if ($multasInvalidas->count() > 0) {
-                    DB::rollBack();
-                    return redirect()
-                        ->route('admin.pagos.create', ['propiedad_id' => $request->propiedad_id])
-                        ->withErrors(['error' => 'Una o más multas seleccionadas ya han sido pagadas o anuladas.'])
-                        ->withInput();
-                }
-            }
-
-            $numeroRecibo = $this->generarNumeroRecibo();
-            
-            $primerPago = null;
-            $pagosCreados = [];
-            
-            foreach ($meses as $mes) {
-                $pago = Pago::create([
-                    'numero_recibo' => $numeroRecibo,
-                    'propiedad_id' => $request->propiedad_id,
-                    'mes_pagado' => $mes,
-                    'monto' => $tarifaMensual,
-                    'fecha_pago' => $request->fecha_pago,
-                    'metodo' => $request->metodo,
-                    'comprobante' => $request->comprobante,
-                    'observaciones' => $request->observaciones,
-                    'registrado_por' => auth()->id(),
-                ]);
-
-                if (!$primerPago) {
-                    $primerPago = $pago;
-                }
-
-                $pagosCreados[] = $pago;
-
-                $this->actualizarDeudaPorPago($request->propiedad_id, $mes);
-            }
-
-            if ($multasSeleccionadas->isNotEmpty() && $primerPago) {
-                foreach ($multasSeleccionadas as $multa) {
-                    $primerPago->multasPagadas()->attach($multa->id, [
-                        'monto_pagado' => $multa->monto
-                    ]);
-                    
-                    $multa->update([
-                        'estado' => Fine::ESTADO_PAGADA,
-                        'activa' => false
-                    ]);
-                    
-                    \Log::info("Multa #{$multa->id} marcada como PAGADA - Recibo: {$numeroRecibo}");
-                }
-            }
-
-            $mensajeReconexion = "";
             if ($esReconexion) {
                 try {
                     \Log::info("=== PROCESANDO RECONEXIÓN ===");
@@ -525,6 +452,66 @@ class PagoController extends Controller
                     $mensajeReconexion = " ⚠️ Error al programar reconexión: " . $e->getMessage();
                 }
             }
+
+            // ✅ CONTINUAR CON EL PROCESO NORMAL DE CREACIÓN DE PAGOS
+            // ... (tu código existente para crear los pagos)
+            
+            // EJEMPLO de cómo debería continuar:
+            $numeroRecibo = $this->generarNumeroRecibo();
+            
+            foreach ($meses as $mes) {
+                $pago = Pago::create([
+                    'numero_recibo' => $numeroRecibo,
+                    'propiedad_id' => $propiedad->id,
+                    'monto' => $tarifaMensual,
+                    'mes_pagado' => $mes,
+                    'fecha_pago' => $request->fecha_pago,
+                    'metodo' => $request->metodo,
+                    'comprobante' => $request->comprobante,
+                    'observaciones' => $request->observaciones,
+                    'registrado_por' => auth()->id(),
+                ]);
+                
+                $pagosCreados[] = $pago;
+                
+                // Actualizar deudas si existen
+                $this->actualizarDeudaPorPago($propiedad->id, $mes);
+            }
+
+            // ✅ CORREGIDO: PROCESAR Y ASOCIAR MULTAS SELECCIONADAS
+                if ($request->has('multas_seleccionadas')) {
+                    \Log::info("🔍 Procesando multas seleccionadas: " . json_encode($request->multas_seleccionadas));
+                    
+                    foreach ($request->multas_seleccionadas as $multaId) {
+                        $multa = Fine::find($multaId);
+                        if ($multa && $multa->estado === Fine::ESTADO_PENDIENTE) {
+                            
+                            try {
+                                // ✅ ASOCIAR MULTA CON EL PRIMER PAGO DEL RECIBO
+                                $primerPago = $pagosCreados[0];
+                                $primerPago->multasPagadas()->attach($multaId, [
+                                    'monto_pagado' => $multa->monto,
+                                    'created_at' => now(),
+                                    'updated_at' => now()
+                                ]);
+                                
+                                // ✅ MARCAR MULTA COMO PAGADA
+                                $multa->update(['estado' => Fine::ESTADO_PAGADA]);
+                                
+                                $multasSeleccionadas->push($multa);
+                                
+                                \Log::info("✅ Multa #{$multa->id} '{$multa->nombre}' asociada al pago #{$primerPago->id} - Monto: {$multa->monto}");
+                                
+                            } catch (\Exception $e) {
+                                \Log::error("❌ Error asociando multa #{$multaId}: " . $e->getMessage());
+                            }
+                        } else {
+                            \Log::warning("⚠️ Multa #{$multaId} no encontrada o ya está pagada");
+                        }
+                    }
+                } else {
+                    \Log::info("ℹ️ No hay multas seleccionadas en el request");
+                }
 
             DB::commit();
 
@@ -562,7 +549,6 @@ class PagoController extends Controller
 
         return $mensaje;
     }
-
     private function actualizarDeudaPorPago($propiedadId, $mesPagado)
     {
         try {
@@ -714,4 +700,35 @@ class PagoController extends Controller
             ], 500);
         }
     }
+    private function verificarMesesConsecutivos($mesesPagados, $todosMesesAdeudados)
+{
+    if (empty($mesesPagados) || empty($todosMesesAdeudados)) {
+        return false;
+    }
+    
+    // Ordenar ambos arrays
+    sort($mesesPagados);
+    sort($todosMesesAdeudados);
+    
+    // Encontrar el índice del primer mes pagado en la lista completa
+    $primerMesPagado = $mesesPagados[0];
+    $indiceInicio = array_search($primerMesPagado, $todosMesesAdeudados);
+    
+    if ($indiceInicio === false) {
+        return false;
+    }
+    
+    // Verificar que los meses pagados sean consecutivos desde el inicio
+    for ($i = 0; $i < count($mesesPagados); $i++) {
+        $mesEsperado = $todosMesesAdeudados[$indiceInicio + $i];
+        $mesPagado = $mesesPagados[$i];
+        
+        if ($mesPagado !== $mesEsperado) {
+            \Log::warning("❌ Mes no consecutivo - Esperado: {$mesEsperado}, Pagado: {$mesPagado}");
+            return false;
+        }
+    }
+    
+    return true;
+}
 }

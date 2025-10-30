@@ -260,15 +260,48 @@ class Property extends Model
 /**
  * 🆕 MÉTODO: Forzar actualización a corte pendiente para reconexión
  */
-public function forzarReconexionPendiente()
-{
-    $this->update([
-        'estado' => self::ESTADO_CORTE_PENDIENTE,
-        'tipo_trabajo_pendiente' => self::TRABAJO_RECONEXION
-    ]);
-    
-    \Log::info("🔄 RECONEXIÓN FORZADA - Propiedad: {$this->id} ahora en CORTE_PENDIENTE");
-    
-    return $this->refresh();
-}
+    public function forzarReconexionPendiente()
+    {
+        $this->update([
+            'estado' => self::ESTADO_CORTE_PENDIENTE,
+            'tipo_trabajo_pendiente' => self::TRABAJO_RECONEXION
+        ]);
+        
+        \Log::info("🔄 RECONEXIÓN FORZADA - Propiedad: {$this->id} ahora en CORTE_PENDIENTE");
+        
+        return $this->refresh();
+    }
+    public function obtenerPrimerMesAdeudado()
+    {
+        $mesesAdeudados = $this->obtenerMesesAdeudados();
+        
+        if (empty($mesesAdeudados)) {
+            return null;
+        }
+        
+        sort($mesesAdeudados);
+        return $mesesAdeudados[0];
+    }
+
+    /**
+     * 🆕 MÉTODO: Obtener el último mes adeudado
+     */
+    public function obtenerUltimoMesAdeudado()
+    {
+        $mesesAdeudados = $this->obtenerMesesAdeudados();
+        
+        if (empty($mesesAdeudados)) {
+            return null;
+        }
+        
+        sort($mesesAdeudados);
+        return end($mesesAdeudados);
+    }
+    public function obtenerProximosMesesAPagar($cantidad = 3)
+    {
+        $mesesAdeudados = $this->obtenerMesesAdeudados();
+        sort($mesesAdeudados);
+        
+        return array_slice($mesesAdeudados, 0, $cantidad);
+    }
 }

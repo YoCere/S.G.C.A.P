@@ -374,17 +374,29 @@
                                                   </form>
                                               @endif
                                               
-                                              {{-- 🆕 CORREGIDO: Botón dinámico para cancelar según tipo de trabajo --}}
-                                              @if($isAdmin || $isSecretaria)
-                                                  <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
-                                                      @csrf @method('PUT')
-                                                      <button class="btn btn-secondary btn-sm" type="button" 
-                                                              onclick="confirmCancelAction({{ $p->id }}, '{{ $p->referencia }}', '{{ $p->tipo_trabajo_pendiente }}')" 
-                                                              title="{{ ucfirst($p->texto_accion_cancelar) }}">
-                                                          <i class="fas fa-times"></i>
-                                                      </button>
-                                                  </form>
-                                              @endif
+                                              {{-- ✅ NUEVO: Botón especial para forzar reconexión cuando hay pagos --}}
+                                                @if($p->tipo_trabajo_pendiente === 'reconexion' && ($isAdmin || $isOperador))
+                                                <form action="{{ route('admin.properties.restore', $p) }}" method="POST" class="d-inline">
+                                                    @csrf @method('PUT')
+                                                    <button class="btn btn-success btn-sm" type="button"
+                                                            onclick="confirmForceReconnection({{ $p->id }}, '{{ $p->referencia }}')" 
+                                                            title="Forzar reconexión (cliente ya pagó)">
+                                                        <i class="fas fa-bolt"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+
+                                            {{-- Botón para cancelar --}}
+                                            @if($isAdmin)
+                                                <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
+                                                    @csrf @method('PUT')
+                                                    <button class="btn btn-secondary btn-sm" type="button" 
+                                                            onclick="confirmCancelAction({{ $p->id }}, '{{ $p->referencia }}', '{{ $p->tipo_trabajo_pendiente }}')" 
+                                                            title="{{ ucfirst($p->texto_accion_cancelar) }}">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
                                               
                                               {{-- Admin puede reconectar directamente --}}
                                               @if($isAdmin)
@@ -615,7 +627,7 @@
                           @endif
                           
                           {{-- 🆕 CORREGIDO: Botón dinámico para cancelar según tipo de trabajo --}}
-                          @if($isAdmin || $isSecretaria)
+                          @if($isAdmin )
                               <form action="{{ route('admin.properties.cancel-cut', $p) }}" method="POST" class="d-inline">
                                   @csrf @method('PUT')
                                   <button class="btn btn-secondary btn-sm" type="button" 
@@ -646,21 +658,18 @@
     @endif
 @endif
 
-@if($isAdmin)
-    <form action="{{ route('admin.properties.restore', $p) }}" method="POST" class="d-inline">
-        @csrf @method('PUT')
-        <button class="btn btn-success btn-sm" type="button"
-                onclick="confirmRestoreService({{ $p->id }}, '{{ $p->referencia }}')">
-            <i class="fas fa-bolt"></i>
-        </button>
-    </form>
-@endif
-@endif
+                        @if($isAdmin)
+                            <form action="{{ route('admin.properties.restore', $p) }}" method="POST" class="d-inline">
+                                @csrf @method('PUT')
+                                <button class="btn btn-success btn-sm" type="button"
+                                        onclick="confirmRestoreService({{ $p->id }}, '{{ $p->referencia }}')">
+                                    <i class="fas fa-bolt"></i>
+                                </button>
+                            </form>
+                        @endif
+                        @endif
 
-                      <button class="btn btn-danger btn-sm" type="button" 
-                              onclick="confirmDelete({{ $p->id }}, '{{ $p->referencia }}')">
-                          <i class="fas fa-trash"></i>
-                      </button>
+                      
                   </div>
               </div>
           @endforeach
@@ -925,55 +934,56 @@
 
     // 🆕 NUEVA FUNCIÓN: Confirmación dinámica para cancelar acciones
     function confirmCancelAction(propertyId, propertyRef, tipoTrabajo) {
-      let titulo, mensaje, textoBoton;
-      
-      switch(tipoTrabajo) {
+    let titulo, mensaje, textoBoton, icono = 'question';
+    
+    switch(tipoTrabajo) {
         case 'conexion_nueva':
-          titulo = '¿Cancelar Instalación?';
-          mensaje = `¿Cancelar la instalación pendiente de: <strong>"${propertyRef}"</strong>?<br>
-                     <small class="text-info">La propiedad permanecerá en estado "Pendiente Conexión".</small>`;
-          textoBoton = 'Sí, cancelar instalación';
-          break;
+            titulo = '¿Cancelar Instalación?';
+            mensaje = `¿Cancelar la instalación pendiente de: <strong>"${propertyRef}"</strong>?<br>
+                       <small class="text-info">La propiedad permanecerá en estado "Pendiente Conexión".</small>`;
+            textoBoton = 'Sí, cancelar instalación';
+            break;
         case 'corte_mora':
-          titulo = '¿Cancelar Corte?';
-          mensaje = `¿Cancelar la solicitud de corte para: <strong>"${propertyRef}"</strong>?<br>
-                     <small class="text-info">La propiedad volverá a estado "Activo".</small>`;
-          textoBoton = 'Sí, cancelar corte';
-          break;
+            titulo = '¿Cancelar Corte?';
+            mensaje = `¿Cancelar la solicitud de corte para: <strong>"${propertyRef}"</strong>?<br>
+                       <small class="text-info">La propiedad volverá a estado "Activo".</small>`;
+            textoBoton = 'Sí, cancelar corte';
+            break;
         case 'reconexion':
-          titulo = '¿Cancelar Reconexión?';
-          mensaje = `¿Cancelar la solicitud de reconexión para: <strong>"${propertyRef}"</strong>?<br>
-                     <small class="text-info">La propiedad volverá a estado "Cortado".</small>`;
-          textoBoton = 'Sí, cancelar reconexión';
-          break;
+            titulo = '¿Cancelar Reconexión?';
+            mensaje = `🚨 <strong>ADVERTENCIA:</strong> ¿Cancelar la reconexión de: <strong>"${propertyRef}"</strong>?<br>
+                       <small class="text-danger">⚠️ Si el cliente ya pagó, NO cancele. El operador debe ejecutar la reconexión física.</small><br>
+                       <small class="text-warning">Solo cancele si es un error y el cliente NO ha pagado.</small>`;
+            textoBoton = 'Sí, cancelar (solo si no pagó)';
+            icono = 'warning';
+            break;
         default:
-          titulo = '¿Cancelar Acción?';
-          mensaje = `¿Cancelar la acción pendiente para: <strong>"${propertyRef}"</strong>?`;
-          textoBoton = 'Sí, cancelar';
-      }
-
-      Swal.fire({
-        title: titulo,
-        html: mensaje,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#6c757d',
-        cancelButtonColor: '#28a745',
-        confirmButtonText: textoBoton,
-        cancelButtonText: 'Mantener',
-        reverseButtons: true
-      }).then((result) => {
-        if (result.isConfirmed) {
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = `/admin/properties/${propertyId}/cancel-cut`;
-          form.innerHTML = `@csrf @method('PUT')`;
-          document.body.appendChild(form);
-          form.submit();
-        }
-      });
+            titulo = '¿Cancelar Acción?';
+            mensaje = `¿Cancelar la acción pendiente para: <strong>"${propertyRef}"</strong>?`;
+            textoBoton = 'Sí, cancelar';
     }
 
+    Swal.fire({
+        title: titulo,
+        html: mensaje,
+        icon: icono,
+        showCancelButton: true,
+        confirmButtonColor: tipoTrabajo === 'reconexion' ? '#dc3545' : '#6c757d',
+        cancelButtonColor: '#28a745',
+        confirmButtonText: textoBoton,
+        cancelButtonText: tipoTrabajo === 'reconexion' ? 'Mantener (Recomendado)' : 'Mantener',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/admin/properties/${propertyId}/cancel-cut`;
+            form.innerHTML = `@csrf @method('PUT')`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
     function confirmRestoreService(propertyId, propertyRef) {
       Swal.fire({
         title: '¿Reconectar Servicio?',
@@ -1020,6 +1030,31 @@
           form.submit();
         }
       });
+    }
+    // ✅ NUEVA FUNCIÓN: Forzar reconexión cuando el cliente ya pagó
+    function confirmForceReconnection(propertyId, propertyRef) {
+        Swal.fire({
+            title: '¿Forzar Reconexión?',
+            html: `¿Marcar como reconectada la propiedad: <strong>"${propertyRef}"</strong>?<br>
+                  <small class="text-success">✅ Use esta opción cuando el cliente YA PAGÓ y el operador completó el trabajo físico.</small><br>
+                  <small class="text-info">La propiedad volverá a estado "Activo".</small>`,
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, reconexión completada',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/admin/properties/${propertyId}/restore`;
+                form.innerHTML = `@csrf @method('PUT')`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
     }
   </script>
 @stop

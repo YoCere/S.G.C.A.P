@@ -298,7 +298,7 @@
                                             <i class="fas fa-map-marker-alt mr-1"></i> Sin Ubicación
                                         </button>
                                     @endif
-
+                                    @can('admin.cortes.marcar-cortado')
                                     <form action="{{ route('admin.cortes.marcar-cortado', $propiedad->id) }}" 
                                           method="POST" class="d-inline flex-fill">
                                         @csrf
@@ -308,6 +308,7 @@
                                             {{ $texto_boton }}
                                         </button>
                                     </form>
+                                    @endcan
                                 </div>
                             </div>
                         @endforeach

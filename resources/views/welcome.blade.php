@@ -6,17 +6,17 @@
                 <div class="space-y-6">
                     
                     <h1 class="text-4xl lg:text-5xl font-bold leading-tight">
-                        AGUA POTABLE<br>
-                        <span class="text-cyan-200">PARA TODA LA COMUNIDAD</span>
+                        COMITE DE AGUA<br>
+                        <span class="text-cyan-200">COMUNIDAD INDEPENDENCIA LA GRAMPA</span>
                     </h1>
                     <p class="text-xl text-blue-100 leading-relaxed">
                         Servicio confiable y continuo de agua potable para las familias de 
                         <strong>La Grampa</strong>. Trabajamos por el bienestar de nuestra comunidad.
                     </p>
                     <div class="flex flex-col sm:flex-row gap-4 pt-4">
-                        <a href="{{ route('login') }}" 
-                        class="w-full border-2 border-blue-600 text-blue-600 py-3 px-6 rounded-lg font-semibold text-center block hover:bg-blue-600 hover:text-white transition duration-300">
-                            ACCEDER AL SISTEMA
+                        <a href="{{ route('consultar-deuda') }}" 
+                        class="w-full border-2 border-white text-white py-4 px-8 rounded-lg font-bold text-center block hover:bg-white hover:text-blue-600 transition duration-300">
+                            CONSULTA TU DEUDA
                         </a>
                         <a href="#servicios" 
                            class="border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg text-center hover:bg-white hover:text-blue-600 transition duration-300">
@@ -136,8 +136,7 @@
                             </div>
                             <div>
                                 <h4 class="font-semibold text-gray-900">Teléfonos</h4>
-                                <p class="text-gray-600">Central: (591) 4-6642211</p>
-                                <p class="text-gray-600">Emergencias: (591) 4-6642212</p>
+                                <p class="text-gray-600">Central:77817297</p>
                             </div>
                         </div>
                         
@@ -149,8 +148,8 @@
                             </div>
                             <div>
                                 <h4 class="font-semibold text-gray-900">Horario de Atención</h4>
-                                <p class="text-gray-600">Lunes a Viernes: 8:00 - 16:00</p>
-                                <p class="text-gray-600">Sábados: 8:00 - 12:00</p>
+                                <p class="text-gray-600">Lunes a Viernes: 02:00 PM - 06:00 PM</p>
+                                <p class="text-gray-600">Sábados: 8:00 AM - 12:00 PM</p>
                             </div>
                         </div>
                     </div>

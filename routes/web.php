@@ -22,7 +22,8 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
+    // Redirigir dashboard al panel de admin
     Route::get('/dashboard', function () {
-        return view('dashboard');
+        return redirect()->route('admin.home');
     })->name('dashboard');
 });

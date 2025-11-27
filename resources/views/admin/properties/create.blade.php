@@ -4,7 +4,7 @@
 @section('title', 'Nueva Propiedad')
 
 @section('content_header')
-  <h1>Nueva propiedad</h1>
+  <h1>Nueva instalacion</h1>
 @stop
 
 @section('content')

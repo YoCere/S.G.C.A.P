@@ -206,7 +206,7 @@
   <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
     <div class="d-flex flex-wrap gap-2">
       <a class="btn btn-primary btn-sm" href="{{ route('admin.properties.create') }}">
-        <i class="fas fa-plus-circle mr-1"></i>Nueva Propiedad
+        <i class="fas fa-plus-circle mr-1"></i>Nueva Instalacion
       </a>
       <a href="{{ route('admin.cortes.pendientes') }}" class="btn btn-warning btn-sm">
         <i class="fas fa-clock mr-1"></i>Ver Cortes Pendientes
@@ -310,7 +310,8 @@
                                                       data-lat="{{ $p->latitud }}"
                                                       data-lng="{{ $p->longitud }}"
                                                       data-ref="{{ $p->referencia }}"
-                                                      data-id="{{ $p->id }}">
+                                                      data-id="{{ $p->id }}"
+                                                      data-id="{{ $p->client->codigo_cliente }}">
                                                   <i class="fas fa-map-marker-alt"></i>
                                               </button>
                                           @else
@@ -812,6 +813,7 @@
       const lng = parseFloat(button.data('lng'));
       const ref = button.data('ref') || 'Propiedad';
       const id = button.data('id');
+    
 
       // Actualizar información
       $('#mapCoordinates').text(`Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
@@ -845,7 +847,7 @@
       // Centrar y agregar marcador
       leafletMap.setView([lat, lng], 16);
       leafletMarker = L.marker([lat, lng]).addTo(leafletMap)
-        .bindPopup(`<strong>${ref}</strong><br>ID: ${id}<br>Código: ${button.data('codigo') || 'N/A'}`)
+        .bindPopup(`<strong>${ref}</strong><br>ID: ${id}`)
         .openPopup();
 
       // Ajustar tamaño del mapa

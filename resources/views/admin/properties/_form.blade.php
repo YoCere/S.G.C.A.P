@@ -3,18 +3,21 @@
 <div class="form-row">
   <div class="form-group col-md-6">
     <label>Cliente</label>
-    <select name="cliente_id" class="form-control select2" required>
-      <option value="">— Seleccione —</option>
+    <input list="clientes-list" name="cliente_id" class="form-control" 
+           placeholder="Escriba el nombre del cliente..." 
+           value="{{ old('cliente_id', $property->cliente_id ?? '') }}" required>
+    <datalist id="clientes-list">
       @foreach ($clients as $c)
-        <option value="{{ $c->id }}" @selected(old('cliente_id', $property->cliente_id ?? null) == $c->id)>
+        <option value="{{ $c->id }}">
           {{ $c->nombre }} 
           @if($c->ci) (CI: {{ $c->ci }}) @endif 
           @if($c->codigo_cliente) - Código: {{ $c->codigo_cliente }} @endif
         </option>
       @endforeach
-    </select>
+    </datalist>
     @error('cliente_id') <span class="text-danger small">{{ $message }}</span> @enderror
   </div>
+</div>
 
   <div class="form-group col-md-6">
     <label>Tarifa</label>

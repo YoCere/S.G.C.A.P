@@ -139,7 +139,7 @@ class PropertyController extends Controller
             Property::create($data);
             
             return redirect()->route('admin.properties.index')
-                ->with('info', 'Propiedad creada con éxito - Estado: Pendiente de Conexión');
+                ->with('info', 'Instalacion solicitada con éxito - Estado: Pendiente de Conexión');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Error al crear la propiedad: ' . $e->getMessage())

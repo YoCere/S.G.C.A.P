@@ -1,5 +1,11 @@
 <?php
 
+// tests/Pest.php
+
+require_once __DIR__ . '/Helpers.php';
+
+// Aquí pueden ir otros bootstraps (uses, etc.)
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -10,7 +16,7 @@
 | need to change it using the "pest()" function to bind a different classes or traits.
 |
 */
-
+uses(Tests\TestCase::class)->in('Unit');
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->in('Feature');

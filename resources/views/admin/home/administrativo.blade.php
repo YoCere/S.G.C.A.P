@@ -3,7 +3,7 @@
 @section('title', 'Dashboard - SGCAF')
 
 @section('content_header')
-    <h1>📊 Dashboard - COMITE DE AGUA LA GRAMPA</h1>
+    <h1>📊 Panel de control - COMITE DE AGUA LA GRAMPA</h1>
 @stop
 
 @section('content')

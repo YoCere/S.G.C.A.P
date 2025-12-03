@@ -387,6 +387,12 @@ return [
             'icon' => 'fas fa-chart-line',
             'can' => 'admin.reportes.index',
         ],
+        [
+            'text' => 'Copia de seguridad',
+            'route' => 'admin.backups.index',
+            'icon' => 'fas fa-database',
+            'can' => 'admin.backups.index',
+        ],
         
     ],
 

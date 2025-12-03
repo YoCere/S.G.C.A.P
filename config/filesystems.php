@@ -48,16 +48,21 @@ return [
         ],
 
         's3' => [
-            'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_BUCKET'),
-            'url' => env('AWS_URL'),
-            'endpoint' => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
-            'report' => false,
+                'driver' => 's3',
+                'key' => env('AWS_ACCESS_KEY_ID'),
+                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                'region' => env('AWS_DEFAULT_REGION'),
+                'bucket' => env('AWS_BUCKET'),
+                'url' => env('AWS_URL'),
+                'endpoint' => env('AWS_ENDPOINT'),
+                'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            ],
+        'google' => [
+        'driver' => 'google',
+        // Si tu driver extiende Storage::extend y toma estas vars puedes usar:
+        'service_account_json_base64' => env('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64'),
+        'folder_id' => env('GOOGLE_DRIVE_BACKUP_FOLDER_ID', 'root'),
+        // opcional: otros campos que tu adapter necesite
         ],
 
     ],

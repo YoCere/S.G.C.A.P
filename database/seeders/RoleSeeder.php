@@ -359,5 +359,44 @@ class RoleSeeder extends Seeder
             'name' => 'admin.sincronizar-deudas',
             'description' => 'Sincronizar deudas con pagos'
         ])->syncRoles([$admin]);
-    }
+
+    // ==================== PERMISOS DE BACKUPS ====================
+    // Ver listado de backups
+    Permission::create([
+        'name' => 'admin.backups.index',
+        'description' => 'Ver listado de backups del sistema'
+    ])->syncRoles([$admin]);
+
+    // Ejecutar backup manual
+    Permission::create([
+        'name' => 'admin.backups.run',
+        'description' => 'Ejecutar un backup manual'
+    ])->syncRoles([$admin]);
+
+    // Ejecutar limpieza (cleanup)
+    Permission::create([
+        'name' => 'admin.backups.clean',
+        'description' => 'Ejecutar limpieza de copias antiguas'
+    ])->syncRoles([$admin]);
+
+    // Descargar un backup
+    Permission::create([
+        'name' => 'admin.backups.download',
+        'description' => 'Descargar copia de seguridad'
+    ])->syncRoles([$admin]);
+
+    // Ver log del backup
+    Permission::create([
+        'name' => 'admin.backups.log',
+        'description' => 'Ver detalle del log de un backup'
+    ])->syncRoles([$admin]);
+
+    // Eliminar backup
+    Permission::create([
+        'name' => 'admin.backups.destroy',
+        'description' => 'Eliminar una copia de seguridad'
+    ])->syncRoles([$admin]);
+    
+}
+
 }

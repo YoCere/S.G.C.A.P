@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\CorteController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ReporteController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\BackupController;
 
 Route::middleware(['auth'])
     ->prefix('admin')
@@ -182,4 +183,17 @@ Route::middleware(['auth'])
             $actualizadas = $controller->sincronizarDeudasConPagos();
             return "Deudas actualizadas: {$actualizadas}";
         })->middleware('can:admin.sincronizar-deudas');
+
+        Route::resource('backups', BackupController::class)
+        ->parameters(['backups' => 'id'])   // opcional: fuerza el nombre del param a {id}
+        ->only(['index', 'show', 'destroy'])
+        ->names('admin.backups');
+
+        // Acciones extras (no RESTful)
+        Route::post('backups/run',   [BackupController::class, 'run'])->name('admin.backups.run');
+        Route::post('backups/clean', [BackupController::class, 'clean'])->name('admin.backups.clean');
+
+        // Descarga y log (si prefieres nombres separados en vez de show)
+        Route::get('backups/{id}/download', [BackupController::class, 'download'])->name('admin.backups.download');
+        Route::get('backups/{id}/log',      [BackupController::class, 'log'])->name('admin.backups.log');
     });

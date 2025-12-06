@@ -184,16 +184,27 @@ Route::middleware(['auth'])
             return "Deudas actualizadas: {$actualizadas}";
         })->middleware('can:admin.sincronizar-deudas');
 
-        Route::resource('backups', BackupController::class)
-        ->parameters(['backups' => 'id'])   // opcional: fuerza el nombre del param a {id}
-        ->only(['index', 'show', 'destroy'])
+        // ACCIONES EXTRA
+        Route::post('backups/{id}/restore', [BackupController::class, 'restore'])
+        ->name('admin.backups.restore');
+    
+    Route::get('backups/restore-log', [BackupController::class, 'restoreLog'])
+        ->name('admin.backups.restore-log');
+    
+    // Descarga y log normal
+    Route::get('backups/{id}/download', [BackupController::class, 'download'])
+        ->name('admin.backups.download');
+    
+    Route::get('backups/{id}/log', [BackupController::class, 'log'])
+        ->name('admin.backups.log');
+    
+    // RESOURCE (AL FINAL SIEMPRE)
+    Route::resource('backups', BackupController::class)
+        ->parameters(['backups' => 'id'])
+        ->only(['index', 'destroy'])
         ->names('admin.backups');
+    
+    // Acciones extras
+    Route::post('backups/run',   [BackupController::class, 'run'])->name('admin.backups.run');
+    Route::post('backups/clean', [BackupController::class, 'clean'])->name('admin.backups.clean');});
 
-        // Acciones extras (no RESTful)
-        Route::post('backups/run',   [BackupController::class, 'run'])->name('admin.backups.run');
-        Route::post('backups/clean', [BackupController::class, 'clean'])->name('admin.backups.clean');
-
-        // Descarga y log (si prefieres nombres separados en vez de show)
-        Route::get('backups/{id}/download', [BackupController::class, 'download'])->name('admin.backups.download');
-        Route::get('backups/{id}/log',      [BackupController::class, 'log'])->name('admin.backups.log');
-    });

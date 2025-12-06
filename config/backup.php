@@ -160,7 +160,7 @@ return [
              */
             'disks' => [
                 // lista de nombres de discos donde quieres guardar backups
-        
+                'local',  
                 's3',
             ],
         ],

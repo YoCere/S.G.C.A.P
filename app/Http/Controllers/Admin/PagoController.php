@@ -460,6 +460,9 @@ class PagoController extends Controller
             $numeroRecibo = $this->generarNumeroRecibo();
             
             foreach ($meses as $mes) {
+                // Generar un numero de recibo nuevo para CADA pago
+                $numeroRecibo = $this->generarNumeroRecibo();
+            
                 $pago = Pago::create([
                     'numero_recibo' => $numeroRecibo,
                     'propiedad_id' => $propiedad->id,
@@ -471,13 +474,12 @@ class PagoController extends Controller
                     'observaciones' => $request->observaciones,
                     'registrado_por' => auth()->id(),
                 ]);
-                
+            
                 $pagosCreados[] = $pago;
-                
+            
                 // Actualizar deudas si existen
                 $this->actualizarDeudaPorPago($propiedad->id, $mes);
             }
-
             // ✅ CORREGIDO: PROCESAR Y ASOCIAR MULTAS SELECCIONADAS
                 if ($request->has('multas_seleccionadas')) {
                     \Log::info("🔍 Procesando multas seleccionadas: " . json_encode($request->multas_seleccionadas));

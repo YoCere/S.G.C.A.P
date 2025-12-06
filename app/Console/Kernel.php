@@ -13,6 +13,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
+        \App\Console\Commands\BackupsRestore::class,
         \App\Console\Commands\GenerateMonthlyDebts::class,
         \App\Console\Commands\UpdateDebtsStatus::class, // ← AÑADIR ESTA LÍNEA
     ];

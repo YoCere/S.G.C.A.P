@@ -396,6 +396,16 @@ class RoleSeeder extends Seeder
         'name' => 'admin.backups.destroy',
         'description' => 'Eliminar una copia de seguridad'
     ])->syncRoles([$admin]);
+    Permission::create([
+        'name' => 'admin.backups.restore',
+        'description' => 'Restaurar una copia de seguridad'
+    ])->syncRoles([$admin]);
+    
+    // Ver log en vivo / restore-log
+    Permission::create([
+        'name' => 'admin.backups.restore-log',
+        'description' => 'Ver el log de restauración en vivo'
+    ])->syncRoles([$admin]);
     
 }
 

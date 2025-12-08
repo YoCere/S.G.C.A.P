@@ -67,7 +67,7 @@
         <div class="col-md-3 col-6">
             <div class="small-box bg-success">
                 <div class="inner">
-                    <h3>{{ $clientes->count() }}</h3>
+                    <h3>{{ $estadisticas['total_clientes'] }}</h3>
                     <p>Total Clientes</p>
                 </div>
                 <div class="icon">
@@ -78,8 +78,9 @@
         <div class="col-md-3 col-6">
             <div class="small-box bg-primary">
                 <div class="inner">
-                    <h3>{{ $clientes->where('estado_cliente', 'activo')->count() }}</h3>
+                    <h3>{{ $estadisticas['clientes_activos'] }}</h3>
                     <p>Clientes Activos</p>
+                    <small>{{ $estadisticas['por_estado']['activo']['porcentaje'] }}% del total</small>
                 </div>
                 <div class="icon">
                     <i class="fas fa-user-check"></i>
@@ -89,8 +90,9 @@
         <div class="col-md-3 col-6">
             <div class="small-box bg-warning">
                 <div class="inner">
-                    <h3>{{ $clientes->where('estado_cliente', 'inactivo')->count() }}</h3>
+                    <h3>{{ $estadisticas['clientes_inactivos'] }}</h3>
                     <p>Clientes Inactivos</p>
+                    <small>{{ $estadisticas['por_estado']['inactivo']['porcentaje'] }}% del total</small>
                 </div>
                 <div class="icon">
                     <i class="fas fa-user-times"></i>
@@ -100,11 +102,66 @@
         <div class="col-md-3 col-6">
             <div class="small-box bg-info">
                 <div class="inner">
-                    <h3>{{ $clientes->sum('total_propiedades') }}</h3>
+                    <h3>{{ $estadisticas['total_propiedades'] }}</h3>
                     <p>Total Propiedades</p>
+                    <small>{{ $estadisticas['total_clientes'] > 0 ? round($estadisticas['total_propiedades'] / $estadisticas['total_clientes'], 1) : 0 }} por cliente</small>
                 </div>
                 <div class="icon">
                     <i class="fas fa-home"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico Simple de Estado -->
+    <div class="card no-print mb-4">
+        <div class="card-header">
+            <h3 class="card-title">📊 Distribución por Estado</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <canvas id="graficoEstado" height="200"></canvas>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Estado</th>
+                                <th class="text-center">Clientes</th>
+                                <th class="text-center">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge badge-success">ACTIVO</span></td>
+                                <td class="text-center">{{ $estadisticas['por_estado']['activo']['cantidad'] }}</td>
+                                <td class="text-center">{{ $estadisticas['por_estado']['activo']['porcentaje'] }}%</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-warning">INACTIVO</span></td>
+                                <td class="text-center">{{ $estadisticas['por_estado']['inactivo']['cantidad'] }}</td>
+                                <td class="text-center">{{ $estadisticas['por_estado']['inactivo']['porcentaje'] }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Gráfico de progreso -->
+                    <div class="mt-4">
+                        <h6>Proporción Activos/Inactivos:</h6>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-success" 
+                                 style="width: {{ $estadisticas['por_estado']['activo']['porcentaje'] }}%"
+                                 role="progressbar">
+                                Activos ({{ $estadisticas['por_estado']['activo']['porcentaje'] }}%)
+                            </div>
+                            <div class="progress-bar bg-warning" 
+                                 style="width: {{ $estadisticas['por_estado']['inactivo']['porcentaje'] }}%"
+                                 role="progressbar">
+                                Inactivos ({{ $estadisticas['por_estado']['inactivo']['porcentaje'] }}%)
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -142,6 +199,9 @@
                             <td>
                                 <div class="font-weight-bold">{{ $cliente['nombre'] }}</div>
                                 <small class="text-muted">{{ $cliente['fecha_registro'] }}</small>
+                                @if(isset($cliente['tarifa']) && $cliente['tarifa'])
+                                    <div><small class="text-info">{{ $cliente['tarifa'] }}</small></div>
+                                @endif
                             </td>
                             <td>
                                 <span class="text-muted">{{ $cliente['ci'] ?: 'No registrado' }}</span>
@@ -186,10 +246,10 @@
                     <ul class="list-unstyled">
                         <li><strong>Fecha generación:</strong> {{ now()->format('d/m/Y H:i') }}</li>
                         <li><strong>Total clientes:</strong> {{ $clientes->count() }}</li>
-                        <li><strong>Clientes activos:</strong> {{ $clientes->where('estado_cliente', 'activo')->count() }}</li>
-                        <li><strong>Clientes inactivos:</strong> {{ $clientes->where('estado_cliente', 'inactivo')->count() }}</li>
+                        <li><strong>Clientes activos:</strong> {{ $estadisticas['clientes_activos'] }}</li>
+                        <li><strong>Clientes inactivos:</strong> {{ $estadisticas['clientes_inactivos'] }}</li>
                         <li><strong>Filtro barrio:</strong> {{ $filtroBarrio ?: 'Todos' }}</li>
-                        <li><strong>Filtro estado:</strong> {{ $filtroEstado ?: 'Todos' }}</li>
+                        <li><strong>Filtro estado:</strong> {{ $filtroEstado ? ucfirst($filtroEstado) : 'Todos' }}</li>
                     </ul>
                 </div>
                 <div class="col-md-6">
@@ -223,6 +283,11 @@
         .small-box .inner p {
             font-size: 0.85rem;
         }
+        .small-box .inner small {
+            font-size: 0.75rem;
+            display: block;
+            margin-top: 5px;
+        }
         .no-print {
             display: block;
         }
@@ -255,18 +320,60 @@
             }
         }
     </style>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 @stop
 
 @section('js')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Mensaje de carga al aplicar filtros
-            const form = document.querySelector('form');
-            form.addEventListener('submit', function() {
-                const button = this.querySelector('button[type="submit"]');
-                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Filtrando...';
-                button.disabled = true;
-            });
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Datos para gráfico de estado
+        const datosEstado = {
+            activo: {{ $estadisticas['por_estado']['activo']['cantidad'] }},
+            inactivo: {{ $estadisticas['por_estado']['inactivo']['cantidad'] }}
+        };
+
+        // Gráfico de estado (activo/inactivo)
+        const ctxEstado = document.getElementById('graficoEstado').getContext('2d');
+        
+        new Chart(ctxEstado, {
+            type: 'pie',
+            data: {
+                labels: ['ACTIVO', 'INACTIVO'],
+                datasets: [{
+                    data: [datosEstado.activo, datosEstado.inactivo],
+                    backgroundColor: ['#36A2EB', '#FFCE56'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = datosEstado.activo + datosEstado.inactivo;
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
         });
-    </script>
+
+        // Mensaje de carga al aplicar filtros
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function() {
+            const button = this.querySelector('button[type="submit"]');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Filtrando...';
+            button.disabled = true;
+        });
+    });
+</script>
 @stop

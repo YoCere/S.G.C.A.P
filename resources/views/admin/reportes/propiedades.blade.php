@@ -70,8 +70,9 @@
         <div class="col-md-3 col-6">
             <div class="small-box bg-info">
                 <div class="inner">
-                    <h3>{{ $propiedades->count() }}</h3>
+                    <h3>{{ $estadisticas['total_propiedades'] }}</h3>
                     <p>Total Propiedades</p>
+                    <small>{{ $estadisticas['clientes_unicos'] }} clientes únicos</small>
                 </div>
                 <div class="icon">
                     <i class="fas fa-home"></i>
@@ -83,6 +84,7 @@
                 <div class="inner">
                     <h3>{{ $propiedades->where('estado_servicio', 'activo')->count() }}</h3>
                     <p>Propiedades Activas</p>
+                    <small>{{ $estadisticas['promedio_propiedades_por_cliente'] }} por cliente</small>
                 </div>
                 <div class="icon">
                     <i class="fas fa-plug"></i>
@@ -92,19 +94,21 @@
         <div class="col-md-3 col-6">
             <div class="small-box bg-danger">
                 <div class="inner">
-                    <h3>{{ $propiedades->where('estado_servicio', 'cortado')->count() }}</h3>
-                    <p>Propiedades Cortadas</p>
+                    <h3>{{ $estadisticas['con_deuda'] }}</h3>
+                    <p>Propiedades con Deuda</p>
+                    <small>{{ $estadisticas['porcentaje_con_deuda'] }}% del total</small>
                 </div>
                 <div class="icon">
-                    <i class="fas fa-ban"></i>
+                    <i class="fas fa-exclamation-circle"></i>
                 </div>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="small-box bg-warning">
                 <div class="inner">
-                    <h3>{{ $propiedades->where('trabajo_pendiente', '!=', 'Sin trabajo pendiente')->count() }}</h3>
+                    <h3>{{ $estadisticas['con_trabajo_pendiente'] }}</h3>
                     <p>Trabajos Pendientes</p>
+                    <small>{{ $estadisticas['porcentaje_con_trabajo'] }}% del total</small>
                 </div>
                 <div class="icon">
                     <i class="fas fa-tools"></i>
@@ -112,6 +116,153 @@
             </div>
         </div>
     </div>
+
+    <!-- Gráficos -->
+    <div class="row mb-4 no-print">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📊 Distribución por Estado del Servicio</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoEstado" height="200"></canvas>
+                    <div class="mt-3">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Estado</th>
+                                    <th class="text-center">Propiedades</th>
+                                    <th class="text-center">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($estadisticas['por_estado'] as $estado => $data)
+                                @if($data['cantidad'] > 0)
+                                <tr>
+                                    <td>
+                                        @php
+                                            $estadoTexto = ucfirst(str_replace('_', ' ', $estado));
+                                            $badgeClass = [
+                                                'activo' => 'success',
+                                                'cortado' => 'danger',
+                                                'corte_pendiente' => 'warning',
+                                                'pendiente_conexion' => 'info',
+                                                'inactivo' => 'secondary'
+                                            ][$estado] ?? 'secondary';
+                                        @endphp
+                                        <span class="badge badge-{{ $badgeClass }}">{{ strtoupper($estadoTexto) }}</span>
+                                    </td>
+                                    <td class="text-center">{{ $data['cantidad'] }}</td>
+                                    <td class="text-center">{{ $data['porcentaje'] }}%</td>
+                                </tr>
+                                @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📊 Deuda: Propiedades con Deuda vs Al Día</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoDeuda" height="200"></canvas>
+                    <div class="mt-3">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Situación</th>
+                                    <th class="text-center">Propiedades</th>
+                                    <th class="text-center">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge badge-danger">CON DEUDA</span></td>
+                                    <td class="text-center">{{ $estadisticas['por_deuda']['con_deuda']['cantidad'] }}</td>
+                                    <td class="text-center">{{ $estadisticas['por_deuda']['con_deuda']['porcentaje'] }}%</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge badge-success">AL DÍA</span></td>
+                                    <td class="text-center">{{ $estadisticas['por_deuda']['sin_deuda']['cantidad'] }}</td>
+                                    <td class="text-center">{{ $estadisticas['por_deuda']['sin_deuda']['porcentaje'] }}%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Barrios -->
+    @if(count($estadisticas['por_barrio']) > 0)
+    <div class="row mb-4 no-print">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📍 Top 10 Barrios con más Propiedades</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoBarrios" height="150"></canvas>
+                    <div class="mt-3">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Barrio</th>
+                                    <th class="text-center">Propiedades</th>
+                                    <th class="text-center">%</th>
+                                    <th class="text-center">Estado Mayoritario</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php $index = 1; @endphp
+                                @foreach($estadisticas['por_barrio'] as $barrio => $data)
+                                @php
+                                    // Obtener estado predominante en este barrio
+                                    $propiedadesBarrio = $propiedades->where('barrio', $barrio);
+                                    $estadosBarrio = $propiedadesBarrio->groupBy('estado_servicio');
+                                    $estadoPredominante = $estadosBarrio->isNotEmpty() 
+                                        ? $estadosBarrio->sortByDesc('count')->keys()->first() 
+                                        : 'N/A';
+                                @endphp
+                                <tr>
+                                    <td>{{ $index++ }}</td>
+                                    <td>{{ $barrio }}</td>
+                                    <td class="text-center">{{ $data['cantidad'] }}</td>
+                                    <td class="text-center">{{ $data['porcentaje'] }}%</td>
+                                    <td class="text-center">
+                                        @if($estadoPredominante != 'N/A')
+                                            @php
+                                                $badgeClass = [
+                                                    'activo' => 'success',
+                                                    'cortado' => 'danger',
+                                                    'corte_pendiente' => 'warning',
+                                                    'pendiente_conexion' => 'info',
+                                                    'inactivo' => 'secondary'
+                                                ][$estadoPredominante] ?? 'secondary';
+                                            @endphp
+                                            <span class="badge badge-{{ $badgeClass }}">
+                                                {{ strtoupper(substr($estadoPredominante, 0, 3)) }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Lista de Propiedades -->
     <div class="card">
@@ -155,6 +306,9 @@
                             </td>
                             <td>
                                 <div class="font-weight-bold">{{ $propiedad['cliente'] }}</div>
+                                @if(isset($propiedad['tarifa']) && $propiedad['tarifa'])
+                                    <small class="text-info">{{ $propiedad['tarifa'] }}</small>
+                                @endif
                             </td>
                             <td class="text-center">
                                 <span class="text-muted">{{ $propiedad['codigo_cliente'] }}</span>
@@ -201,18 +355,23 @@
                     <ul class="list-unstyled">
                         <li><strong>Fecha generación:</strong> {{ now()->format('d/m/Y H:i') }}</li>
                         <li><strong>Total propiedades:</strong> {{ $propiedades->count() }}</li>
-                        <li><strong>Propiedades activas:</strong> {{ $propiedades->where('estado_servicio', 'activo')->count() }}</li>
-                        <li><strong>Propiedades cortadas:</strong> {{ $propiedades->where('estado_servicio', 'cortado')->count() }}</li>
+                        <li><strong>Clientes únicos:</strong> {{ $estadisticas['clientes_unicos'] }}</li>
+                        <li><strong>Propiedades con deuda:</strong> {{ $estadisticas['con_deuda'] }} ({{ $estadisticas['porcentaje_con_deuda'] }}%)</li>
+                        <li><strong>Trabajos pendientes:</strong> {{ $estadisticas['con_trabajo_pendiente'] }} ({{ $estadisticas['porcentaje_con_trabajo'] }}%)</li>
                         <li><strong>Filtro barrio:</strong> {{ $filtroBarrio ?: 'Todos' }}</li>
                         <li><strong>Filtro estado:</strong> {{ $filtroEstado ? ucfirst(str_replace('_', ' ', $filtroEstado)) : 'Todos' }}</li>
                     </ul>
                 </div>
                 <div class="col-md-6">
                     <h6>🎯 Leyenda de Estados:</h6>
-                    <div class="d-flex flex-wrap gap-2">
+                    <div class="d-flex flex-wrap gap-2 mb-2">
                         <span class="badge badge-success">ACTIVO</span>
                         <span class="badge badge-danger">CORTADO</span>
                         <span class="badge badge-warning">PENDIENTE</span>
+                        <span class="badge badge-info">PEND. CONEXIÓN</span>
+                        <span class="badge badge-secondary">INACTIVO</span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
                         <span class="badge badge-danger">CON DEUDA</span>
                         <span class="badge badge-success">AL DÍA</span>
                     </div>
@@ -254,4 +413,140 @@
             }
         }
     </style>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@stop
+
+@section('js')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Datos para gráficos
+        const datosEstado = {!! json_encode($estadisticas['por_estado']) !!};
+        const datosDeuda = {!! json_encode($estadisticas['por_deuda']) !!};
+        const datosBarrios = {!! json_encode($estadisticas['por_barrio']) !!};
+
+        // 1. Gráfico de estado del servicio
+        const ctxEstado = document.getElementById('graficoEstado').getContext('2d');
+        const labelsEstado = Object.keys(datosEstado).map(estado => {
+            return estado.charAt(0).toUpperCase() + estado.slice(1).replace('_', ' ');
+        });
+        const dataEstado = Object.values(datosEstado).map(data => data.cantidad);
+        
+        // Colores para estados
+        const estadoColors = {
+            'activo': '#28a745',
+            'cortado': '#dc3545',
+            'corte_pendiente': '#ffc107',
+            'pendiente_conexion': '#17a2b8',
+            'inactivo': '#6c757d'
+        };
+
+        const backgroundColorsEstado = Object.keys(datosEstado).map(estado => {
+            return estadoColors[estado] || '#6c757d';
+        });
+
+        new Chart(ctxEstado, {
+            type: 'pie',
+            data: {
+                labels: labelsEstado,
+                datasets: [{
+                    data: dataEstado,
+                    backgroundColor: backgroundColorsEstado,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 2. Gráfico de deuda
+        const ctxDeuda = document.getElementById('graficoDeuda').getContext('2d');
+        new Chart(ctxDeuda, {
+            type: 'doughnut',
+            data: {
+                labels: ['CON DEUDA', 'AL DÍA'],
+                datasets: [{
+                    data: [
+                        datosDeuda.con_deuda.cantidad,
+                        datosDeuda.sin_deuda.cantidad
+                    ],
+                    backgroundColor: ['#dc3545', '#28a745'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+
+        // 3. Gráfico de barrios (si hay datos)
+        if (Object.keys(datosBarrios).length > 0) {
+            const ctxBarrios = document.getElementById('graficoBarrios').getContext('2d');
+            const barriosLabels = Object.keys(datosBarrios);
+            const barriosData = Object.values(datosBarrios).map(data => data.cantidad);
+            
+            new Chart(ctxBarrios, {
+                type: 'bar',
+                data: {
+                    labels: barriosLabels,
+                    datasets: [{
+                        label: 'Propiedades por Barrio',
+                        data: barriosData,
+                        backgroundColor: '#17a2b8',
+                        borderColor: '#17a2b8',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Cantidad de Propiedades'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Barrios'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Mensaje de carga al aplicar filtros
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function() {
+            const button = this.querySelector('button[type="submit"]');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Filtrando...';
+            button.disabled = true;
+        });
+    });
+</script>
 @stop

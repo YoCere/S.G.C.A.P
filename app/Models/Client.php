@@ -156,4 +156,59 @@ class Client extends Model
     {
         return $this->estado_cuenta === self::ESTADO_ACTIVO ? 'success' : 'warning';
     }
+    public function getTipoClienteAttribute()
+    {
+        return $this->attributes['tipo_cliente'] ?? 'normal';
+    }
+
+    /**
+     * Obtener tarifa del cliente
+     */
+    public function getTarifaAttribute()
+    {
+        return $this->attributes['tarifa'] ?? 'general';
+    }
+
+    /**
+     * Scope para filtrar por tipo de cliente
+     */
+    public function scopePorTipo($query, $tipo)
+    {
+        return $query->where('tipo_cliente', $tipo);
+    }
+
+    /**
+     * Obtener propiedades con morosidad
+     */
+    public function propiedadesConMorosidad()
+    {
+        return $this->properties()->whereHas('debts', function($query) {
+            $query->pendientes();
+        });
+    }
+
+    /**
+     * Obtener total deuda del cliente
+     */
+    public function getTotalDeudaAttribute()
+    {
+        return $this->properties->sum(function($property) {
+            return $property->total_deudas_pendientes;
+        });
+    }
+
+    /**
+     * Obtener meses de mora del cliente
+     */
+    public function getMesesMoraAttribute()
+    {
+        $maxMeses = 0;
+        foreach ($this->properties as $property) {
+            $meses = count($property->obtenerMesesAdeudados());
+            if ($meses > $maxMeses) {
+                $maxMeses = $meses;
+            }
+        }
+        return $maxMeses;
+    }
 }

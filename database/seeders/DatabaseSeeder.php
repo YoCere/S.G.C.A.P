@@ -13,45 +13,72 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;  
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // === 1) Usuarios ===
-        $this->command->info('👤 Creando usuarios...');
+        // === 1) PRIMERO: Crear roles y usuario admin ===
+        $this->command->info('👤 Creando roles y usuario admin...');
+        
+        // Ejecutar RoleSeeder primero
         $this->call(RoleSeeder::class);
         
-        // ✅ CORREGIDO: Guardar el usuario admin en una variable
+        // Crear usuario admin
+        $adminEmail = 'josealfredocerezorios75@gmail.com';
         $admin = User::firstOrCreate(
-            ['email' => 'josealfredocerezorios75@gmail.com'],
-            ['name' => 'Administrador', 'password' => bcrypt('7516naBJ')]
-        )->assignRole('Admin');
-
+            ['email' => $adminEmail],
+            [
+                'name' => 'Administrador', 
+                'password' => Hash::make('7516naBJ'),
+                'email_verified_at' => now(),
+            ]
+        );
+        
+        // Asignar rol Admin
+        if (!$admin->hasRole('Admin')) {
+            $admin->assignRole('Admin');
+        }
+        
+        // === SOLO PARA DESARROLLO: Datos de prueba ===
+        // Comenta esto si solo quieres el usuario admin
+        if (app()->environment('local', 'staging') || env('SEED_TEST_DATA', false)) {
+            $this->command->info('🚀 Generando datos de prueba...');
+            $this->seedTestData($admin);
+        }
+        
+        $this->command->info('');
+        $this->command->info('🎉 SISTEMA CONFIGURADO!');
+        $this->command->info('🔐 CREDENCIALES:');
+        $this->command->info('   📧 Email: ' . $adminEmail);
+        $this->command->info('   🔑 Password: 7516naBJ');
+        $this->command->info('');
+        $this->command->info('✅ ¡Puedes iniciar sesión ahora!');
+    }
+    
+    private function seedTestData($admin)
+    {
         $secretaria = User::factory()->create()->assignRole('Secretaria');
         $personalCorte = User::factory()->create()->assignRole('Operador');
-
-        // ✅ CORREGIDO: Crear array de empleados para usar después
         $empleados = collect([$admin, $secretaria, $personalCorte]);
 
-        // === 2) Tarifas base + aleatorias ===
+        // === 2) Tarifas base ===
         $this->command->info('💰 Creando tarifas...');
         
         $tarifasBase = [
-            ['nombre' => 'Normal',       'precio_mensual' => 40.00, 'descripcion' => 'Tarifa estándar para usuarios regulares'],
-            ['nombre' => 'Adulto mayor', 'precio_mensual' => 25.00, 'descripcion' => 'Tarifa reducida para adultos mayores'],
+            ['nombre' => 'Normal',       'precio_mensual' => 40.00, 'descripcion' => 'Tarifa estándar'],
+            ['nombre' => 'Adulto mayor', 'precio_mensual' => 25.00, 'descripcion' => 'Tarifa reducida'],
         ];
         foreach ($tarifasBase as $t) {
             Tariff::firstOrCreate(['nombre' => $t['nombre']], Arr::except($t, 'nombre'));
         }
         Tariff::factory()->count(3)->create();
 
-        // === 3) Clientes - CORREGIDO: Crear uno por uno ===
-        $this->command->info('📝 Creando clientes con códigos aleatorios...');
+        // === 3) Clientes ===
+        $this->command->info('📝 Creando clientes...');
         
         $cantidadClientes = 30;
-        
-        // Crear clientes uno por uno para que se generen códigos automáticamente
         for ($i = 0; $i < $cantidadClientes; $i++) {
             Client::create([
                 'nombre' => fake()->name(),
@@ -62,9 +89,7 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        $this->command->info("✅ {$cantidadClientes} clientes creados con códigos aleatorios únicos");
-
-        // === 4) Propiedades (1–2 por cliente) con tarifa asignada ===
+        // === 4) Propiedades ===
         $this->command->info('🏠 Creando propiedades...');
         
         Client::query()->chunkById(200, function ($clientes) {
@@ -80,7 +105,7 @@ class DatabaseSeeder extends Seeder
             }
         });
 
-        // === 5) Deudas para cada propiedad (últimos 6 meses) - CORREGIDO ===
+        // === 5) Deudas ===
         $this->command->info('💰 Generando deudas...');
         
         $meses = [];
@@ -89,43 +114,38 @@ class DatabaseSeeder extends Seeder
         }
 
         Property::query()
-        ->whereNotNull('tarifa_id')
-        ->with('tariff:id,precio_mensual')
-        ->chunkById(200, function ($props) use ($meses) {
-            foreach ($props as $p) {
-                $precio = optional($p->tariff)->precio_mensual ?? 0;
+            ->whereNotNull('tarifa_id')
+            ->with('tariff:id,precio_mensual')
+            ->chunkById(200, function ($props) use ($meses) {
+                foreach ($props as $p) {
+                    $precio = optional($p->tariff)->precio_mensual ?? 0;
 
-                foreach ($meses as $mes) {
-                    $diasTranscurridos = now()->diffInDays($mes);
-                    $estado = 'pendiente';
-                    
-                    if ($diasTranscurridos > 90) {
-                        $estado = 'corte_pendiente';
-                    } elseif ($diasTranscurridos > 30) {
-                        $estado = fake()->boolean(70) ? 'vencida' : 'pendiente';
+                    foreach ($meses as $mes) {
+                        $diasTranscurridos = now()->diffInDays($mes);
+                        $estado = 'pendiente';
+                        
+                        if ($diasTranscurridos > 90) {
+                            $estado = 'corte_pendiente';
+                        } elseif ($diasTranscurridos > 30) {
+                            $estado = fake()->boolean(70) ? 'vencida' : 'pendiente';
+                        }
+
+                        Debt::firstOrCreate(
+                            ['propiedad_id' => $p->id, 'fecha_emision' => $mes],
+                            [
+                                'monto_pendiente' => $precio,
+                                'fecha_vencimiento' => $mes->copy()->endOfMonth(),
+                                'estado' => $estado,
+                            ]
+                        );
                     }
-
-                    // ✅ CORREGIDO: Sin tarifa_id y sin pagada_adelantada
-                    Debt::firstOrCreate(
-                        ['propiedad_id' => $p->id, 'fecha_emision' => $mes],
-                        [
-                            'monto_pendiente' => $precio,
-                            'fecha_vencimiento' => $mes->copy()->endOfMonth(), // ✅ CORREGIDO: fin de mes
-                            'estado' => $estado,
-                        ]
-                    );
                 }
-            }
-        });
-        
-        $tarifaFallback = Tariff::inRandomOrder()->value('id') ?? Tariff::first()->id;
-        Property::whereNull('tarifa_id')->update(['tarifa_id' => $tarifaFallback]);
+            });
 
-        // === 6) ✅ MULTAS AUTOMÁTICAS Y MANUALES - CORREGIDO ===
+        // === 6) Multas ===
         $this->command->info('⚡ Generando multas...');
 
-        // ✅ CORREGIDO: Ahora $admin está definida
-        // Multas automáticas por reconexión
+        // Multas automáticas
         Debt::where('estado', 'corte_pendiente')
             ->inRandomOrder()
             ->take(10)
@@ -142,7 +162,7 @@ class DatabaseSeeder extends Seeder
                     'tipo' => $tipoMulta,
                     'nombre' => Fine::obtenerTiposMulta()[$tipoMulta],
                     'monto' => Fine::obtenerMontosBase()[$tipoMulta],
-                    'descripcion' => 'Multa aplicada automáticamente por ' . ($mesesMora >= 12 ? '12' : '3') . ' meses de mora',
+                    'descripcion' => 'Multa automática por mora',
                     'fecha_aplicacion' => now(),
                     'estado' => Fine::ESTADO_PENDIENTE,
                     'aplicada_automaticamente' => true,
@@ -153,64 +173,18 @@ class DatabaseSeeder extends Seeder
                 $deuda->propiedad->update(['estado' => 'corte_pendiente']);
             });
 
-        // ✅ CORREGIDO: Multas manuales por infracciones
-        $tiposManuales = [
-            Fine::TIPO_CONEXION_CLANDESTINA,
-            Fine::TIPO_MANIPULACION_LLAVES,
-            Fine::TIPO_CONSTRUCCION,
-            Fine::TIPO_OTRO
-        ];
-
-        Property::inRandomOrder()
-            ->take(15)
-            ->get()
-            ->each(function ($propiedad) use ($tiposManuales, $empleados) {
-                $tipo = Arr::random($tiposManuales);
-                
-                // ✅ CORREGIDO: Obtener una deuda existente de la propiedad para asociar la multa
-                $deudaExistente = $propiedad->debts()->inRandomOrder()->first();
-                
-                if ($deudaExistente) {
-                    Fine::create([
-                        'deuda_id' => $deudaExistente->id,
-                        'propiedad_id' => $propiedad->id,
-                        'tipo' => $tipo,
-                        'nombre' => Fine::obtenerTiposMulta()[$tipo],
-                        'monto' => Fine::obtenerMontosBase()[$tipo],
-                        'descripcion' => 'Multa aplicada por: ' . fake()->sentence(),
-                        'fecha_aplicacion' => now()->subDays(rand(1, 60)),
-                        'estado' => Arr::random([Fine::ESTADO_PENDIENTE, Fine::ESTADO_PAGADA]),
-                        'aplicada_automaticamente' => false,
-                        'activa' => true,
-                        'creado_por' => $empleados->random()->id,
-                    ]);
-
-                    if (in_array($tipo, [Fine::TIPO_CONEXION_CLANDESTINA, Fine::TIPO_MANIPULACION_LLAVES])) {
-                        $propiedad->update(['estado' => 'cortado']);
-                        $propiedad->debts()
-                            ->where('estado', 'corte_pendiente')
-                            ->update(['estado' => 'cortado']);
-                    }
-                }
-            });
-
-        // === 7) ✅ PAGOS DE EJEMPLO - CORREGIDO ===
+        // Pagos de ejemplo
         $this->command->info('💳 Generando pagos...');
         
         $cobradorId = $empleados->random()->id;
+        $contadorRecibo = 1;
 
-        $generarNumeroRecibo = function() {
-            static $contador = 1;
-            return 'REC-' . str_pad($contador++, 6, '0', STR_PAD_LEFT);
-        };
-
-        // Pagos para propiedades activas
         Property::with(['client', 'tariff'])
             ->where('estado', 'activo')
             ->inRandomOrder()
             ->take(20)
             ->get()
-            ->each(function ($propiedad) use ($cobradorId, $generarNumeroRecibo) {
+            ->each(function ($propiedad) use ($cobradorId, &$contadorRecibo) {
                 
                 $deudasPendientes = $propiedad->debts()
                     ->where('estado', 'pendiente')
@@ -221,7 +195,7 @@ class DatabaseSeeder extends Seeder
                 
                 foreach ($deudasPendientes as $deuda) {
                     Pago::create([
-                        'numero_recibo' => $generarNumeroRecibo(),
+                        'numero_recibo' => 'REC-' . str_pad($contadorRecibo++, 6, '0', STR_PAD_LEFT),
                         'propiedad_id' => $propiedad->id,
                         'monto' => $deuda->monto_pendiente,
                         'mes_pagado' => $deuda->fecha_emision->format('Y-m'),
@@ -238,116 +212,5 @@ class DatabaseSeeder extends Seeder
                     ]);
                 }
             });
-
-        // === 8) ✅ PAGOS CON MULTAS ===
-        Property::where('estado', 'cortado')
-            ->inRandomOrder()
-            ->take(5)
-            ->get()
-            ->each(function ($propiedad) use ($cobradorId, $generarNumeroRecibo) {
-                
-                $deudasCortadas = $propiedad->debts()
-                    ->where('estado', 'cortado')
-                    ->get();
-                
-                $multasPendientes = $propiedad->multas()
-                    ->where('estado', Fine::ESTADO_PENDIENTE)
-                    ->get();
-                
-                foreach ($deudasCortadas as $deuda) {
-                    Pago::create([
-                        'numero_recibo' => $generarNumeroRecibo(),
-                        'propiedad_id' => $propiedad->id,
-                        'monto' => $deuda->monto_pendiente,
-                        'mes_pagado' => $deuda->fecha_emision->format('Y-m'),
-                        'fecha_pago' => now(),
-                        'metodo' => 'efectivo',
-                        'comprobante' => 'PAGO-RECONEXION',
-                        'observaciones' => 'Pago incluye deuda cortada',
-                        'registrado_por' => $cobradorId,
-                    ]);
-                    
-                    $deuda->update([
-                        'estado' => 'pagada',
-                        'monto_pendiente' => 0
-                    ]);
-                }
-                
-                foreach ($multasPendientes as $multa) {
-                    $multa->update(['estado' => Fine::ESTADO_PAGADA]);
-                }
-                
-                $propiedad->update(['estado' => 'activo']);
-            });
-
-        // === 9) ✅ PAGOS ADELANTADOS - CORREGIDO ===
-        $propiedadEjemplo = Property::where('estado', 'activo')->inRandomOrder()->first();
-        if ($propiedadEjemplo) {
-            $mesesAdelanto = [
-                now()->format('Y-m'),
-                now()->addMonth()->format('Y-m'),
-                now()->addMonths(2)->format('Y-m'),
-            ];
-            
-            foreach ($mesesAdelanto as $mes) {
-                $fechaEmision = Carbon::createFromFormat('Y-m', $mes)->startOfMonth();
-                $deuda = Debt::firstOrCreate(
-                    ['propiedad_id' => $propiedadEjemplo->id, 'fecha_emision' => $fechaEmision],
-                    [
-                        'monto_pendiente' => $propiedadEjemplo->tariff->precio_mensual,
-                        'fecha_vencimiento' => $fechaEmision->copy()->endOfMonth(),
-                        'estado' => 'pendiente',
-                    ]
-                );
-                
-                Pago::create([
-                    'numero_recibo' => $generarNumeroRecibo(),
-                    'propiedad_id' => $propiedadEjemplo->id,
-                    'monto' => $propiedadEjemplo->tariff->precio_mensual,
-                    'mes_pagado' => $mes,
-                    'fecha_pago' => now(),
-                    'metodo' => 'transferencia',
-                    'comprobante' => 'ADELANTO-' . fake()->randomNumber(6),
-                    'observaciones' => 'Pago adelantado de varios meses',
-                    'registrado_por' => $cobradorId,
-                ]);
-                
-                $deuda->update([
-                    'estado' => 'pagada',
-                    'monto_pendiente' => 0
-                ]);
-            }
-        }
-
-        // === 10) ✅ MOSTRAR RESULTADOS ===
-        $this->command->info('');
-        $this->command->info('🎉 SISTEMA INICIALIZADO CORRECTAMENTE');
-        $this->command->info('=====================================');
-        
-        $this->command->info('📋 Códigos de cliente generados (aleatorios):');
-        $primerosClientes = Client::take(5)->get();
-        foreach ($primerosClientes as $cliente) {
-            $this->command->info("   👤 {$cliente->codigo_cliente} - {$cliente->nombre}");
-        }
-        
-        if (Client::count() > 5) {
-            $this->command->info("   ... y " . (Client::count() - 5) . " clientes más");
-        }
-
-        $this->command->info('');
-        $this->command->info('📊 ESTADÍSTICAS DEL SISTEMA:');
-        $this->command->info('   👥 Clientes: ' . Client::count());
-        $this->command->info('   🏠 Propiedades: ' . Property::count());
-        $this->command->info('   💰 Tarifas: ' . Tariff::count());
-        $this->command->info('   📋 Deudas: ' . Debt::count());
-        $this->command->info('   ⚡ Multas: ' . Fine::count());
-        $this->command->info('   💳 Pagos: ' . Pago::count());
-        
-        $this->command->info('');
-        $this->command->info('🔐 CREDENCIALES DE ACCESO:');
-        $this->command->info('   📧 Email: josealfredocerezorios75@gmail.com');
-        $this->command->info('   🔑 Password: 7516naBJ');
-        $this->command->info('');
-        $this->command->info('✅ ¡El sistema está listo para usar!');
     }
 }

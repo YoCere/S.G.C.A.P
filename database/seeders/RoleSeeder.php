@@ -11,402 +11,145 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        // Crear roles
-        $admin = Role::create(['name' => 'Admin']);
-        $secretaria = Role::create(['name' => 'Secretaria']);
-        $operador = Role::create(['name' => 'Operador']);
+        // Crear roles si no existen
+        $roles = ['Admin', 'Secretaria', 'Operador'];
+        $roleInstances = [];
+        
+        foreach ($roles as $roleName) {
+            $roleInstances[$roleName] = Role::firstOrCreate(['name' => $roleName]);
+        }
+
+        $admin = $roleInstances['Admin'];
+        $secretaria = $roleInstances['Secretaria'];
+        $operador = $roleInstances['Operador'];
 
         // ==================== PERMISOS GENERALES ====================
-        Permission::create([
-            'name' => 'admin.home',
-            'description' => 'Acceder al dashboard principal'
-        ])->syncRoles([$admin, $secretaria, $operador]);
+        $this->createPermission('admin.home', 'Acceder al dashboard principal', [$admin, $secretaria, $operador]);
 
         // ==================== PERMISOS DE USUARIOS ====================
-        Permission::create([
-            'name' => 'admin.users.index',
-            'description' => 'Ver listado de usuarios'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.users.create',
-            'description' => 'Crear nuevos usuarios'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.users.show',
-            'description' => 'Ver detalles de usuario'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.users.edit',
-            'description' => 'Editar información de usuarios'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.users.update',
-            'description' => 'Actualizar datos de usuarios'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.users.destroy',
-            'description' => 'Eliminar usuarios del sistema'
-        ])->syncRoles([$admin]);
+        $this->createPermission('admin.users.index', 'Ver listado de usuarios', [$admin]);
+        $this->createPermission('admin.users.create', 'Crear nuevos usuarios', [$admin]);
+        $this->createPermission('admin.users.show', 'Ver detalles de usuario', [$admin]);
+        $this->createPermission('admin.users.edit', 'Editar información de usuarios', [$admin]);
+        $this->createPermission('admin.users.update', 'Actualizar datos de usuarios', [$admin]);
+        $this->createPermission('admin.users.destroy', 'Eliminar usuarios del sistema', [$admin]);
 
-            // ==================== PERMISOS DE ROLES ====================
-        Permission::create([
-            'name' => 'admin.roles.index',
-            'description' => 'Ver listado de roles'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.roles.create',
-            'description' => 'Crear nuevos roles'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.roles.store',
-            'description' => 'Guardar nuevos roles'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.roles.show',
-            'description' => 'Ver detalles de rol'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.roles.edit',
-            'description' => 'Editar información de roles'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.roles.update',
-            'description' => 'Actualizar datos de roles'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.roles.destroy',
-            'description' => 'Eliminar roles del sistema'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.roles.desactivate',
-            'description' => 'Desactivar roles'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.roles.activate',
-            'description' => 'Activar roles'
-        ])->syncRoles([$admin]);
+        // ==================== PERMISOS DE ROLES ====================
+        $this->createPermission('admin.roles.index', 'Ver listado de roles', [$admin]);
+        $this->createPermission('admin.roles.create', 'Crear nuevos roles', [$admin]);
+        $this->createPermission('admin.roles.store', 'Guardar nuevos roles', [$admin]);
+        $this->createPermission('admin.roles.show', 'Ver detalles de rol', [$admin]);
+        $this->createPermission('admin.roles.edit', 'Editar información de roles', [$admin]);
+        $this->createPermission('admin.roles.update', 'Actualizar datos de roles', [$admin]);
+        $this->createPermission('admin.roles.destroy', 'Eliminar roles del sistema', [$admin]);
+        $this->createPermission('admin.roles.desactivate', 'Desactivar roles', [$admin]);
+        $this->createPermission('admin.roles.activate', 'Activar roles', [$admin]);
 
         // ==================== PERMISOS DE CLIENTES ====================
-        Permission::create([
-            'name' => 'admin.clients.index',
-            'description' => 'Ver listado de clientes'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.clients.create',
-            'description' => 'Registrar nuevos clientes'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.clients.show',
-            'description' => 'Ver información detallada de cliente'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.clients.edit',
-            'description' => 'Editar datos de clientes'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.clients.update',
-            'description' => 'Actualizar información de clientes'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.clients.destroy',
-            'description' => 'Eliminar clientes del sistema'
-        ])->syncRoles([$admin, $secretaria]);
+        $this->createPermission('admin.clients.index', 'Ver listado de clientes', [$admin, $secretaria]);
+        $this->createPermission('admin.clients.create', 'Registrar nuevos clientes', [$admin, $secretaria]);
+        $this->createPermission('admin.clients.show', 'Ver información detallada de cliente', [$admin, $secretaria]);
+        $this->createPermission('admin.clients.edit', 'Editar datos de clientes', [$admin, $secretaria]);
+        $this->createPermission('admin.clients.update', 'Actualizar información de clientes', [$admin, $secretaria]);
+        $this->createPermission('admin.clients.destroy', 'Eliminar clientes del sistema', [$admin, $secretaria]);
 
         // ==================== PERMISOS DE TARIFAS ====================
-        Permission::create([
-            'name' => 'admin.tariffs.index',
-            'description' => 'Ver listado de tarifas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.tariffs.create',
-            'description' => 'Crear nuevas tarifas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.tariffs.show',
-            'description' => 'Ver detalles de tarifa'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.tariffs.edit',
-            'description' => 'Editar tarifas existentes'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.tariffs.update',
-            'description' => 'Actualizar información de tarifas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.tariffs.destroy',
-            'description' => 'Eliminar tarifas del sistema'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.tariffs.deactivate',
-            'description' => 'Desactivar tarifas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.tariffs.activate',
-            'description' => 'Activar tarifas'
-        ])->syncRoles([$admin, $secretaria]);
+        $this->createPermission('admin.tariffs.index', 'Ver listado de tarifas', [$admin, $secretaria]);
+        $this->createPermission('admin.tariffs.create', 'Crear nuevas tarifas', [$admin, $secretaria]);
+        $this->createPermission('admin.tariffs.show', 'Ver detalles de tarifa', [$admin, $secretaria]);
+        $this->createPermission('admin.tariffs.edit', 'Editar tarifas existentes', [$admin, $secretaria]);
+        $this->createPermission('admin.tariffs.update', 'Actualizar información de tarifas', [$admin, $secretaria]);
+        $this->createPermission('admin.tariffs.destroy', 'Eliminar tarifas del sistema', [$admin, $secretaria]);
+        $this->createPermission('admin.tariffs.deactivate', 'Desactivar tarifas', [$admin, $secretaria]);
+        $this->createPermission('admin.tariffs.activate', 'Activar tarifas', [$admin, $secretaria]);
 
         // ==================== PERMISOS DE PROPIEDADES ====================
-        Permission::create([
-            'name' => 'admin.properties.index',
-            'description' => 'Ver listado de propiedades'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.properties.create',
-            'description' => 'Registrar nuevas propiedades'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.properties.show',
-            'description' => 'Ver detalles de propiedad'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.properties.edit',
-            'description' => 'Editar información de propiedades'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.properties.update',
-            'description' => 'Actualizar datos de propiedades'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.properties.destroy',
-            'description' => 'Eliminar propiedades del sistema'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.properties.cut',
-            'description' => 'Solicitar corte de servicio'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.properties.restore',
-            'description' => 'Restaurar servicio cortado'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.properties.cancel-cut',
-            'description' => 'Cancelar solicitud de corte'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.properties.request-reconnection',
-            'description' => 'Solicitar reconexión de servicio'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.propiedades.search',
-            'description' => 'Buscar propiedades en el sistema'
-        ])->syncRoles([$admin, $secretaria]);
+        $this->createPermission('admin.properties.index', 'Ver listado de propiedades', [$admin, $secretaria]);
+        $this->createPermission('admin.properties.create', 'Registrar nuevas propiedades', [$admin, $secretaria]);
+        $this->createPermission('admin.properties.show', 'Ver detalles de propiedad', [$admin, $secretaria]);
+        $this->createPermission('admin.properties.edit', 'Editar información de propiedades', [$admin, $secretaria]);
+        $this->createPermission('admin.properties.update', 'Actualizar datos de propiedades', [$admin, $secretaria]);
+        $this->createPermission('admin.properties.destroy', 'Eliminar propiedades del sistema', [$admin]);
+        $this->createPermission('admin.properties.cut', 'Solicitar corte de servicio', [$admin, $secretaria]);
+        $this->createPermission('admin.properties.restore', 'Restaurar servicio cortado', [$admin]);
+        $this->createPermission('admin.properties.cancel-cut', 'Cancelar solicitud de corte', [$admin, $secretaria]);
+        $this->createPermission('admin.properties.request-reconnection', 'Solicitar reconexión de servicio', [$admin, $secretaria]);
+        $this->createPermission('admin.propiedades.search', 'Buscar propiedades en el sistema', [$admin, $secretaria]);
 
         // ==================== PERMISOS DE PAGOS ====================
-        Permission::create([
-            'name' => 'admin.pagos.index',
-            'description' => 'Ver listado de pagos'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.pagos.create',
-            'description' => 'Registrar nuevos pagos'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.pagos.show',
-            'description' => 'Ver detalles de pago'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.pagos.edit',
-            'description' => 'Editar información de pagos'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.pagos.update',
-            'description' => 'Actualizar datos de pagos'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.pagos.destroy',
-            'description' => 'Eliminar registros de pago'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.pagos.print',
-            'description' => 'Imprimir comprobantes de pago'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.pagos.anular',
-            'description' => 'Anular pagos registrados'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.pagos.obtenerMesesPendientes',
-            'description' => 'Consultar meses pendientes de pago'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.pagos.validar-meses',
-            'description' => 'Validar meses a pagar'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.propiedades.deudaspendientes',
-            'description' => 'Consultar deudas pendientes por propiedad'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.pagos.obtenerMultasPendientes',
-            'description' => 'Consultar deudas multas por propiedad'
-        ])->syncRoles([$admin, $secretaria]);
+        $this->createPermission('admin.pagos.index', 'Ver listado de pagos', [$admin, $secretaria]);
+        $this->createPermission('admin.pagos.create', 'Registrar nuevos pagos', [$admin, $secretaria]);
+        $this->createPermission('admin.pagos.show', 'Ver detalles de pago', [$admin, $secretaria]);
+        $this->createPermission('admin.pagos.edit', 'Editar información de pagos', [$admin, $secretaria]);
+        $this->createPermission('admin.pagos.update', 'Actualizar datos de pagos', [$admin, $secretaria]);
+        $this->createPermission('admin.pagos.destroy', 'Eliminar registros de pago', [$admin]);
+        $this->createPermission('admin.pagos.print', 'Imprimir comprobantes de pago', [$admin, $secretaria]);
+        $this->createPermission('admin.pagos.anular', 'Anular pagos registrados', [$admin]);
+        $this->createPermission('admin.pagos.obtenerMesesPendientes', 'Consultar meses pendientes de pago', [$admin, $secretaria]);
+        $this->createPermission('admin.pagos.validar-meses', 'Validar meses a pagar', [$admin, $secretaria]);
+        $this->createPermission('admin.propiedades.deudaspendientes', 'Consultar deudas pendientes por propiedad', [$admin, $secretaria]);
+        $this->createPermission('admin.pagos.obtenerMultasPendientes', 'Consultar deudas multas por propiedad', [$admin, $secretaria]);
 
         // ==================== PERMISOS DE DEUDAS ====================
-        Permission::create([
-            'name' => 'admin.debts.index',
-            'description' => 'Ver listado de deudas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.debts.create',
-            'description' => 'Generar nuevas deudas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.debts.show',
-            'description' => 'Ver detalles de deuda'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.debts.store',
-            'description' => 'Almacenar registros de deuda'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.debts.destroy',
-            'description' => 'Eliminar registros de deuda'
-        ])->syncRoles([$admin]);
-        Permission::create([
-            'name' => 'admin.debts.annul',
-            'description' => 'Anular deudas registradas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.debts.mark-as-paid',
-            'description' => 'Marcar deudas como pagadas'
-        ])->syncRoles([$admin, $secretaria]);
+        $this->createPermission('admin.debts.index', 'Ver listado de deudas', [$admin, $secretaria]);
+        $this->createPermission('admin.debts.create', 'Generar nuevas deudas', [$admin, $secretaria]);
+        $this->createPermission('admin.debts.show', 'Ver detalles de deuda', [$admin, $secretaria]);
+        $this->createPermission('admin.debts.store', 'Almacenar registros de deuda', [$admin, $secretaria]);
+        $this->createPermission('admin.debts.destroy', 'Eliminar registros de deuda', [$admin]);
+        $this->createPermission('admin.debts.annul', 'Anular deudas registradas', [$admin, $secretaria]);
+        $this->createPermission('admin.debts.mark-as-paid', 'Marcar deudas como pagadas', [$admin, $secretaria]);
 
         // ==================== PERMISOS DE MULTAS ====================
-        Permission::create([
-            'name' => 'admin.multas.index',
-            'description' => 'Ver listado de multas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.multas.create',
-            'description' => 'Registrar nuevas multas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.multas.show',
-            'description' => 'Ver detalles de multa'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.multas.edit',
-            'description' => 'Editar información de multas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.multas.update',
-            'description' => 'Actualizar datos de multas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.multas.marcar-pagada',
-            'description' => 'Marcar multas como pagadas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.multas.anular',
-            'description' => 'Anular multas registradas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.multas.restaurar',
-            'description' => 'Restaurar multas anuladas'
-        ])->syncRoles([$admin, $secretaria]);
-        Permission::create([
-            'name' => 'admin.multas.obtener-monto-base',
-            'description' => 'Consultar montos base de multas'
-        ])->syncRoles([$admin, $secretaria]);
+        $this->createPermission('admin.multas.index', 'Ver listado de multas', [$admin, $secretaria]);
+        $this->createPermission('admin.multas.create', 'Registrar nuevas multas', [$admin, $secretaria]);
+        $this->createPermission('admin.multas.show', 'Ver detalles de multa', [$admin, $secretaria]);
+        $this->createPermission('admin.multas.edit', 'Editar información de multas', [$admin, $secretaria]);
+        $this->createPermission('admin.multas.update', 'Actualizar datos de multas', [$admin, $secretaria]);
+        $this->createPermission('admin.multas.marcar-pagada', 'Marcar multas como pagadas', [$admin, $secretaria]);
+        $this->createPermission('admin.multas.anular', 'Anular multas registradas', [$admin, $secretaria]);
+        $this->createPermission('admin.multas.restaurar', 'Restaurar multas anuladas', [$admin, $secretaria]);
+        $this->createPermission('admin.multas.obtener-monto-base', 'Consultar montos base de multas', [$admin, $secretaria]);
 
         // ==================== PERMISOS DE CORTES ====================
-        Permission::create([
-            'name' => 'admin.cortes.pendientes',
-            'description' => 'Ver trabajos de corte pendientes'
-        ])->syncRoles([$admin, $operador, $secretaria]);
-        Permission::create([
-            'name' => 'admin.cortes.cortadas',
-            'description' => 'Ver propiedades con servicio cortado'
-        ])->syncRoles([$admin, $operador, $secretaria]);
-        Permission::create([
-            'name' => 'admin.cortes.marcar-cortado',
-            'description' => 'Ejecutar corte físico de servicio'
-        ])->syncRoles([$admin, $operador]);
-        Permission::create([
-            'name' => 'admin.cortes.aplicar-multa',
-            'description' => 'Aplicar multas por reconexión'
-        ])->syncRoles([$admin, $operador]);
+        $this->createPermission('admin.cortes.pendientes', 'Ver trabajos de corte pendientes', [$admin, $operador, $secretaria]);
+        $this->createPermission('admin.cortes.cortadas', 'Ver propiedades con servicio cortado', [$admin, $operador, $secretaria]);
+        $this->createPermission('admin.cortes.marcar-cortado', 'Ejecutar corte físico de servicio', [$admin, $operador]);
+        $this->createPermission('admin.cortes.aplicar-multa', 'Aplicar multas por reconexión', [$admin, $operador]);
 
         // ==================== PERMISOS DE REPORTES ====================
-        Permission::create([
-            'name' => 'admin.reportes.index',
-            'description' => 'Acceder a módulo de reportes'
-        ])->syncRoles([$admin, $secretaria]);
-
-        Permission::create([
-            'name' => 'admin.reportes.morosidad', 
-            'description' => 'Generar reporte de morosidad'
-        ])->syncRoles([$admin, $secretaria]);
-
-        Permission::create([
-            'name' => 'admin.reportes.clientes',
-            'description' => 'Generar reporte de clientes'
-        ])->syncRoles([$admin, $secretaria]);
-
-        Permission::create([
-            'name' => 'admin.reportes.propiedades',
-            'description' => 'Generar reporte de propiedades'
-        ])->syncRoles([$admin, $secretaria]);
-
-        Permission::create([
-            'name' => 'admin.reportes.trabajos',
-            'description' => 'Generar reporte de trabajos pendientes'
-        ])->syncRoles([$admin, $secretaria]);
+        $this->createPermission('admin.reportes.index', 'Acceder a módulo de reportes', [$admin, $secretaria]);
+        $this->createPermission('admin.reportes.morosidad', 'Generar reporte de morosidad', [$admin, $secretaria]);
+        $this->createPermission('admin.reportes.clientes', 'Generar reporte de clientes', [$admin, $secretaria]);
+        $this->createPermission('admin.reportes.propiedades', 'Generar reporte de propiedades', [$admin, $secretaria]);
+        $this->createPermission('admin.reportes.trabajos', 'Generar reporte de trabajos pendientes', [$admin, $secretaria]);
 
         // ==================== PERMISOS DE UTILIDADES ====================
-        Permission::create([
-            'name' => 'admin.sincronizar-deudas',
-            'description' => 'Sincronizar deudas con pagos'
-        ])->syncRoles([$admin]);
+        $this->createPermission('admin.sincronizar-deudas', 'Sincronizar deudas con pagos', [$admin]);
 
-    // ==================== PERMISOS DE BACKUPS ====================
-    // Ver listado de backups
-    Permission::create([
-        'name' => 'admin.backups.index',
-        'description' => 'Ver listado de backups del sistema'
-    ])->syncRoles([$admin]);
-
-    // Ejecutar backup manual
-    Permission::create([
-        'name' => 'admin.backups.run',
-        'description' => 'Ejecutar un backup manual'
-    ])->syncRoles([$admin]);
-
-    // Ejecutar limpieza (cleanup)
-    Permission::create([
-        'name' => 'admin.backups.clean',
-        'description' => 'Ejecutar limpieza de copias antiguas'
-    ])->syncRoles([$admin]);
-
-    // Descargar un backup
-    Permission::create([
-        'name' => 'admin.backups.download',
-        'description' => 'Descargar copia de seguridad'
-    ])->syncRoles([$admin]);
-
-    // Ver log del backup
-    Permission::create([
-        'name' => 'admin.backups.log',
-        'description' => 'Ver detalle del log de un backup'
-    ])->syncRoles([$admin]);
-
-    // Eliminar backup
-    Permission::create([
-        'name' => 'admin.backups.destroy',
-        'description' => 'Eliminar una copia de seguridad'
-    ])->syncRoles([$admin]);
-    Permission::create([
-        'name' => 'admin.backups.restore',
-        'description' => 'Restaurar una copia de seguridad'
-    ])->syncRoles([$admin]);
+        // ==================== PERMISOS DE BACKUPS ====================
+        $this->createPermission('admin.backups.index', 'Ver listado de backups del sistema', [$admin]);
+        $this->createPermission('admin.backups.run', 'Ejecutar un backup manual', [$admin]);
+        $this->createPermission('admin.backups.clean', 'Ejecutar limpieza de copias antiguas', [$admin]);
+        $this->createPermission('admin.backups.download', 'Descargar copia de seguridad', [$admin]);
+        $this->createPermission('admin.backups.log', 'Ver detalle del log de un backup', [$admin]);
+        $this->createPermission('admin.backups.destroy', 'Eliminar una copia de seguridad', [$admin]);
+        $this->createPermission('admin.backups.restore', 'Restaurar una copia de seguridad', [$admin]);
+        $this->createPermission('admin.backups.restore-log', 'Ver el log de restauración en vivo', [$admin]);
+    }
     
-    // Ver log en vivo / restore-log
-    Permission::create([
-        'name' => 'admin.backups.restore-log',
-        'description' => 'Ver el log de restauración en vivo'
-    ])->syncRoles([$admin]);
-    
-}
-
+    private function createPermission($name, $description, $roles)
+    {
+        $permission = Permission::firstOrCreate(
+            ['name' => $name],
+            ['name' => $name, 'description' => $description]
+        );
+        
+        foreach ($roles as $role) {
+            if (!$role->hasPermissionTo($name)) {
+                $role->givePermissionTo($permission);
+            }
+        }
+        
+        return $permission;
+    }
 }

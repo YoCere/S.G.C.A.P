@@ -329,6 +329,27 @@
                                 </div>
                             </div>
                         </div>
+                        {{-- Después del campo de total a pagar --}}
+                        <div id="multasContainer" class="mt-3"></div>
+
+                        {{-- Para mostrar configuración actual --}}
+                        @php
+                            $configMora = \App\Models\ConfigMultaMora::first();
+                        @endphp
+
+                        @if($configMora)
+                            <div class="alert alert-info small mt-3">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                <strong>Configuración de multas por mora:</strong><br>
+                                <span class="ml-2">
+                                    • Se aplica después de <strong>{{ $configMora->meses_gracia }} mes(es)</strong> de atraso<br>
+                                    • Porcentaje: <strong>{{ $configMora->porcentaje_multa }}%</strong> sobre el monto base<br>
+                                    • Estado: <span class="badge badge-{{ $configMora->activo ? 'success' : 'secondary' }}">
+                                        {{ $configMora->activo ? 'Activo' : 'Inactivo' }}
+                                    </span>
+                                </span>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -1616,6 +1637,146 @@
             }
         }
     }
+    // En tu JavaScript, cambia la función para usar meses enteros:
+function calcularMultasPorMora(mesesSeleccionados, tarifaMensual) {
+    if (!mesesSeleccionados || !mesesSeleccionados.length || !tarifaMensual) {
+        return {
+            aplicaMulta: false,
+            totalMultas: 0,
+            mesesConMulta: [],
+            detalleMultas: []
+        };
+    }
+
+    const configMora = @json(\App\Models\ConfigMultaMora::first());
+    
+    if (!configMora || !configMora.activo) {
+        return {
+            aplicaMulta: false,
+            totalMultas: 0,
+            mesesConMulta: [],
+            detalleMultas: []
+        };
+    }
+
+    const hoy = new Date();
+    const hoyMes = hoy.getFullYear() * 12 + hoy.getMonth();
+    const hoyAnio = hoy.getFullYear();
+    const hoyMesNum = hoy.getMonth();
+    
+    let totalMultas = 0;
+    let mesesConMulta = [];
+    let detalleMultas = [];
+
+    mesesSeleccionados.forEach(mes => {
+        const [year, month] = mes.split('-').map(Number);
+        
+        // Calcular diferencia en meses enteros
+        const mesesAtrasados = ((hoyAnio - year) * 12) + (hoyMesNum - (month - 1));
+        
+        // Solo considerar atraso si es positivo
+        if (mesesAtrasados > 0 && mesesAtrasados >= configMora.meses_gracia) {
+            const multa = tarifaMensual * (configMora.porcentaje_multa / 100);
+            totalMultas += multa;
+            mesesConMulta.push(mes);
+            
+            detalleMultas.push({
+                mes: mes,
+                mesesAtrasados: mesesAtrasados,
+                multa: multa,
+                montoBase: tarifaMensual,
+                porcentaje: configMora.porcentaje_multa
+            });
+        }
+    });
+
+    return {
+        aplicaMulta: totalMultas > 0,
+        totalMultas: totalMultas,
+        mesesConMulta: mesesConMulta,
+        detalleMultas: detalleMultas,
+        configuracion: configMora
+    };
+}
+
+// Función para actualizar el total del pago con multas
+function actualizarTotalConMultas(mesesSeleccionados, tarifaMensual) {
+    const totalMeses = mesesSeleccionados.length;
+    const montoBaseTotal = totalMeses * tarifaMensual;
+    
+    const multasInfo = calcularMultasPorMora(mesesSeleccionados, tarifaMensual);
+    
+    let html = '';
+    
+    if (multasInfo.aplicaMulta) {
+        html += `
+            <div class="alert alert-warning mt-3" id="multaInfo">
+                <h6><i class="fas fa-exclamation-triangle mr-2"></i>Multas por mora aplicables</h6>
+                <hr class="my-2">
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="d-block"><strong>Meses con multa:</strong> ${multasInfo.mesesConMulta.length}</small>
+                        <small class="d-block"><strong>Total multas:</strong> Bs ${multasInfo.totalMultas.toFixed(2)}</small>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="d-block"><strong>Monto base:</strong> Bs ${montoBaseTotal.toFixed(2)}</small>
+                        <small class="d-block"><strong>Total a pagar:</strong> Bs ${(montoBaseTotal + multasInfo.totalMultas).toFixed(2)}</small>
+                    </div>
+                </div>
+        `;
+        
+        if (multasInfo.detalleMultas.length > 0) {
+            html += `<hr class="my-2">`;
+            multasInfo.detalleMultas.forEach(detalle => {
+                const fecha = new Date(detalle.mes + '-01');
+                const mesNombre = fecha.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                html += `
+                    <small class="d-block">
+                        <strong>${mesNombre}:</strong> ${detalle.mesesAtrasados} mes(es) atrasado → 
+                        Multa: ${detalle.porcentaje}% = Bs ${detalle.multa.toFixed(2)}
+                    </small>
+                `;
+            });
+        }
+        
+        html += `</div>`;
+    }
+    
+    return {
+        html: html,
+        total: montoBaseTotal + multasInfo.totalMultas,
+        montoBase: montoBaseTotal,
+        multas: multasInfo.totalMultas,
+        tieneMultas: multasInfo.aplicaMulta
+    };
+}
+
+// Usar en tu formulario cuando seleccionan meses
+document.addEventListener('DOMContentLoaded', function() {
+    const mesesSelect = document.querySelector('[name="meses_pagados[]"]');
+    const montoBaseInput = document.querySelector('#montoBase');
+    const totalPagarInput = document.querySelector('#totalPagar');
+    const multasContainer = document.querySelector('#multasContainer');
+    
+    if (mesesSelect) {
+        mesesSelect.addEventListener('change', function() {
+            const mesesSeleccionados = Array.from(this.selectedOptions).map(opt => opt.value);
+            const tarifaMensual = parseFloat(montoBaseInput?.value) || 0;
+            
+            const resultado = actualizarTotalConMultas(mesesSeleccionados, tarifaMensual);
+            
+            // Actualizar total
+            if (totalPagarInput) {
+                totalPagarInput.value = resultado.total.toFixed(2);
+            }
+            
+            // Mostrar información de multas
+            if (multasContainer) {
+                multasContainer.innerHTML = resultado.html;
+            }
+        });
+    }
+});
 
 </script>
 @stop

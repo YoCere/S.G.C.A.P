@@ -21,11 +21,15 @@ return new class extends Migration
                 'conexion_clandestina',
                 'manipulacion_llaves',
                 'construccion',
+                'mora_pago', // ✅ AGREGADO
                 'otro'
             ])->default('otro');
             
             $table->string('nombre');
             $table->decimal('monto', 10, 2)->default(0);
+            $table->decimal('porcentaje_aplicado', 5, 2)->nullable(); // ✅ AGREGADO
+            $table->integer('meses_atraso')->nullable(); // ✅ AGREGADO
+            $table->string('mes_aplicado', 7)->nullable()->comment('Formato: YYYY-MM'); // ✅ AGREGADO
             $table->text('descripcion')->nullable();
             $table->date('fecha_aplicacion');
             

@@ -206,5 +206,15 @@ Route::middleware(['auth'])
     
     // Acciones extras
     Route::post('backups/run',   [BackupController::class, 'run'])->name('admin.backups.run');
-    Route::post('backups/clean', [BackupController::class, 'clean'])->name('admin.backups.clean');});
+    Route::post('backups/clean', [BackupController::class, 'clean'])->name('admin.backups.clean');
+
+    // Configuración de multas por mora
+Route::prefix('config-multas-mora')->group(function () {
+    Route::get('/edit', [\App\Http\Controllers\Admin\ConfigMultaMoraController::class, 'edit'])
+        ->name('admin.config-multas-mora.edit');
+    Route::put('/', [\App\Http\Controllers\Admin\ConfigMultaMoraController::class, 'update'])
+        ->name('admin.config-multas-mora.update');
+});
+
+});
 

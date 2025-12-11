@@ -167,22 +167,41 @@
     </table>
 
     @if($multasPagadas->count() > 0)
-    <div class="seccion-multas">
-        <h4 style="text-align:center;margin:0 0 10px;color:#c0392b;">MULTAS PAGADAS</h4>
-        <table class="multas-table">
-            <thead><tr><th>Descripción</th><th>Fecha</th><th>Monto</th></tr></thead>
-            <tbody>
-                @foreach($multasPagadas as $multa)
-                <tr>
-                    <td>{{ $multa->nombre }}</td>
-                    <td>{{ $multa->fecha_aplicacion->format('d/m/Y') }}</td>
-                    <td><strong>Bs {{ number_format($multa->monto,2) }}</strong></td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
-    @endif
+<div class="seccion-multas">
+    <h4 style="text-align:center;margin:0 0 10px;color:#c0392b;">MULTAS PAGADAS</h4>
+    <table class="multas-table">
+        <thead>
+            <tr>
+                <th>Descripción</th>
+                <th>Detalles</th>
+                <th>Fecha</th>
+                <th>Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($multasPagadas as $multa)
+            <tr>
+                <td>{{ $multa->nombre }}</td>
+                <td>
+                    @if($multa->tipo === 'mora_pago' && $multa->meses_atraso)
+                        <small class="text-muted">
+                            {{ $multa->meses_atraso }} mes(es) atraso<br>
+                            @if($multa->porcentaje_aplicado)
+                                {{ $multa->porcentaje_aplicado }}% de multa
+                            @endif
+                        </small>
+                    @else
+                        <small class="text-muted">{{ $multa->descripcion ?? 'Sin detalles' }}</small>
+                    @endif
+                </td>
+                <td>{{ $multa->fecha_aplicacion->format('d/m/Y') }}</td>
+                <td><strong>Bs {{ number_format($multa->monto,2) }}</strong></td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+@endif
 
     <div class="totales">
         <span style="font-size:14px;">TOTAL GENERAL:</span>

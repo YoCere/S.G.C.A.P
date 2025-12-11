@@ -320,237 +320,320 @@ class PagoController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'propiedad_id' => 'required|exists:propiedades,id',
-            'mes_desde' => 'required|date_format:Y-m',
-            'mes_hasta' => 'required|date_format:Y-m',
-            'fecha_pago' => 'required|date|before_or_equal:today',
-            'metodo' => 'required|in:efectivo,transferencia,qr',
-            'comprobante' => 'nullable|string|max:50',
-            'observaciones' => 'nullable|string|max:255',
-            'multas_seleccionadas' => 'nullable|array',
-            'multas_seleccionadas.*' => 'exists:multas,id'
-        ]);
+{
+    $request->validate([
+        'propiedad_id' => 'required|exists:propiedades,id',
+        'mes_desde' => 'required|date_format:Y-m',
+        'mes_hasta' => 'required|date_format:Y-m',
+        'fecha_pago' => 'required|date|before_or_equal:today',
+        'metodo' => 'required|in:efectivo,transferencia,qr',
+        'comprobante' => 'nullable|string|max:50',
+        'observaciones' => 'nullable|string|max:255',
+        'multas_seleccionadas' => 'nullable|array',
+        'multas_seleccionadas.*' => 'exists:multas,id'
+    ]);
 
-        $pagosCreados = [];
-        $multasSeleccionadas = collect();
-        $mensajeReconexion = ""; // ✅ INICIALIZAR LA VARIABLE
+    $pagosCreados = [];
+    $multasSeleccionadas = collect();
+    $mensajeReconexion = "";
+    $multasMoraCreadas = collect(); // ✅ NUEVO: Para multas por mora creadas
 
-        try {
-            DB::beginTransaction();
+    try {
+        DB::beginTransaction();
 
-            \Log::info("=== INICIANDO PROCESO DE PAGO ===");
-            \Log::info("Propiedad ID: " . $request->propiedad_id);
-            
-            $propiedad = Property::with(['client', 'tariff'])->findOrFail($request->propiedad_id);
-            
-            if (!$propiedad->tariff) {
-                throw new \Exception('La propiedad no tiene una tarifa asignada');
-            }
-
-            $tarifaMensual = $propiedad->tariff->precio_mensual;
-
-            $mesDesde = $request->mes_desde;
-            $mesHasta = $request->mes_hasta;
-            
-            if (!$mesDesde || !$mesHasta) {
-                throw new \Exception('Los meses desde y hasta son requeridos');
-            }
-
-            $meses = $this->generarRangoMeses($mesDesde, $mesHasta);
-            $mesesPagadosCount = count($meses);
-
-            if (empty($meses)) {
-                throw new \Exception('No se pudo generar el rango de meses. Verifique las fechas.');
-            }
-
-            // ✅ CORREGIDO: VALIDACIÓN DE PAGO SECUENCIAL MEJORADA
-            $mesesAdeudados = $propiedad->obtenerMesesAdeudados();
-            sort($mesesAdeudados); // Ordenar cronológicamente
-
-            if (!empty($mesesAdeudados)) {
-                $primerMesAdeudado = $mesesAdeudados[0];
-                
-                \Log::info("🔍 Validando secuencia - Primer mes adeudado: {$primerMesAdeudado}");
-                \Log::info("Meses adeudados totales: " . implode(', ', $mesesAdeudados));
-                \Log::info("Meses a pagar: " . implode(', ', $meses));
-                
-                // ✅ Validar que pague desde el primer mes adeudado
-                if ($mesDesde !== $primerMesAdeudado) {
-                    DB::rollBack();
-                    $primerMesFormateado = Carbon::createFromFormat('Y-m', $primerMesAdeudado)->locale('es')->translatedFormat('F Y');
-                    $mesDesdeFormateado = Carbon::createFromFormat('Y-m', $mesDesde)->locale('es')->translatedFormat('F Y');
-                    
-                    \Log::warning("❌ Validación secuencial fallida - Debe pagar desde {$primerMesAdeudado}, está pagando desde {$mesDesde}");
-                    
-                    return redirect()
-                        ->route('admin.pagos.create', ['propiedad_id' => $propiedad->id])
-                        ->withErrors([
-                            'error' => "Debe pagar desde el primer mes adeudado ({$primerMesFormateado}). " .
-                                    "No puede pagar desde {$mesDesdeFormateado} sin antes pagar los meses anteriores."
-                        ])
-                        ->withInput();
-                }
-                
-                // ✅ Validar que los meses seleccionados sean consecutivos desde el inicio
-                $mesesSeleccionadosOrdenados = $meses;
-                sort($mesesSeleccionadosOrdenados);
-                
-                // Verificar que los meses seleccionados sean los primeros N meses de la lista de adeudados
-                $mesesEsperados = array_slice($mesesAdeudados, 0, count($mesesSeleccionadosOrdenados));
-                
-                if ($mesesSeleccionadosOrdenados !== $mesesEsperados) {
-                    DB::rollBack();
-                    
-                    $mesesEsperadosFormateados = array_map(function($mes) {
-                        return Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
-                    }, $mesesEsperados);
-                    
-                    $mesesSeleccionadosFormateados = array_map(function($mes) {
-                        return Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
-                    }, $mesesSeleccionadosOrdenados);
-                    
-                    \Log::warning("❌ Validación de secuencia fallida - Esperados: " . implode(', ', $mesesEsperados) . " - Seleccionados: " . implode(', ', $mesesSeleccionadosOrdenados));
-                    
-                    return redirect()
-                        ->route('admin.pagos.create', ['propiedad_id' => $propiedad->id])
-                        ->withErrors([
-                            'error' => "Debe pagar los meses en orden secuencial. " .
-                                    "Los próximos meses a pagar son: " . implode(', ', $mesesEsperadosFormateados) . ". " .
-                                    "No puede saltar meses pendientes."
-                        ])
-                        ->withInput();
-                }
-                
-                \Log::info("✅ Validación secuencial exitosa");
-            }
-
-            // ✅ CORREGIDO: VALIDACIÓN DE PAGO COMPLETO PARA RECONEXIÓN
-            $esReconexion = $request->has('reconexion') || $request->has('forzar_pago_completo');
-
-            if ($esReconexion) {
-                try {
-                    \Log::info("=== PROCESANDO RECONEXIÓN ===");
-                    
-                    // ✅ FORZAR actualización del estado
-                    $propiedad->forzarReconexionPendiente();
-                    
-                    // ✅ VERIFICAR que se actualizó correctamente
-                    if ($propiedad->estado === Property::ESTADO_CORTE_PENDIENTE && 
-                        $propiedad->tipo_trabajo_pendiente === Property::TRABAJO_RECONEXION) {
-                        
-                        \Log::info("✅ RECONEXIÓN EXITOSA - Propiedad {$propiedad->id} ahora visible para operadores");
-                        $mensajeReconexion = " La propiedad ha sido puesta en COLA DE RECONEXIÓN para el equipo de operaciones.";
-                    } else {
-                        \Log::error("❌ FALLA EN RECONEXIÓN - Estado: {$propiedad->estado}, Trabajo: {$propiedad->tipo_trabajo_pendiente}");
-                        $mensajeReconexion = " ⚠️ Error al programar reconexión. Contacte al administrador.";
-                    }
-                    
-                } catch (\Exception $e) {
-                    \Log::error("❌ ERROR CRÍTICO en reconexión: " . $e->getMessage());
-                    $mensajeReconexion = " ⚠️ Error al programar reconexión: " . $e->getMessage();
-                }
-            }
-
-            // ✅ CONTINUAR CON EL PROCESO NORMAL DE CREACIÓN DE PAGOS
-            // ... (tu código existente para crear los pagos)
-            
-            // EJEMPLO de cómo debería continuar:
-            $numeroRecibo = $this->generarNumeroRecibo();
-            
-            foreach ($meses as $mes) {
-                // Generar un numero de recibo nuevo para CADA pago
-                $numeroRecibo = $this->generarNumeroRecibo();
-            
-                $pago = Pago::create([
-                    'numero_recibo' => $numeroRecibo,
-                    'propiedad_id' => $propiedad->id,
-                    'monto' => $tarifaMensual,
-                    'mes_pagado' => $mes,
-                    'fecha_pago' => $request->fecha_pago,
-                    'metodo' => $request->metodo,
-                    'comprobante' => $request->comprobante,
-                    'observaciones' => $request->observaciones,
-                    'registrado_por' => auth()->id(),
-                ]);
-            
-                $pagosCreados[] = $pago;
-            
-                // Actualizar deudas si existen
-                $this->actualizarDeudaPorPago($propiedad->id, $mes);
-            }
-            // ✅ CORREGIDO: PROCESAR Y ASOCIAR MULTAS SELECCIONADAS
-                if ($request->has('multas_seleccionadas')) {
-                    \Log::info("🔍 Procesando multas seleccionadas: " . json_encode($request->multas_seleccionadas));
-                    
-                    foreach ($request->multas_seleccionadas as $multaId) {
-                        $multa = Fine::find($multaId);
-                        if ($multa && $multa->estado === Fine::ESTADO_PENDIENTE) {
-                            
-                            try {
-                                // ✅ ASOCIAR MULTA CON EL PRIMER PAGO DEL RECIBO
-                                $primerPago = $pagosCreados[0];
-                                $primerPago->multasPagadas()->attach($multaId, [
-                                    'monto_pagado' => $multa->monto,
-                                    'created_at' => now(),
-                                    'updated_at' => now()
-                                ]);
-                                
-                                // ✅ MARCAR MULTA COMO PAGADA
-                                $multa->update(['estado' => Fine::ESTADO_PAGADA]);
-                                
-                                $multasSeleccionadas->push($multa);
-                                
-                                \Log::info("✅ Multa #{$multa->id} '{$multa->nombre}' asociada al pago #{$primerPago->id} - Monto: {$multa->monto}");
-                                
-                            } catch (\Exception $e) {
-                                \Log::error("❌ Error asociando multa #{$multaId}: " . $e->getMessage());
-                            }
-                        } else {
-                            \Log::warning("⚠️ Multa #{$multaId} no encontrada o ya está pagada");
-                        }
-                    }
-                } else {
-                    \Log::info("ℹ️ No hay multas seleccionadas en el request");
-                }
-
-            DB::commit();
-
-            $mensaje = $this->generarMensajeExito($pagosCreados, $multasSeleccionadas, $propiedad, $mesesPagadosCount, $esReconexion) . $mensajeReconexion;
-
-            return redirect()->route('admin.pagos.index')->with('info', $mensaje);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Error al crear pago: ' . $e->getMessage());
-            \Log::error('Trace: ' . $e->getTraceAsString());
-            
-            $errorMessage = 'Error al registrar los pagos: ' . $e->getMessage();
-            
-            return redirect()
-                ->route('admin.pagos.create', ['propiedad_id' => $request->propiedad_id])
-                ->withErrors(['error' => $errorMessage])
-                ->withInput();
+        \Log::info("=== INICIANDO PROCESO DE PAGO ===");
+        \Log::info("Propiedad ID: " . $request->propiedad_id);
+        
+        $propiedad = Property::with(['client', 'tariff'])->findOrFail($request->propiedad_id);
+        
+        if (!$propiedad->tariff) {
+            throw new \Exception('La propiedad no tiene una tarifa asignada');
         }
-    }
 
-    private function generarMensajeExito($pagosCreados, $multasSeleccionadas, $propiedad, $mesesPagadosCount, $esReconexion = false)
-    {
-        $mensaje = count($pagosCreados) > 1 
-            ? "Se registraron " . count($pagosCreados) . " pagos exitosamente" 
-            : "Pago registrado exitosamente";
+        $tarifaMensual = $propiedad->tariff->precio_mensual;
 
-        if ($multasSeleccionadas->count() > 0) {
-            $mensaje .= " y " . $multasSeleccionadas->count() . " multa(s) pagada(s)";
+        $mesDesde = $request->mes_desde;
+        $mesHasta = $request->mes_hasta;
+        
+        if (!$mesDesde || !$mesHasta) {
+            throw new \Exception('Los meses desde y hasta son requeridos');
         }
+
+        $meses = $this->generarRangoMeses($mesDesde, $mesHasta);
+        $mesesPagadosCount = count($meses);
+
+        if (empty($meses)) {
+            throw new \Exception('No se pudo generar el rango de meses. Verifique las fechas.');
+        }
+
+        // ✅ CORREGIDO: VALIDACIÓN DE PAGO SECUENCIAL MEJORADA
+        $mesesAdeudados = $propiedad->obtenerMesesAdeudados();
+        sort($mesesAdeudados);
+
+        if (!empty($mesesAdeudados)) {
+            $primerMesAdeudado = $mesesAdeudados[0];
+            
+            \Log::info("🔍 Validando secuencia - Primer mes adeudado: {$primerMesAdeudado}");
+            \Log::info("Meses adeudados totales: " . implode(', ', $mesesAdeudados));
+            \Log::info("Meses a pagar: " . implode(', ', $meses));
+            
+            if ($mesDesde !== $primerMesAdeudado) {
+                DB::rollBack();
+                $primerMesFormateado = Carbon::createFromFormat('Y-m', $primerMesAdeudado)->locale('es')->translatedFormat('F Y');
+                $mesDesdeFormateado = Carbon::createFromFormat('Y-m', $mesDesde)->locale('es')->translatedFormat('F Y');
+                
+                \Log::warning("❌ Validación secuencial fallida - Debe pagar desde {$primerMesAdeudado}, está pagando desde {$mesDesde}");
+                
+                return redirect()
+                    ->route('admin.pagos.create', ['propiedad_id' => $propiedad->id])
+                    ->withErrors([
+                        'error' => "Debe pagar desde el primer mes adeudado ({$primerMesFormateado}). " .
+                                "No puede pagar desde {$mesDesdeFormateado} sin antes pagar los meses anteriores."
+                    ])
+                    ->withInput();
+            }
+            
+            $mesesSeleccionadosOrdenados = $meses;
+            sort($mesesSeleccionadosOrdenados);
+            
+            $mesesEsperados = array_slice($mesesAdeudados, 0, count($mesesSeleccionadosOrdenados));
+            
+            if ($mesesSeleccionadosOrdenados !== $mesesEsperados) {
+                DB::rollBack();
+                
+                $mesesEsperadosFormateados = array_map(function($mes) {
+                    return Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
+                }, $mesesEsperados);
+                
+                $mesesSeleccionadosFormateados = array_map(function($mes) {
+                    return Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
+                }, $mesesSeleccionadosOrdenados);
+                
+                \Log::warning("❌ Validación de secuencia fallida - Esperados: " . implode(', ', $mesesEsperados) . " - Seleccionados: " . implode(', ', $mesesSeleccionadosOrdenados));
+                
+                return redirect()
+                    ->route('admin.pagos.create', ['propiedad_id' => $propiedad->id])
+                    ->withErrors([
+                        'error' => "Debe pagar los meses en orden secuencial. " .
+                                "Los próximos meses a pagar son: " . implode(', ', $mesesEsperadosFormateados) . ". " .
+                                "No puede saltar meses pendientes."
+                    ])
+                    ->withInput();
+            }
+            
+            \Log::info("✅ Validación secuencial exitosa");
+        }
+
+        // ✅ CORREGIDO: VALIDACIÓN DE PAGO COMPLETO PARA RECONEXIÓN
+        $esReconexion = $request->has('reconexion') || $request->has('forzar_pago_completo');
 
         if ($esReconexion) {
-            $mensaje .= ". ✅ Pago completo para reconexión validado.";
+            try {
+                \Log::info("=== PROCESANDO RECONEXIÓN ===");
+                
+                $propiedad->forzarReconexionPendiente();
+                
+                if ($propiedad->estado === Property::ESTADO_CORTE_PENDIENTE && 
+                    $propiedad->tipo_trabajo_pendiente === Property::TRABAJO_RECONEXION) {
+                    
+                    \Log::info("✅ RECONEXIÓN EXITOSA - Propiedad {$propiedad->id} ahora visible para operadores");
+                    $mensajeReconexion = " La propiedad ha sido puesta en COLA DE RECONEXIÓN para el equipo de operaciones.";
+                } else {
+                    \Log::error("❌ FALLA EN RECONEXIÓN - Estado: {$propiedad->estado}, Trabajo: {$propiedad->tipo_trabajo_pendiente}");
+                    $mensajeReconexion = " ⚠️ Error al programar reconexión. Contacte al administrador.";
+                }
+                
+            } catch (\Exception $e) {
+                \Log::error("❌ ERROR CRÍTICO en reconexión: " . $e->getMessage());
+                $mensajeReconexion = " ⚠️ Error al programar reconexión: " . $e->getMessage();
+            }
         }
 
-        return $mensaje;
+        // ✅ CREAR PAGOS Y CALCULAR MULTAS POR MORA
+        $numeroReciboBase = $this->generarNumeroRecibo();
+        $pagoPrincipalId = null;
+        
+        foreach ($meses as $index => $mes) {
+            // Generar número de recibo (el primero para el recibo principal, luego recibo-hijo)
+            $numeroRecibo = ($index === 0) 
+                ? $numeroReciboBase 
+                : $numeroReciboBase . '-' . ($index + 1);
+            
+            // Verificar si el mes está atrasado para aplicar multa
+            $mesPagado = Carbon::createFromFormat('Y-m', $mes);
+            $hoy = now()->startOfMonth();
+            $mesesAtrasados = $mesPagado->diffInMonths($hoy);
+            
+            $montoPago = $tarifaMensual;
+            $multaMora = null;
+            $mesesAtrasadosEntero = (int) $mesesAtrasados; // Convertir a entero
+
+            if ($mesesAtrasadosEntero >= 3) { // 3 o más meses de atraso
+                $config = \App\Models\ConfigMultaMora::getConfiguracionActiva();
+                
+                if ($config && $config->activo && $mesesAtrasadosEntero >= $config->meses_gracia) {
+                    $multaMonto = $tarifaMensual * ($config->porcentaje_multa / 100);
+                    
+                    // Crear multa automática por mora
+                    $multaMora = Fine::create([
+                        'propiedad_id' => $propiedad->id,
+                        'tipo' => Fine::TIPO_MORA_PAGO,
+                        'nombre' => "Multa por mora - " . Carbon::parse($mes)->translatedFormat('F Y'),
+                        'descripcion' => "Pago del mes {$mes} registrado con {$mesesAtrasadosEntero} mes(es) de atraso. " .
+                                        "Se aplicó {$config->porcentaje_multa}% de multa según configuración '{$config->nombre}'",
+                        'monto' => $multaMonto,
+                        'porcentaje_aplicado' => $config->porcentaje_multa, // ✅ NUEVO
+                        'meses_atraso' => $mesesAtrasadosEntero, // ✅ NUEVO
+                        'mes_aplicado' => $mes, // ✅ NUEVO
+                        'fecha_aplicacion' => now(),
+                        'estado' => Fine::ESTADO_PENDIENTE,
+                        'aplicada_automaticamente' => true,
+                        'activa' => true,
+                        'creado_por' => auth()->id(),
+                    ]);
+                    
+                    $multasMoraCreadas->push($multaMora);
+                    $montoPago += $multaMonto; // Agregar multa al monto total
+                    
+                    \Log::info("✅ Multa por mora creada - Mes: {$mes}, Atraso: {$mesesAtrasados} meses, Multa: Bs {$multaMonto}");
+                }
+            }
+            
+            $pago = Pago::create([
+                'numero_recibo' => $numeroRecibo,
+                'propiedad_id' => $propiedad->id,
+                'monto' => $montoPago,
+                'mes_pagado' => $mes,
+                'fecha_pago' => $request->fecha_pago,
+                'metodo' => $request->metodo,
+                'comprobante' => $request->comprobante,
+                'observaciones' => $this->generarObservacionesConMulta($request->observaciones, $multaMora),
+                'registrado_por' => auth()->id(),
+            ]);
+            
+            // Guardar ID del primer pago para asociar multas
+            if ($index === 0) {
+                $pagoPrincipalId = $pago->id;
+            }
+            
+            $pagosCreados[] = $pago;
+            
+            // Si hay multa por mora, asociarla al pago
+            if ($multaMora) {
+                $pago->multasPagadas()->attach($multaMora->id, [
+                    'monto_pagado' => $multaMora->monto,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+            
+            // Actualizar deudas si existen
+            $this->actualizarDeudaPorPago($propiedad->id, $mes);
+        }
+
+        // ✅ PROCESAR Y ASOCIAR MULTAS SELECCIONADAS MANUALMENTE
+        if ($request->has('multas_seleccionadas')) {
+            \Log::info("🔍 Procesando multas seleccionadas: " . json_encode($request->multas_seleccionadas));
+            
+            foreach ($request->multas_seleccionadas as $multaId) {
+                $multa = Fine::find($multaId);
+                if ($multa && $multa->estado === Fine::ESTADO_PENDIENTE) {
+                    
+                    try {
+                        // ✅ ASOCIAR MULTA CON EL PRIMER PAGO DEL RECIBO
+                        $primerPago = $pagosCreados[0];
+                        $primerPago->multasPagadas()->attach($multaId, [
+                            'monto_pagado' => $multa->monto,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                        
+                        // ✅ MARCAR MULTA COMO PAGADA
+                        $multa->update(['estado' => Fine::ESTADO_PAGADA]);
+                        
+                        $multasSeleccionadas->push($multa);
+                        
+                        \Log::info("✅ Multa #{$multa->id} '{$multa->nombre}' asociada al pago #{$primerPago->id} - Monto: {$multa->monto}");
+                        
+                    } catch (\Exception $e) {
+                        \Log::error("❌ Error asociando multa #{$multaId}: " . $e->getMessage());
+                    }
+                } else {
+                    \Log::warning("⚠️ Multa #{$multaId} no encontrada o ya está pagada");
+                }
+            }
+        } else {
+            \Log::info("ℹ️ No hay multas seleccionadas en el request");
+        }
+
+        DB::commit();
+
+        $mensaje = $this->generarMensajeExito(
+            $pagosCreados, 
+            $multasSeleccionadas, 
+            $propiedad, 
+            $mesesPagadosCount, 
+            $esReconexion,
+            $multasMoraCreadas // ✅ NUEVO: Pasar multas por mora creadas
+        ) . $mensajeReconexion;
+
+        return redirect()->route('admin.pagos.index')->with('info', $mensaje);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('Error al crear pago: ' . $e->getMessage());
+        \Log::error('Trace: ' . $e->getTraceAsString());
+        
+        $errorMessage = 'Error al registrar los pagos: ' . $e->getMessage();
+        
+        return redirect()
+            ->route('admin.pagos.create', ['propiedad_id' => $request->propiedad_id])
+            ->withErrors(['error' => $errorMessage])
+            ->withInput();
     }
+}
+
+// ✅ NUEVO MÉTODO: Generar observaciones con información de multa
+private function generarObservacionesConMulta($observacionesOriginal, $multaMora)
+{
+    $observaciones = $observacionesOriginal ?? '';
+    
+    if ($multaMora) {
+        $infoMulta = "\n[MULTA POR MORA: Bs " . number_format($multaMora->monto, 2) . "]";
+        
+        if (!empty($observaciones)) {
+            return $observaciones . $infoMulta;
+        }
+        return $infoMulta;
+    }
+    
+    return $observaciones;
+}
+
+// ✅ ACTUALIZAR método generarMensajeExito
+private function generarMensajeExito($pagosCreados, $multasSeleccionadas, $propiedad, $mesesPagadosCount, $esReconexion = false, $multasMoraCreadas = null)
+{
+    $mensaje = count($pagosCreados) > 1 
+        ? "Se registraron " . count($pagosCreados) . " pagos exitosamente" 
+        : "Pago registrado exitosamente";
+
+    // Multas seleccionadas manualmente
+    if ($multasSeleccionadas->count() > 0) {
+        $mensaje .= " y " . $multasSeleccionadas->count() . " multa(s) pagada(s)";
+    }
+    
+    // Multas por mora automáticas
+    if ($multasMoraCreadas && $multasMoraCreadas->count() > 0) {
+        $totalMultasMora = $multasMoraCreadas->sum('monto');
+        $mensaje .= " con " . $multasMoraCreadas->count() . " multa(s) por mora (Bs " . number_format($totalMultasMora, 2) . ")";
+    }
+
+    if ($esReconexion) {
+        $mensaje .= ". ✅ Pago completo para reconexión validado.";
+    }
+
+    return $mensaje;
+}
     private function actualizarDeudaPorPago($propiedadId, $mesPagado)
     {
         try {

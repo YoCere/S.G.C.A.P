@@ -101,7 +101,93 @@
             </form>
         </div>
     </div>
-
+    {{-- Añade esto en la tarjeta de filtros o crea una nueva sección --}}
+<div class="card card-outline card-info mb-3">
+    <div class="card-header">
+        <h3 class="card-title h6 mb-0">
+            <i class="fas fa-cog mr-1"></i>
+            Configuración de Multas por Mora
+        </h3>
+        <div class="card-tools">
+            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                <i class="fas fa-minus"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        @php
+            $configMora = \App\Models\ConfigMultaMora::first();
+        @endphp
+        <div class="row">
+            <div class="col-md-6">
+                <div class="alert alert-info">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Configuración Actual
+                    </h6>
+                    <hr class="my-2">
+                    <div class="row">
+                        <div class="col-6">
+                            <strong>Meses de gracia:</strong><br>
+                            <span class="badge badge-primary">{{ $configMora->meses_gracia ?? 3 }}</span>
+                        </div>
+                        <div class="col-6">
+                            <strong>Porcentaje multa:</strong><br>
+                            <span class="badge badge-warning">{{ $configMora->porcentaje_multa ?? 10 }}%</span>
+                        </div>
+                    </div>
+                    @if($configMora)
+                        <div class="mt-2">
+                            <strong>Estado:</strong>
+                            <span class="badge badge-{{ $configMora->activo ? 'success' : 'secondary' }}">
+                                {{ $configMora->activo ? 'Activo' : 'Inactivo' }}
+                            </span>
+                        </div>
+                    @endif
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="alert alert-light">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-calculator mr-1"></i>
+                        Calcular Ejemplo
+                    </h6>
+                    <form id="calculoMultaForm">
+                        <div class="form-group">
+                            <label class="small">Monto Base</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   id="montoBase" placeholder="Bs 0.00" step="0.01" value="100">
+                        </div>
+                        <div class="form-group">
+                            <label class="small">Meses de Atraso</label>
+                            <input type="number" class="form-control form-control-sm" 
+                                   id="mesesAtraso" placeholder="Ej: 4" min="0" value="4">
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-info w-100" 
+                                onclick="calcularMultaMora()">
+                            <i class="fas fa-calculator mr-1"></i> Calcular Multa
+                        </button>
+                    </form>
+                    <div id="resultadoCalculo" class="mt-3" style="display:none;">
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between">
+                            <span class="small">Multa aplicable:</span>
+                            <strong class="text-danger" id="multaCalculada">Bs 0.00</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="small">Total a pagar:</span>
+                            <strong class="text-success" id="totalCalculado">Bs 0.00</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <a href="{{ route('admin.config-multas-mora.edit') }}" class="btn btn-info btn-sm">
+            <i class="fas fa-edit mr-1"></i> Editar Configuración
+        </a>
+    </div>
+    </div>
     <!-- Estadísticas Responsivas -->
     <div class="row mb-4">
         <div class="col-6 col-sm-3 mb-3">

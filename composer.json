@@ -19,6 +19,7 @@
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.30",
         "livewire/livewire": "^3.6.4",
+        "predis/predis": "^2.2",  
         "spatie/laravel-backup": "^9.3",
         "spatie/laravel-permission": "^6.21"
     },
@@ -37,7 +38,10 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
-        }
+        },
+        "files": [
+            "app/Helpers/optimization.php"  
+        ]
     },
     "autoload-dev": {
         "psr-4": {
@@ -46,8 +50,7 @@
     },
     "scripts": {
         "post-autoload-dump": [
-            "@php artisan config:clear",
-            "@php artisan clear-compiled",
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [
@@ -60,6 +63,17 @@
             "@php artisan key:generate --ansi",
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
+        ],
+        "optimize": [  
+            "@php artisan config:cache",
+            "@php artisan route:cache", 
+            "@php artisan view:cache"
+        ],
+        "clear": [  
+            "@php artisan config:clear",
+            "@php artisan route:clear",
+            "@php artisan view:clear",
+            "@php artisan cache:clear"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -79,11 +93,13 @@
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
+        "platform-check": false, 
+        "discard-changes": true,  
+        "apcu-autoloader": true,  
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
-}
+    "prefer-stable": true}

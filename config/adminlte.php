@@ -503,6 +503,7 @@ return [
         ],
     ],
 
+    
     /*
     |--------------------------------------------------------------------------
     | IFrame
@@ -549,4 +550,22 @@ return [
     */
 
     'livewire' => false,
+    
+    'assets' => [
+        'enabled' => false, // ← DESHABILITA Bootstrap, jQuery, FontAwesome automáticos
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | HTML Attributes
+    |--------------------------------------------------------------------------
+    |
+    | Atributos HTML adicionales para el tag <html>
+    |
+    */
+
+    'html_attributes' => [
+        'data-assets-enabled' => 'false',
+        'data-no-auto-assets' => 'true',
+    ],
 ];

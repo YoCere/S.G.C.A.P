@@ -1,5 +1,4 @@
-@extends('adminlte::page')
-
+@extends('layouts.admin-ultralight')
 @section('title', 'Trabajos Pendientes - SGCAF')
 
 @section('content_header')

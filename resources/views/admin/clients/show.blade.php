@@ -1,5 +1,4 @@
-@extends('adminlte::page')
-
+@extends('layouts.admin-ultralight')
 @section('title', 'Cliente: ' . $client->nombre)
 
 @section('content_header')

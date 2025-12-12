@@ -1,5 +1,4 @@
-@extends('adminlte::page')
-
+@extends('layouts.admin-ultralight')
 @section('title', 'Registrar Cliente')
 
 @section('content_header')

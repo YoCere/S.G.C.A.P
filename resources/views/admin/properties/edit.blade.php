@@ -1,5 +1,5 @@
 {{-- resources/views/admin/properties/edit.blade.php --}}
-@extends('adminlte::page')
+@extends('layouts.admin-ultralight')
 
 @section('title', 'Editar Propiedad')
 

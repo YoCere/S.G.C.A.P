@@ -1,5 +1,5 @@
 {{-- resources/views/admin/properties/create.blade.php --}}
-@extends('adminlte::page')
+@extends('layouts.admin-ultralight')
 
 @section('title', 'Nueva Propiedad')
 

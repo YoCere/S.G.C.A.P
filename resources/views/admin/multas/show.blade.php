@@ -1,5 +1,4 @@
-@extends('adminlte::page')
-
+@extends('layouts.admin-ultralight')
 @section('title', 'Detalles de Multa - SGCAF')
 
 @section('content_header')

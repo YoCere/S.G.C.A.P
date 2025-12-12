@@ -48,7 +48,7 @@ return [
     */
 
     'google_fonts' => [
-        'allowed' => true,
+        'allowed' => false, // ← CAMBIADO de true a false (elimina Source Sans Pro)
     ],
 
     /*
@@ -64,7 +64,7 @@ return [
     */
 
     'logo' => '<b>S.G.C.A.P</b>',
-    'logo_img' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
+    'logo_img' => false, // ← CAMBIADO: No usar imagen local (usa texto)
     'logo_img_class' => 'brand-image img-circle elevation-3',
     'logo_img_xl' => null,
     'logo_img_xl_class' => 'brand-image-xs',
@@ -110,7 +110,7 @@ return [
     */
 
     'preloader' => [
-        'enabled' => true,
+        'enabled' => false, // ← CAMBIADO de true a false (elimina animación)
         'mode' => 'fullscreen',
         'img' => [
             'path' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
@@ -393,7 +393,6 @@ return [
             'icon' => 'fas fa-database',
             'can' => 'admin.backups.index',
         ],
-        
     ],
 
     /*
@@ -503,7 +502,6 @@ return [
         ],
     ],
 
-    
     /*
     |--------------------------------------------------------------------------
     | IFrame
@@ -550,9 +548,58 @@ return [
     */
 
     'livewire' => false,
+
+    // =====================================================
+    // ✅ CONFIGURACIÓN CRÍTICA PARA OPTIMIZACIÓN
+    // =====================================================
     
+    /*
+    |--------------------------------------------------------------------------
+    | Assets Configuration
+    |--------------------------------------------------------------------------
+    |
+    | ¡IMPORTANTE! Deshabilita TODA carga automática de assets
+    | Previene el CSS de 1.4MB y reduce a ~300KB via CDN
+    |
+    */
+
     'assets' => [
         'enabled' => false, // ← DESHABILITA Bootstrap, jQuery, FontAwesome automáticos
+        'auto_css' => false,
+        'auto_js' => false,
+        'auto_plugins' => false,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | CSS Sources Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Define fuentes CSS externas (CDN) en lugar de locales
+    |
+    */
+
+    'css_sources' => [
+        'bootstrap' => 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+        'fontawesome' => 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+        'adminlte' => 'https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/css/adminlte.min.css',
+        'overlay_scrollbars' => 'https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/css/OverlayScrollbars.min.css',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | JS Sources Configuration  
+    |--------------------------------------------------------------------------
+    |
+    | Define fuentes JS externas (CDN) en lugar de locales
+    |
+    */
+
+    'js_sources' => [
+        'jquery' => 'https://code.jquery.com/jquery-3.6.0.min.js',
+        'bootstrap' => 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
+        'adminlte' => 'https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/js/adminlte.min.js',
+        'overlay_scrollbars' => 'https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js',
     ],
 
     /*
@@ -567,5 +614,7 @@ return [
     'html_attributes' => [
         'data-assets-enabled' => 'false',
         'data-no-auto-assets' => 'true',
+        'data-optimized' => 'true',
     ],
+
 ];

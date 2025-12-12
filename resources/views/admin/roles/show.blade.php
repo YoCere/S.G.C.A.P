@@ -1,4 +1,4 @@
-@extends('adminlte::page')
+@extends('layouts.admin-ultralight')
 
 @section('title', 'Detalles del Rol: ' . $role->name)
 

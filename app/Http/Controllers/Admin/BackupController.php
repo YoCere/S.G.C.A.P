@@ -13,7 +13,7 @@ class BackupController extends Controller
     public function index(Request $request)
     {
         // Obtener backups directamente del almacenamiento
-        $disk = $request->get('disk', 'local');
+        $disk = $request->get('disk', 's3');
         $storage = Storage::disk($disk);
         
         $prefix = config('backup.backup.name', env('APP_NAME', 'Laravel'));

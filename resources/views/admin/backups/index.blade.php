@@ -96,14 +96,9 @@
             </div>
 
             <div class="ml-auto">
-                <form class="form-inline">
-                    <label class="mr-2 mb-0 text-sm text-muted">Filtro:</label>
-                    <select id="filter-disk" class="form-control form-control-sm" onchange="applyFilter()">
-                        <option value="">Todos los destinos</option>
-                        {{-- <option value="local" {{ request('disk') == 'local' ? 'selected' : '' }}>Local</option> --}}
-                        <option value="s3" {{ request('disk') == 's3' ? 'selected' : '' }}>S3</option>
-                    </select>
-                </form>
+                <span class="badge badge-info">
+                    <i class="fas fa-cloud mr-1"></i>Almacenamiento: AWS S3
+                </span>
             </div>
         </div>
 

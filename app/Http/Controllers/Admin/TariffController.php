@@ -34,8 +34,11 @@ class TariffController extends Controller
     {
         $data = $request->validate([
             'nombre' => [
-                'required','string','max:255',
-                Rule::unique('tarifas','nombre')->whereNull('deleted_at'), // ignora soft-deleted
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-Z0-9ÁÉÍÓÚÑ ]+$/',
+                Rule::unique('tarifas','nombre')->whereNull('deleted_at'),
             ],
             'precio_mensual' => 'required|numeric|min:0|max:999999.99',
             'descripcion'    => 'nullable|string|max:1000',
@@ -62,11 +65,15 @@ class TariffController extends Controller
     {
         $data = $request->validate([
             'nombre' => [
-                'required','string','max:255',
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-Z0-9ÁÉÍÓÚÑ ]+$/',
                 Rule::unique('tarifas','nombre')
-                    ->ignore($tariff->id)          // permite su mismo nombre
-                    ->whereNull('deleted_at'),     // ignora soft-deleted
+                    ->ignore($tariff->id)
+                    ->whereNull('deleted_at'),
             ],
+
             'precio_mensual' => 'required|numeric|min:0|max:999999.99',
             'descripcion'    => 'nullable|string|max:1000',
         ]);

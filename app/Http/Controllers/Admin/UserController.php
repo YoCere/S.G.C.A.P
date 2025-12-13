@@ -59,10 +59,21 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-ZÁÉÍÓÚÑ ]+$/', // Solo mayúsculas y espacios
+            ],
+            'email' => [
+                'required',
+                'string',
+                'email:rfc,dns', // Validación más estricta
+                'max:255',
+                'unique:users,email',
+            ],
             'password' => 'required|string|min:8|confirmed',
-            'roles' => 'required|array',
+            'roles' => 'required|array|min:1',
             'roles.*' => 'exists:roles,id',
         ]);
 
@@ -95,10 +106,21 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-ZÁÉÍÓÚÑ ]+$/',
+            ],
+            'email' => [
+                'required',
+                'string',
+                'email:rfc,dns',
+                'max:255',
+                'unique:users,email,' . $user->id,
+            ],
             'password' => 'nullable|string|min:8|confirmed',
-            'roles' => 'required|array',
+            'roles' => 'required|array|min:1',
             'roles.*' => 'exists:roles,id',
         ]);
 

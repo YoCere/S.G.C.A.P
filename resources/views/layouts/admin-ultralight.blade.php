@@ -158,7 +158,15 @@
 
 <!-- AdminLTE -->
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-
+<script>
+    // Desactivar comportamientos problemáticos de AdminLTE para el mapa
+    $(document).ready(function() {
+        // Prevenir que AdminLTE interfiera con eventos del mapa
+        $('#locationMap').on('click', function(e) {
+            e.stopPropagation();
+        });
+    });
+</script>
 @yield('js')
 @stack('scripts')
 

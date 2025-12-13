@@ -64,9 +64,23 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nombre' => 'required|string|max:255',
-            'ci' => 'required|string|max:20|unique:clientes,ci',
-            'telefono' => 'nullable|string|max:20',
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-ZÁÉÍÓÚÑ ]+$/', // Solo mayúsculas y espacios
+            ],
+            'ci' => [
+                'required',
+                'string',
+                'max:20',
+                'unique:clientes,ci',
+                'regex:/^[0-9]{7,8}(-[0-9A-Z]{1,2})?$/', // CI 7-8 dígitos + complemento opcional
+            ],
+            'telefono' => [
+                'nullable',
+                'regex:/^[0-9]{8}$/', // Exactamente 8 dígitos
+            ],
         ]);
         
         // ✅ NUEVO: Generar código de cliente automáticamente
@@ -99,10 +113,23 @@ class ClientController extends Controller
     public function update(Request $request, Client $client)
     {
         $request->validate([
-            'nombre' => 'required|string|max:255',
-            'ci' => 'required|string|max:20|unique:clientes,ci,'.$client->id,
-            'telefono' => 'nullable|string|max:20',
-            // ❌ NO validar codigo_cliente
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-ZÁÉÍÓÚÑ ]+$/',
+            ],
+            'ci' => [
+                'required',
+                'string',
+                'max:20',
+                'unique:clientes,ci,' . $client->id,
+                'regex:/^[0-9]{7,8}(-[0-9A-Z]{1,2})?$/',
+            ],
+            'telefono' => [
+                'nullable',
+                'regex:/^[0-9]{8}$/',
+            ],
         ]);
         
         // ❌ NO actualizar el código, excluirlo del update

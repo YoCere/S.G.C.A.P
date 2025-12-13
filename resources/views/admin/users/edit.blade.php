@@ -55,9 +55,13 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="name" class="font-weight-bold">Nombre completo *</label>
-                            <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                                   id="name" name="name" value="{{ old('name', $user->name) }}" 
-                                   placeholder="Ingrese el nombre completo" required>
+                            <input type="text" 
+       class="form-control @error('name') is-invalid @enderror" 
+       id="name" name="name" 
+       value="{{ old('name', $user->name) }}" 
+       placeholder="Ingrese el nombre completo" 
+       required
+       pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ ]+">
                             @error('name')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -67,9 +71,13 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="email" class="font-weight-bold">Email *</label>
-                            <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                                   id="email" name="email" value="{{ old('email', $user->email) }}" 
-                                   placeholder="usuario@ejemplo.com" required>
+                            <input type="text" 
+       class="form-control @error('name') is-invalid @enderror" 
+       id="name" name="name" 
+       value="{{ old('name', $user->name) }}" 
+       placeholder="Ingrese el nombre completo" 
+       required
+       pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ ]+">
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -176,4 +184,20 @@
             border-color: #e9ecef !important;
         }
     </style>
+@stop
+@section('js')
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    const name = document.getElementById("name");
+
+    name.addEventListener("input", function () {
+        // Solo letras y espacios
+        this.value = this.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ ]/g, "");
+        // Convertir a mayúsculas
+        this.value = this.value.toUpperCase();
+    });
+
+});
+</script>
 @stop

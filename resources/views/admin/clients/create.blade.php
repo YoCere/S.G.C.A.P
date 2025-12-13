@@ -30,10 +30,12 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="nombre">Nombre Completo *</label>
-                            <input type="text" name="nombre" id="nombre" 
-                                   class="form-control @error('nombre') is-invalid @enderror"
-                                   placeholder="Ingrese el nombre completo del cliente"
-                                   value="{{ old('nombre') }}" required>
+                            <input type="text" name="nombre" id="nombre"
+                            class="form-control @error('nombre') is-invalid @enderror"
+                            placeholder="Ingrese el nombre completo"
+                            value="{{ old('nombre') }}" 
+                            required 
+                            pattern="[A-ZÁÉÍÓÚÑ ]+">
                             @error('nombre')
                                 <span class="invalid-feedback">{{ $message }}</span>
                             @enderror
@@ -42,10 +44,12 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="ci">CI/NIT *</label>
-                            <input type="text" name="ci" id="ci" 
-                                   class="form-control @error('ci') is-invalid @enderror"
-                                   placeholder="Ingrese el número de CI o NIT"
-                                   value="{{ old('ci') }}" required>
+                            <input type="text" name="ci" id="ci"
+                            class="form-control @error('ci') is-invalid @enderror"
+                            placeholder="Ej: 6543210-1B"
+                            value="{{ old('ci') }}"
+                            required
+                            pattern="[0-9]{7,8}(-[0-9A-Z]{1,2})?">                     
                             @error('ci')
                                 <span class="invalid-feedback">{{ $message }}</span>
                             @enderror
@@ -57,10 +61,12 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="telefono">Teléfono</label>
-                            <input type="text" name="telefono" id="telefono" 
-                                   class="form-control @error('telefono') is-invalid @enderror"
-                                   placeholder="Ingrese el número de teléfono"
-                                   value="{{ old('telefono') }}">
+                            <input type="text" name="telefono" id="telefono"
+                            maxlength="8"
+                            pattern="[0-9]{8}"
+                            class="form-control @error('telefono') is-invalid @enderror"
+                            placeholder="Ingrese el teléfono"
+                            value="{{ old('telefono') }}">
                             @error('telefono')
                                 <span class="invalid-feedback">{{ $message }}</span>
                             @enderror
@@ -116,4 +122,34 @@
             background-color: #f8f9fa !important;
         }
     </style>
+@stop
+
+@section('js')
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+    
+        // 🔵 Convertir nombre a MAYÚSCULAS automáticamente
+        const nombre = document.getElementById("nombre");
+        nombre.addEventListener("input", function () {
+            // Solo letras y espacios
+            this.value = this.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ ]/g, "");
+            // Convertir a mayúsculas
+            this.value = this.value.toUpperCase();
+        });
+    
+        // 🔵 Validación de CI
+        const ci = document.getElementById("ci");
+        ci.addEventListener("input", function () {
+            this.value = this.value.toUpperCase();
+            this.value = this.value.replace(/[^0-9A-Z\-]/g, "");
+        });
+    
+        // 🔵 Validación de teléfono (solo 8 dígitos)
+        const telefono = document.getElementById("telefono");
+        telefono.addEventListener("input", function () {
+            this.value = this.value.replace(/[^0-9]/g, ""); // Solo números
+            this.value = this.value.substring(0, 8);        // Máximo 8 dígitos
+        });
+    });
+</script>
 @stop

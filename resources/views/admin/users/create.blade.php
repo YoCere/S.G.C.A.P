@@ -40,9 +40,12 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="name" class="font-weight-bold">Nombre completo *</label>
-                            <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                                   id="name" name="name" value="{{ old('name') }}" 
-                                   placeholder="Ingrese el nombre completo" required>
+                            <input type="text" 
+                            class="form-control @error('name') is-invalid @enderror" 
+                            id="name" name="name" 
+                            value="{{ old('name') }}" 
+                            placeholder="Ingrese el nombre completo" 
+                            required pattern="[A-ZÁÉÍÓÚÑ ]+">
                             @error('name')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -52,9 +55,13 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="email" class="font-weight-bold">Email *</label>
-                            <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                                   id="email" name="email" value="{{ old('email') }}" 
-                                   placeholder="usuario@ejemplo.com" required>
+                            <input type="email" 
+                            class="form-control @error('email') is-invalid @enderror" 
+                            id="email" name="email" 
+                            value="{{ old('email') }}" 
+                            placeholder="usuario@ejemplo.com" 
+                            required
+                            pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Z]{2,}$">
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -66,9 +73,12 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="password" class="font-weight-bold">Contraseña *</label>
-                            <input type="password" class="form-control @error('password') is-invalid @enderror" 
-                                   id="password" name="password" 
-                                   placeholder="Mínimo 8 caracteres" required>
+                            <input type="password" 
+                            class="form-control @error('password') is-invalid @enderror" 
+                            id="password" name="password"
+                            minlength="8"
+                            placeholder="Mínimo 8 caracteres" 
+                            required>
                             @error('password')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -137,4 +147,19 @@
             padding: 0.4em 0.8em;
         }
     </style>
+@stop
+
+@section('js')
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+    
+        // Convertir nombre a MAYÚSCULAS y evitar números
+        const name = document.getElementById("name");
+        name.addEventListener("input", function () {
+            this.value = this.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ ]/g, ""); // Solo letras
+            this.value = this.value.toUpperCase(); // A mayúsculas
+        });
+    
+    });
+    </script>
 @stop

@@ -27,6 +27,7 @@ class PropertyRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
+                'regex:/^[A-Z0-9ÁÉÍÓÚÑ ,.()-]+$/',
                 Rule::unique('propiedades', 'referencia')->ignore($propertyId),
             ],
             // ❌ ELIMINADO: 'direccion' => 'required|string|max:255', (no existe en el formulario)

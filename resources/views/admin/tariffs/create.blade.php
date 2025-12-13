@@ -24,11 +24,12 @@
                         type="text"
                         name="nombre"
                         id="nombre"
-                        class="form-control"
-                        placeholder="Ej: Normal, Adulto mayor"
+                        class="form-control @error('nombre') is-invalid @enderror"
+                        placeholder="Ej: NORMAL, ADULTO MAYOR, PLAN 40"
                         value="{{ old('nombre') }}"
                         required
-                    >
+                        pattern="[A-Za-z0-9ÁÉÍÓÚáéíóúÑñ ]+">
+
                     @error('nombre')
                         <span class="text-danger">{{ $message }}</span>
                     @enderror
@@ -37,16 +38,14 @@
                 <div class="form-group">
                     <label for="precio_mensual">Precio mensual (Bs)</label>
                     <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        name="precio_mensual"
-                        id="precio_mensual"
-                        class="form-control"
-                        placeholder="Ej: 40.00"
-                        value="{{ old('precio_mensual') }}"
-                        required
-                    >
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="precio_mensual"
+                    id="precio_mensual"
+                    placeholder="Ej: 40.00"
+                >
+
                     @error('precio_mensual')
                         <span class="text-danger">{{ $message }}</span>
                     @enderror
@@ -75,4 +74,21 @@
             </form>
         </div>
     </div>
+@stop
+
+@section('js')
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    // 🔵 NOMBRE DE TARIFA
+    const nombre = document.getElementById("nombre");
+    nombre.addEventListener("input", function () {
+        this.value = this.value
+            .replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ ]/g, "") // solo letras/números
+            .replace(/\s{2,}/g, " ")                 // sin espacios dobles
+            .toUpperCase();                          // a mayúsculas
+    });
+
+});
+</script>
 @stop

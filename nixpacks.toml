@@ -1,7 +1,7 @@
 [phases.setup]
 cmds = [
     "apt-get update",
-    "apt-get install -y libzip-dev zlib1g-dev libpng-dev libjpeg-dev libfreetype6-dev libonig-dev libxml2-dev",
+    "apt-get install -y libzip-dev zlib1g-dev libpng-dev libjpeg-dev libfreetype6-dev libonig-dev libxml2-dev default-mysql-client", # Añadido 'default-mysql-client' aquí
     "docker-php-ext-configure gd --with-freetype --with-jpeg",
     "docker-php-ext-install zip gd exif pdo_mysql mbstring xml curl fileinfo openssl json"
 ]

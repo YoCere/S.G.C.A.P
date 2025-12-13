@@ -159,7 +159,8 @@ return [
              * The disk names on which the backups will be stored.
              */
             'disks' => [
-                // lista de nombres de discos donde quieres guardar backups  
+                // lista de nombres de discos donde quieres guardar backups
+                'local',  
                 's3',
             ],
         ],

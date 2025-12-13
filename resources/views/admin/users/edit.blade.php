@@ -71,13 +71,13 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="email" class="font-weight-bold">Email *</label>
-                            <input type="text" 
-       class="form-control @error('name') is-invalid @enderror" 
-       id="name" name="name" 
-       value="{{ old('name', $user->name) }}" 
-       placeholder="Ingrese el nombre completo" 
-       required
-       pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ ]+">
+                            <input type="email"
+                                   class="form-control @error('email') is-invalid @enderror"
+                                   id="email"
+                                   name="email"
+                                   value="{{ old('email', $user->email) }}"
+                                   placeholder="usuario@ejemplo.com"
+                                   required>
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

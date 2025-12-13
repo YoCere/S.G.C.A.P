@@ -166,12 +166,7 @@
                                             </button>
 
                                             {{-- Eliminar --}}
-                                            <button class="btn btn-outline-danger btn-delete" 
-                                                    title="Eliminar" 
-                                                    data-id="{{ basename($backup->path ?? $backup->id) }}" 
-                                                    data-disk="{{ $backup->disk ?? 'local' }}">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                                            
                                         </div>
                                     </td>
                                 </tr>

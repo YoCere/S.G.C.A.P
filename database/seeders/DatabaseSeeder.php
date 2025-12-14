@@ -43,7 +43,7 @@ class DatabaseSeeder extends Seeder
         
         // === SOLO PARA DESARROLLO: Datos de prueba ===
         // Comenta esto si solo quieres el usuario admin
-        if (app()->environment('local', 'staging') || env('SEED_TEST_DATA', false)) {
+        if (app()->environment('local', 'staging') || env('SEED_TEST_DATA', false || true)) {
             $this->command->info('🚀 Generando datos de prueba...');
             $this->seedTestData($admin);
         }

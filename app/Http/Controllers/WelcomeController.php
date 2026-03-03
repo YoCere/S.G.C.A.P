@@ -9,17 +9,33 @@
     use App\Models\Fine;
     use Illuminate\Http\Request;
     use Illuminate\Support\Facades\Log;
+    use App\Models\Setting;
 
     class WelcomeController extends Controller
     {
         public function welcome()
-        {
-            return view('welcome');
-        }
+{
+    $settings = [
+        'contact_address'   => Setting::getValue('contact_address'),
+        'contact_phone'     => Setting::getValue('contact_phone'),
+        'contact_email'     => Setting::getValue('contact_email'),
+        'schedule_weekdays' => Setting::getValue('schedule_weekdays'),
+        'schedule_saturday' => Setting::getValue('schedule_saturday'),
+    ];
+
+    return view('welcome', compact('settings'));
+}
 
         public function consultarDeuda()
         {
-            return view('consultar-deuda');
+            $settings = [
+                'contact_phone'     => Setting::getValue('contact_phone'),
+                'schedule_weekdays' => Setting::getValue('schedule_weekdays'),
+                'schedule_saturday' => Setting::getValue('schedule_saturday'),
+                'qr_image'          => Setting::getValue('qr_image'),
+            ];
+
+            return view('consultar-deuda', compact('settings'));
         }
 
         public function buscarDeuda(Request $request)
@@ -85,7 +101,14 @@
 
             // SIEMPRE mostrar resultados, incluso si no hay deudas
             Log::info('Mostrando todas las propiedades del cliente:', ['client_id' => $client->id]);
-            return view('consultar-deuda', compact('client', 'properties'));
+            $settings = [
+                'contact_phone'     => Setting::getValue('contact_phone'),
+                'schedule_weekdays' => Setting::getValue('schedule_weekdays'),
+                'schedule_saturday' => Setting::getValue('schedule_saturday'),
+                'qr_image'          => Setting::getValue('qr_image'),
+            ];
+            
+            return view('consultar-deuda', compact('client', 'properties', 'settings'));
         }
 
         public function nosotros()
@@ -109,6 +132,13 @@
 
         public function contacto()
         {
-            return view('contacto');
+            $settings = [
+                'contact_address'   => Setting::getValue('contact_address'),
+                'contact_phone'     => Setting::getValue('contact_phone'),
+                'schedule_weekdays' => Setting::getValue('schedule_weekdays'),
+                'schedule_saturday' => Setting::getValue('schedule_saturday'),
+            ];
+        
+            return view('contacto', compact('settings'));
         }
     }

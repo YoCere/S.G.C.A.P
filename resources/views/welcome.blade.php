@@ -29,10 +29,7 @@
                         <div class="bg-white rounded-xl p-6 text-gray-800 shadow-2xl">
                             <h3 class="font-bold text-xl mb-4 text-blue-600">INFORMACIÓN RÁPIDA</h3>
                             <div class="space-y-4">
-                                <div class="flex justify-between items-center border-b pb-2">
-                                    <span class="font-medium">Clientes Activos</span>
-                                    <span class="font-bold text-blue-600">600+</span>
-                                </div>
+                                
                                 <div class="flex justify-between items-center border-b pb-2">
                                     <span class="font-medium">Cobertura</span>
                                     <span class="font-bold text-green-600">100%</span>

@@ -336,7 +336,7 @@ return [
         [
             'text' => 'Configuracion',
             'route' => 'admin.settings.index',
-            'icon' => 'fas fa-user-tie',
+            'icon' => 'fas fa-cog',
             'can' => 'admin.clients.index',
         ],
         [

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use Carbon\Carbon;
 class Debt extends Model
 {
     use HasFactory;
@@ -72,5 +72,17 @@ class Debt extends Model
     public function totalMultasPendientes()
     {
         return $this->multasPendientes()->sum('monto');
+    }
+ 
+
+    public function getMesFormateadoAttribute()
+    {
+    if (!$this->fecha) {
+        return 'N/A';
+    }
+
+    return Carbon::parse($this->fecha)
+        ->locale('es')
+        ->translatedFormat('F Y');
     }
 }

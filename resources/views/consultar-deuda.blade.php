@@ -368,7 +368,41 @@
                                     <p class="text-green-600">Todas sus propiedades están al día. No tiene deudas pendientes.</p>
                                 </div>
                             @endif
+                            @if($totalDeudas > 0 && !empty($settings['qr_image']))
+    <div class="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg shadow-md">
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-6">
 
+            <!-- Información -->
+            <div class="flex-1">
+                <h3 class="text-xl font-bold text-blue-900 mb-2">
+                    💳 Pague mediante Código QR
+                </h3>
+                <p class="text-blue-800 mb-3">
+                    Puede realizar el pago escaneando el siguiente código QR desde su aplicación bancaria.
+                </p>
+                <ul class="text-sm text-blue-700 space-y-1">
+                    <li>✔ Acepte el monto exacto mostrado arriba.</li>
+                    <li>✔ Guarde su comprobante de pago.</li>
+                    <li>✔ Envíe el comprobante por WhatsApp para validar su pago.</li>
+                </ul>
+            </div>
+
+            <!-- Imagen QR -->
+            <div class="flex-shrink-0 text-center">
+                <img 
+                    src="{{ asset('storage/' . $settings['qr_image']) }}"
+                    alt="QR de Pago"
+                    class="w-52 h-52 object-contain mx-auto rounded-lg shadow-lg border border-blue-300"
+                    loading="lazy"
+                >
+                <p class="text-xs text-gray-500 mt-2">
+                    Escanee para pagar
+                </p>
+            </div>
+
+        </div>
+    </div>
+@endif
                             <!-- Botón de WhatsApp para contactar a la secretaria -->
                             <div class="mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm">
                                 <div class="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -392,8 +426,8 @@
                                     </button>
                                 </div>
                                 <div class="mt-4 text-center text-sm text-gray-500">
-                                    <p>📞 Número: +591 76817297 (Secretaria)</p>
-                                    <p class="mt-1">⏰ Horario de atención: Lunes a Viernes 8:00 - 16:00</p>
+                                <p>📞 Número: {{ $settings['contact_phone'] ?? 'No disponible' }} (Secretaria)</p>
+                                <p class="mt-1">⏰ Horario: {{ $settings['schedule_weekdays'] ?? 'Lunes a Viernes 8:00 - 16:00' }}</p>
                                 </div>
                             </div>
 
@@ -415,7 +449,7 @@
         // Función para enviar mensaje por WhatsApp
         function enviarWhatsApp() {
             @if(isset($client) && isset($properties))
-                const telefono = '+59176817297';
+            const telefono = '{{ $settings["contact_phone"] ?? "+59176817297" }}';
                 let mensaje = "Hola, consulto sobre mis deudas de agua.%0A";
                 mensaje += "Cliente: {{ $client->nombre }}%0A";
                 mensaje += "CI: {{ $client->ci }}%0A";

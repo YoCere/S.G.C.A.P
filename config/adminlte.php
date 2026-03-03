@@ -334,6 +334,12 @@ return [
             'can' => 'admin.users.index',
         ],
         [
+            'text' => 'Configuracion',
+            'route' => 'admin.settings.index',
+            'icon' => 'fas fa-user-tie',
+            'can' => 'admin.clients.index',
+        ],
+        [
             'text' => 'Lista de roles',
             'route' => 'admin.roles.index',
             'icon' => 'fas fa-user-shield',

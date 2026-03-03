@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ReporteController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\SettingController;
 
 Route::middleware(['auth'])
     ->prefix('admin')
@@ -26,7 +27,12 @@ Route::middleware(['auth'])
         Route::resource('clients', ClientController::class)
         ->only(['index', 'create', 'store', 'edit', 'update', 'show', 'destroy']) // ✅ AGREGADO 'destroy'
         ->names('admin.clients');
-        
+
+        Route::get('settings', [SettingController::class, 'index'])
+        ->name('admin.settings.index');
+    
+    Route::put('settings', [SettingController::class, 'update'])
+        ->name('admin.settings.update');
 
         // ✅ NUEVA RUTA PARA ACTIVAR CLIENTES
         Route::put('/clients/{client}/activate', [ClientController::class, 'activate'])
